@@ -184,13 +184,13 @@
                                 {{ $it->inventoriable }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->purchasingUnit->description }}
+                                {{ $it->purchasingUnit->description ?? 'N/A' }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->consumptionUnit->description }}
+                                {{ $it->consumptionUnit->description ?? 'N/A' }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->tax->name }}
+                                {{ $it->tax->name ?? 'Sin impuesto' }}
                             </td>
                             <td
                                 class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900 dark:text-white">

@@ -5,7 +5,7 @@ namespace App\Livewire\TAT\Items;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\TAT\Items\TatItems;
-use App\Models\Tenant\Items\Category;
+use App\Models\TAT\Categories\TatCategories;
 use App\Models\Central\CnfTaxes;
 use App\Models\Auth\Tenant;
 use App\Services\Tenant\TenantManager;
@@ -54,7 +54,7 @@ class TatItemsManager extends Component
             'sku' => 'required|string|max:100|unique:tat_items,sku,' . $this->item_id,
             'name' => 'required|string|max:255',
             'taxId' => 'nullable|exists:cnf_taxes,id',
-            'categoryId' => 'required|exists:inv_categories,id',
+            'categoryId' => 'required|exists:tat_categories,id',
             'stock' => 'required|numeric|min:0',
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
@@ -176,7 +176,7 @@ class TatItemsManager extends Component
             $this->validate();
 
             $itemData = [
-                'item_father_id' => $this->item_father_id,
+                'item_father_id' => 0,
                 'company_id' => $this->company_id,
                 'sku' => $this->sku,
                 'name' => $this->name,
@@ -243,7 +243,7 @@ class TatItemsManager extends Component
             $this->ensureTenantConnection();
 
             $item = TatItems::findOrFail($itemId);
-            $item->delete(); // Soft delete
+            $item->delete(); // Eliminación permanente
 
             $this->successMessage = 'Item eliminado exitosamente';
             $this->errorMessage = '';
@@ -300,7 +300,10 @@ class TatItemsManager extends Component
     public function getCategoriesProperty()
     {
         $this->ensureTenantConnection();
-        return Category::where('status', 1)->orderBy('name')->get();
+        return TatCategories::where('company_id', $this->company_id)
+                           ->where('status', 1)
+                           ->orderBy('name')
+                           ->get();
     }
 
     public function getTaxesProperty()

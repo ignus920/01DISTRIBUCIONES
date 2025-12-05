@@ -358,8 +358,13 @@ new class extends Component
                         Ítems
                     @endif
                 </a>
-                <a href="{{url('/inventory/categories')}}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
+                @if(auth()->user()->profile_id == 17)
+                    <a href="{{ route('tenant.categories') }}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
+                @else
+                    <a href="{{url('/inventory/categories')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
+                @endif
                 <a href="{{url('/inventory/commands')}}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Comandas</a>
                 <a href="{{url('/inventory/brands')}}" wire:navigate
@@ -382,7 +387,11 @@ new class extends Component
              @mouseenter="tooltip = true"
              @mouseleave="tooltip = false"
             >
-             <a href="{{url('/inventory/categories')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
+             @if(auth()->user()->profile_id == 17)
+                 <a href="{{ route('tenant.categories') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
+             @else
+                 <a href="{{url('/inventory/categories')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
+             @endif
              <a href="{{ route('tenant.items') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
                 @if(auth()->user()->profile_id == 17)
                     Items de Tienda

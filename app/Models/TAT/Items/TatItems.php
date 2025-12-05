@@ -4,13 +4,13 @@ namespace App\Models\TAT\Items;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Tenant\Items\Category;
+// use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\TAT\Categories\TatCategories;
 use App\Models\Central\CnfTaxes;
 
 class TatItems extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $connection = 'tenant';
     protected $table = 'tat_items';
@@ -49,7 +49,7 @@ class TatItems extends Model
     // Relaciones
     public function category()
     {
-        return $this->belongsTo(Category::class, 'categoryId', 'id');
+        return $this->belongsTo(TatCategories::class, 'categoryId', 'id');
     }
 
     public function tax()
