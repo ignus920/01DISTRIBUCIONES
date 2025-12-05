@@ -9,7 +9,7 @@ class UsrPermissionProfile extends Model
 {
     use SoftDeletes;
 
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'usr_permissions_profiles';
 
     protected $fillable = [

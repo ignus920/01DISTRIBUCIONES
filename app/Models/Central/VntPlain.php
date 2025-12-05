@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VntPlain extends Model
 {
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'vnt_plains';
 
     protected $fillable = [

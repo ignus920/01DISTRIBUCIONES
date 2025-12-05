@@ -9,7 +9,7 @@ class CnfFiscalResponsability extends Model
 {
     use HasFactory;
 
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'cnf_fiscal_responsabilities';
 
     protected $fillable = [
