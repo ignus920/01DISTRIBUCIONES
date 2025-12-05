@@ -44,14 +44,80 @@ class Dashboard extends Component
 
     protected function loadStats()
     {
-        // Aquí puedes cargar estadísticas de la base del tenant
-        // Por ahora dejamos datos de ejemplo
-        $this->stats = [
-            'total_ventas_hoy' => 0,
-            'total_clientes' => 0,
-            'total_productos' => 0,
-            'ventas_mes' => 0,
-        ];
+        // Obtener el company_id del usuario para filtrar los datos
+        $userCompanyId = $this->getUserCompanyId();
+
+        if ($userCompanyId) {
+            // Cargar estadísticas específicas de la empresa del usuario
+            $this->stats = [
+                'total_ventas_hoy' => 0, // TODO: Implementar consulta real
+                'total_clientes' => 0,   // TODO: Implementar consulta real
+                'total_productos' => $this->getCompanyProductsCount($userCompanyId),
+                'ventas_mes' => 0,       // TODO: Implementar consulta real
+            ];
+        } else {
+            // Datos por defecto si no se encuentra company_id
+            $this->stats = [
+                'total_ventas_hoy' => 0,
+                'total_clientes' => 0,
+                'total_productos' => 0,
+                'ventas_mes' => 0,
+            ];
+        }
+    }
+
+    /**
+     * Obtener el company_id del usuario autenticado
+     */
+    protected function getUserCompanyId()
+    {
+        if (!$this->user) {
+            return null;
+        }
+
+        // Si el usuario tiene un contact_id, obtener el company_id desde ahí
+        if ($this->user->contact_id) {
+            $contact = \DB::table('vnt_contacts')
+                ->where('id', $this->user->contact_id)
+                ->first();
+
+            if ($contact && isset($contact->warehouseId)) {
+                $warehouse = \DB::table('vnt_warehouses')
+                    ->where('id', $contact->warehouseId)
+                    ->first();
+
+                return $warehouse ? $warehouse->companyId : null;
+            }
+        }
+
+        // Método alternativo: buscar en vnt_companies por email
+        $company = \DB::table('vnt_companies')
+            ->join('vnt_warehouses', 'vnt_companies.id', '=', 'vnt_warehouses.companyId')
+            ->join('vnt_contacts', 'vnt_warehouses.id', '=', 'vnt_contacts.warehouseId')
+            ->where('vnt_contacts.email', $this->user->email)
+            ->select('vnt_companies.id as company_id')
+            ->first();
+
+        return $company ? $company->company_id : null;
+    }
+
+    /**
+     * Contar productos específicos de la empresa
+     */
+    protected function getCompanyProductsCount($companyId)
+    {
+        try {
+            return \DB::table('tat_items')
+                ->where('company_id', $companyId)
+                ->where('status', 1)
+                ->count();
+        } catch (\Exception $e) {
+            \Log::error('Error obteniendo productos de la empresa', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
     }
 
     public function switchTenant()

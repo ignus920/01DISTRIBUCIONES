@@ -24,8 +24,11 @@ class SelectTenant extends Component
             return redirect()->route('super.admin.dashboard');
         }
 
-        // MODO SINGLE-TENANT: Seleccionar automáticamente el tenant por defecto
-        return $this->selectDefaultTenant();
+        // MODO SINGLE-TENANT: Limpiar sesión y permitir que el middleware determine el tenant
+        Session::forget('tenant_id');
+
+        // Redirigir directamente al dashboard para que el middleware configure el tenant correcto
+        return redirect()->route('tenant.dashboard');
 
         // CÓDIGO ORIGINAL COMENTADO - Para restaurar multitenant
         // // Obtener tenants activos del usuario
@@ -55,6 +58,7 @@ class SelectTenant extends Component
             $defaultTenant = \App\Models\Auth\Tenant::create([
                 'id' => 'default',
                 'name' => 'Distribuidora Principal',
+                'email' => 'admin@distribuidora.local',
                 'domain' => 'distribuidora.local',
                 'db_name' => 'company_1_default',
                 'is_active' => true,

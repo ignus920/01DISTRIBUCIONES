@@ -5,21 +5,10 @@
             <div class="p-6 bg-white dark:bg-gray-900 dark:bg-gray-900 border-b border-gray-200">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white dark:text-white">{{ $tenant->name }}</h2>
-                        <p class="text-sm text-gray-900 dark:text-white mt-1">Bienvenido, {{ $user->name }}</p>
+                        <h2 class="text-2xl font-bold text-gray-900 dark:text-white dark:text-white">Bienvenido, {{ $user->name }}</h2>
+                        
                     </div>
-                    <div class="flex space-x-4">
-                        <button
-                            wire:click="switchTenant"
-                            class="inline-flex items-center px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-300 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                        >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                            </svg>
-                            Cambiar Empresa
-                        </button>
-                     
-                    </div>
+                    
                 </div>
             </div>
         </div>
@@ -150,7 +139,7 @@
                 </div>
                 <div class="ml-3">
                     <p class="text-sm text-blue-700">
-                        Este es el panel de control de <strong>{{ $tenant->name }}</strong>.
+                        Este es el panel de control de <strong>{{ $user->name }}</strong>.
                         Aquí podrá gestionar todas las operaciones de su empresa.
                     </p>
                 </div>
