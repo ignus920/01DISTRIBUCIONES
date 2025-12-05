@@ -146,9 +146,33 @@ Route::prefix('api/permissions')->middleware(['auth', 'company.complete'])->grou
 
 require __DIR__.'/auth.php';
 
+// // Rutas separadas para Items según el perfil del usuario
+// Route::get('/tenant/items/tienda', \App\Livewire\Tenant\Items\TatItemsManager::class)
+//     ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
+//     ->name('tenant.items.tienda');
+
+// Route::get('/tenant/items/inventario', \App\Livewire\Tenant\Items\ManageItems::class)
+//     ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
+//     ->name('tenant.items.inventario');
+
+// // Ruta condicional que redirige según el perfil
+// Route::get('/tenant/items', function () {
+//     $user = auth()->user();
+
+//     // Si el perfil es 17, redirigir al CRUD de tienda
+//     if ($user && $user->profile_id == 17) {
+//         return redirect()->route('tenant.items.tienda');
+//     }
+
+//     // Para cualquier otro perfil, redirigir al CRUD original
+//     return redirect()->route('tenant.items.inventario');
+// })
+// ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
+// ->name('tenant.items');
+
 // Incluir rutas del módulo de parámetros del tenant
 require __DIR__.'/tenants/parameters.php';
-// Incluir rutas del módulo de pagos de cotizacion 
+// Incluir rutas del módulo de pagos de cotizacion
 require __DIR__.'/tenants/payments.php';
-
-
+// Incluir rutas del módulo TAT Items
+require __DIR__.'/TAT/tatItems.php';

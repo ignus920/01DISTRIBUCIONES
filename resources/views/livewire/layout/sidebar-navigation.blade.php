@@ -350,8 +350,14 @@ new class extends Component
             <!-- Submenú -->
             <div x-show="open && !sidebarCollapsed" x-transition
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <a href="{{url('/items/items')}}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Ítems</a>
+                <a href="{{ route('tenant.items') }}" wire:navigate
+                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
+                    @if(auth()->user()->profile_id == 17)
+                        Items de Tienda
+                    @else
+                        Ítems
+                    @endif
+                </a>
                 <a href="{{url('/inventory/categories')}}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
                 <a href="{{url('/inventory/commands')}}" wire:navigate
@@ -377,7 +383,13 @@ new class extends Component
              @mouseleave="tooltip = false"
             >
              <a href="{{url('/inventory/categories')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
-             <a href="{{url('/items/items')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Ítems</a>
+             <a href="{{ route('tenant.items') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
+                @if(auth()->user()->profile_id == 17)
+                    Items de Tienda
+                @else
+                    Ítems
+                @endif
+             </a>
              <a href="{{url('/inventory/brands')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Marcas</a>
              <a href="{{url('/inventory/commands')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Comandas</a>
              <a href="{{url('/inventory/units')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Unidades de Medida</a>
