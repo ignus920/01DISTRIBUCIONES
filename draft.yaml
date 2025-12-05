@@ -1,0 +1,114 @@
+# Blueprint para Sistema Multitenancy RAP
+# Este archivo define la estructura base de módulos para cada tenant
+
+models:
+  # Modelo Cliente para cada tenant
+  Cliente:
+    nombre: string:200
+    email: string unique nullable
+    telefono: string:20 nullable
+    direccion: text nullable
+    ciudad: string:100 nullable
+    nit: string:50 nullable
+    tipo: enum:natural,juridico default:natural
+    activo: boolean default:true
+    timestamps: true
+    relationships:
+      hasMany: Venta
+
+  # Modelo Producto
+  Producto:
+    codigo: string:100 unique
+    nombre: string:255
+    descripcion: text nullable
+    precio: decimal:10,2
+    costo: decimal:10,2 nullable
+    stock: integer default:0
+    stock_minimo: integer default:5
+    categoria_id: id foreign nullable
+    activo: boolean default:true
+    timestamps: true
+    relationships:
+      belongsTo: Categoria
+      hasMany: DetalleVenta, MovimientoInventario
+
+  # Modelo Categoría
+  Categoria:
+    nombre: string:100
+    descripcion: text nullable
+    activo: boolean default:true
+    timestamps: true
+    relationships:
+      hasMany: Producto
+
+  # Modelo Venta
+  Venta:
+    numero: string:50 unique
+    fecha: datetime
+    cliente_id: id foreign nullable
+    usuario_id: id foreign
+    subtotal: decimal:10,2
+    descuento: decimal:10,2 default:0
+    impuesto: decimal:10,2 default:0
+    total: decimal:10,2
+    estado: enum:pendiente,pagada,anulada default:pendiente
+    tipo_pago: enum:efectivo,tarjeta,transferencia
+    observaciones: text nullable
+    timestamps: true
+    relationships:
+      belongsTo: Cliente, User
+      hasMany: DetalleVenta
+
+  # Modelo Detalle de Venta
+  DetalleVenta:
+    venta_id: id foreign
+    producto_id: id foreign
+    cantidad: decimal:10,2
+    precio_unitario: decimal:10,2
+    descuento: decimal:10,2 default:0
+    subtotal: decimal:10,2
+    timestamps: true
+    relationships:
+      belongsTo: Venta, Producto
+
+  # Modelo Caja
+  Caja:
+    nombre: string:100
+    saldo_inicial: decimal:10,2 default:0
+    saldo_actual: decimal:10,2 default:0
+    fecha_apertura: datetime
+    fecha_cierre: datetime nullable
+    usuario_id: id foreign
+    estado: enum:abierta,cerrada default:abierta
+    observaciones: text nullable
+    timestamps: true
+    relationships:
+      belongsTo: User
+      hasMany: MovimientoCaja
+
+  # Modelo Movimiento de Caja
+  MovimientoCaja:
+    caja_id: id foreign
+    tipo: enum:ingreso,egreso
+    concepto: string:255
+    monto: decimal:10,2
+    fecha: datetime
+    usuario_id: id foreign
+    venta_id: id foreign nullable
+    observaciones: text nullable
+    timestamps: true
+    relationships:
+      belongsTo: Caja, User, Venta
+
+  # Modelo Movimiento de Inventario
+  MovimientoInventario:
+    producto_id: id foreign
+    tipo: enum:entrada,salida,ajuste
+    cantidad: decimal:10,2
+    motivo: string:255
+    fecha: datetime
+    usuario_id: id foreign
+    observaciones: text nullable
+    timestamps: true
+    relationships:
+      belongsTo: Producto, User

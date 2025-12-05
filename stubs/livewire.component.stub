@@ -1,0 +1,233 @@
+<?php
+
+namespace {{NAMESPACE}};
+
+use Livewire\Component;
+use Livewire\WithPagination;
+use {{MODEL_NAMESPACE}};
+
+class {{CLASS_NAME}} extends Component
+{
+    use WithPagination;
+
+    // Propiedades de búsqueda y paginación
+    public $search = '';
+    public $showModal = false;
+    public $editingId = null;
+    public $perPage = 10;
+    public $sortField = 'id';
+    public $sortDirection = 'desc';
+    public $reusable = false;
+
+    // Propiedades del formulario
+    public $name = '';
+    public $description = '';
+    public $status = 1;
+
+    /**
+     * Reglas de validación
+     */
+    protected $rules = [
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string|max:500',
+    ];
+
+    /**
+     * Mensajes de validación personalizados
+     */
+    protected $messages = [
+        'name.required' => 'El nombre es obligatorio.',
+        'name.max' => 'El nombre no puede exceder 255 caracteres.',
+        'description.max' => 'La descripción no puede exceder 500 caracteres.',
+    ];
+
+    /**
+     * Query strings para mantener estado en URL
+     */
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'perPage' => ['except' => 10],
+    ];
+
+    /**
+     * Resetear paginación al buscar
+     */
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * Resetear paginación al cambiar registros por página
+     */
+    public function updatingPerPage()
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * Ordenar por campo
+     */
+    public function sortBy($field)
+    {
+        if ($this->sortField === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortDirection = 'asc';
+        }
+
+        $this->sortField = $field;
+        $this->resetPage();
+    }
+
+    /**
+     * Renderizar componente
+     */
+    public function render()
+    {
+        $items = {{MODEL_NAME}}::query()
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('description', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->paginate($this->perPage);
+
+        return view('{{VIEW_PATH}}', [
+            'items' => $items
+        ]);
+    }
+
+    /**
+     * Abrir modal para crear nuevo registro
+     */
+    public function create()
+    {
+        $this->resetForm();
+        $this->showModal = true;
+    }
+
+    /**
+     * Editar registro existente
+     */
+    public function edit($id)
+    {
+        $item = {{MODEL_NAME}}::findOrFail($id);
+        $this->editingId = $id;
+        $this->name = $item->name;
+        $this->description = $item->description;
+        $this->status = $item->status ?? 1;
+        $this->showModal = true;
+    }
+
+    /**
+     * Guardar registro (crear o actualizar)
+     */
+    public function save()
+    {
+        $this->validate();
+
+        try {
+            if ($this->editingId) {
+                $item = {{MODEL_NAME}}::findOrFail($this->editingId);
+                $item->update([
+                    'name' => $this->name,
+                    'description' => $this->description,
+                    'status' => $this->status,
+                ]);
+
+                session()->flash('message', 'Registro actualizado exitosamente.');
+            } else {
+                {{MODEL_NAME}}::create([
+                    'name' => $this->name,
+                    'description' => $this->description,
+                    'status' => $this->status,
+                ]);
+
+                session()->flash('message', 'Registro creado exitosamente.');
+            }
+
+            $this->resetForm();
+            $this->showModal = false;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error al guardar: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Eliminar registro
+     */
+    public function delete($id)
+    {
+        try {
+            {{MODEL_NAME}}::findOrFail($id)->delete();
+            session()->flash('message', 'Registro eliminado exitosamente.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error al eliminar: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Toggle estado del registro
+     */
+    public function toggleItemStatus($id)
+    {
+        try {
+            $item = {{MODEL_NAME}}::findOrFail($id);
+            $item->status = !$item->status;
+            $item->save();
+            
+            session()->flash('message', 'Estado actualizado exitosamente.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error al actualizar el estado: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exportar a Excel
+     */
+    public function exportExcel()
+    {
+        // TODO: Implementar exportación a Excel
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Exportación a Excel - En desarrollo'
+        ]);
+    }
+
+    /**
+     * Exportar a PDF
+     */
+    public function exportPdf()
+    {
+        // TODO: Implementar exportación a PDF
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Exportación a PDF - En desarrollo'
+        ]);
+    }
+
+    /**
+     * Exportar a CSV
+     */
+    public function exportCsv()
+    {
+        // TODO: Implementar exportación a CSV
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Exportación a CSV - En desarrollo'
+        ]);
+    }
+
+    /**
+     * Resetear formulario
+     */
+    private function resetForm()
+    {
+        $this->editingId = null;
+        $this->name = '';
+        $this->description = '';
+        $this->status = 1;
+        $this->resetErrorBag();
+    }
+}
