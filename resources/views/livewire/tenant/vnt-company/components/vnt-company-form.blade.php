@@ -277,7 +277,12 @@
         </div>
     </div>
 
-    <!-- Modal -->
+
+
+
+    
+
+    <!-- Modal  de creacion de clientes con suaurios para distribuidora-->
     @if($showModal)
     <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50"
         x-data="{ show: true }"
@@ -660,6 +665,36 @@
                                 placeholder="Ej: Calle 123 #45-67">
                             @error('warehouseAddress') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
+
+                        <!-- Crear Usuario Checkbox (solo para nuevos clientes) -->
+                        @if(!$editingId)
+                        <div class="md:col-span-2">
+                            <div class="flex items-center gap-3 p-4 rounded-lg
+                                {{ empty($billingEmail) || $emailExists ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
+                                <input
+                                    wire:model="createUser"
+                                    type="checkbox"
+                                    id="createUser"
+                                    {{ empty($billingEmail) || $emailExists ? 'disabled' : '' }}
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
+                                    <span class="font-semibold">Convertir en Usuario</span>
+                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
+                                        @if(empty($billingEmail))
+                                            Ingrese un email de facturación válido para habilitar esta opción
+                                        @elseif($emailExists)
+                                            No disponible: el email ya está registrado
+                                        @else
+                                            Crear automáticamente un usuario para acceder al sistema con perfil de Tienda
+                                        @endif
+                                    </p>
+                                </label>
+                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
+                                    Perfil: Tienda
+                                </div>
+                            </div>
+                        </div>
+                        @endif
 
                         <!-- Actions -->
                         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1091,6 +1126,36 @@
                                 placeholder="Ej: Calle 123 #45-67">
                             @error('warehouseAddress') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
+
+                        <!-- Crear Usuario Checkbox (solo para nuevos clientes) -->
+                        @if(!$editingId)
+                        <div class="md:col-span-2">
+                            <div class="flex items-center gap-3 p-4 rounded-lg
+                                {{ empty($billingEmail) || $emailExists ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
+                                <input
+                                    wire:model="createUser"
+                                    type="checkbox"
+                                    id="createUser"
+                                    {{ empty($billingEmail) || $emailExists ? 'disabled' : '' }}
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
+                                    <span class="font-semibold">Convertir en Usuario</span>
+                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
+                                        @if(empty($billingEmail))
+                                            Ingrese un email de facturación válido para habilitar esta opción
+                                        @elseif($emailExists)
+                                            No disponible: el email ya está registrado
+                                        @else
+                                            Crear automáticamente un usuario para acceder al sistema con perfil de Tienda
+                                        @endif
+                                    </p>
+                                </label>
+                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
+                                    Perfil: Tienda
+                                </div>
+                            </div>
+                        </div>
+                        @endif
 
                         <!-- Actions -->
                         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

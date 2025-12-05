@@ -11,6 +11,8 @@ use App\Livewire\Tenant\VntCompany\Services\WarehouseService;
 use App\Livewire\Tenant\VntCompany\Services\CompanyQueryService;
 use App\Livewire\Tenant\VntCompany\Services\CompanyValidationService;
 use App\Livewire\Tenant\VntCompany\Services\ExportService;
+use App\Models\Auth\User;
+use Illuminate\Support\Facades\Hash;
 
 
 class VntCompanyForm extends Component
@@ -96,9 +98,12 @@ class VntCompanyForm extends Component
     
     // Control de visualización de campos
     public $showNaturalPersonFields = false;
-    
+
     // Propiedad para rastrear errores de validación
     public $formHasErrors = false;
+
+    // Propiedad para crear usuario
+    public $createUser = false;
 
     public function boot(
         CompanyService $companyService,
@@ -406,7 +411,19 @@ class VntCompanyForm extends Component
                 $this->dispatch('customer-updated', $this->editingId);
             } else {
                 $company = $this->companyService->create($data, $warehouses);
-                session()->flash('message', 'Registro creado exitosamente.');
+                $message = 'Registro creado exitosamente.';
+
+                // Crear usuario si está marcado el checkbox
+                if ($this->createUser && $company) {
+                    try {
+                        $this->createUserFromCompany($company);
+                        $message = 'Registro y usuario creados exitosamente.';
+                    } catch (\Exception $e) {
+                        $message = 'Registro creado exitosamente, pero hubo un error al crear el usuario: ' . $e->getMessage();
+                    }
+                }
+
+                session()->flash('message', $message);
 
                 // Disparar evento para componentes que escuchan
                 if ($company && isset($company->id)) {
@@ -527,9 +544,12 @@ class VntCompanyForm extends Component
         
         // Reset control de visualización
         $this->showNaturalPersonFields = false;
-        
+
         // Reset form validation state
         $this->formHasErrors = false;
+
+        // Reset create user checkbox
+        $this->createUser = false;
 
         $this->resetErrorBag();
         $this->resetValidation();
@@ -667,6 +687,12 @@ class VntCompanyForm extends Component
         if ($propertyName === 'billingEmail' && !empty($this->billingEmail)) {
             $this->validateEmailUniqueness();
         }
+
+        // Validar checkbox createUser si se cambia cuando ya hay email duplicado
+        if ($propertyName === 'createUser' && $this->createUser && $this->emailExists) {
+            $this->createUser = false;
+            session()->flash('error', 'No se puede crear un usuario con un email que ya existe.');
+        }
     }
 
     /**
@@ -686,7 +712,12 @@ class VntCompanyForm extends Component
     {
         $this->validateOnly('billingEmail');
         $this->validateEmailUniqueness();
-        
+
+        // Desmarcar checkbox de crear usuario si el email existe
+        if ($this->emailExists && $this->createUser) {
+            $this->createUser = false;
+        }
+
         // Re-validar identificación después de cambiar email
         if (!empty($this->identification) && !empty($this->typeIdentificationId)) {
             $this->validateIdentificationUniqueness();
@@ -956,6 +987,40 @@ class VntCompanyForm extends Component
           
           return true;
         }
+
+    /**
+     * Crear usuario a partir de los datos del cliente
+     */
+    private function createUserFromCompany($company)
+    {
+        // Obtener el contacto principal
+        $mainWarehouse = $company->mainWarehouse;
+        $mainContact = $mainWarehouse ? $mainWarehouse->contacts->first() : null;
+
+        // Preparar datos del usuario
+        $userName = $this->firstName && $this->lastName
+            ? trim($this->firstName . ' ' . $this->lastName)
+            : $this->businessName;
+
+        $userData = [
+            'name' => $userName,
+            'email' => $this->billingEmail,
+            'password' => Hash::make('12345678'), // Contraseña por defecto
+            'profile_id' => 17, // Perfil "Tienda"
+            'contact_id' => $mainContact ? $mainContact->id : null,
+            'phone' => $this->business_phone ?: $this->personal_phone,
+        ];
+
+        // Verificar que el email no exista en usuarios
+        $existingUser = User::where('email', $this->billingEmail)->first();
+        if ($existingUser) {
+            throw new \Exception('Ya existe un usuario con este email.');
+        }
+
+        // Crear el usuario
+        User::create($userData);
+    }
+
     private function getFormData(): array
     {
         // Si es NIT, usar verification_digit como checkDigit

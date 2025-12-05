@@ -26,28 +26,51 @@ class SetTenantConnection
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Verificar si hay un tenant activo en la sesión
+        // MODO SINGLE-TENANT: Usar tenant por defecto automáticamente
         $tenantId = session('tenant_id');
 
+        // Si no hay tenant en sesión, usar el tenant por defecto
         if (!$tenantId) {
-            // Si no hay tenant en sesión, redirigir a selección de tenant
-            return redirect()->route('tenant.select');
+            $defaultTenant = Tenant::where('is_active', true)->first();
+
+            if (!$defaultTenant) {
+                // Crear tenant por defecto si no existe
+                $defaultTenant = Tenant::create([
+                    'id' => 'default',
+                    'name' => 'Distribuidora Principal',
+                    'domain' => 'distribuidora.local',
+                    'db_name' => 'company_1_default',
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $tenantId = $defaultTenant->id;
+            session(['tenant_id' => $tenantId]);
         }
 
         // Buscar el tenant
         $tenant = Tenant::find($tenantId);
 
         if (!$tenant || !$tenant->is_active) {
-            session()->forget('tenant_id');
-            return redirect()->route('tenant.select')->withErrors(['tenant' => 'Tenant no disponible']);
+            // En modo single-tenant, usar el primer tenant disponible
+            $tenant = Tenant::where('is_active', true)->first();
+            if ($tenant) {
+                session(['tenant_id' => $tenant->id]);
+            } else {
+                return redirect()->route('tenant.select')->withErrors(['tenant' => 'No hay tenants disponibles']);
+            }
         }
 
-        // Verificar que el usuario autenticado tenga acceso al tenant
-        $user = Auth::user();
-        if ($user && !$user->hasAccessToTenant($tenantId)) {
-            session()->forget('tenant_id');
-            return redirect()->route('tenant.select')->withErrors(['tenant' => 'No tiene acceso a este tenant']);
-        }
+        // EN MODO SINGLE-TENANT, SALTAMOS LA VERIFICACIÓN DE ACCESO
+        // CÓDIGO ORIGINAL COMENTADO:
+        // // Verificar que el usuario autenticado tenga acceso al tenant
+        // $user = Auth::user();
+        // if ($user && !$user->hasAccessToTenant($tenantId)) {
+        //     session()->forget('tenant_id');
+        //     return redirect()->route('tenant.select')->withErrors(['tenant' => 'No tiene acceso a este tenant']);
+        // }
 
         // Establecer la conexión al tenant
         $this->tenantManager->setConnection($tenant);
@@ -55,7 +78,8 @@ class SetTenantConnection
         // Inicializar tenancy usando Stancl
         tenancy()->initialize($tenant);
 
-        // Actualizar último acceso
+        // Actualizar último acceso (opcional en modo single-tenant)
+        $user = Auth::user();
         if ($user) {
             UserTenant::where('user_id', $user->id)
                 ->where('tenant_id', $tenantId)

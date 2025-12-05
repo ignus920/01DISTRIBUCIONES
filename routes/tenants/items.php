@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Auth\Livewire\SelectTenant;
+
 use App\Http\Controllers\Items\ItemsController;
 use App\Http\Controllers\Inventory\CategoriesController;
 use App\Http\Controllers\Inventory\BrandsController;

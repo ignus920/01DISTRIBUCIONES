@@ -14,25 +14,29 @@ class CompanyDataValidator
      */
     public function isCompanyDataComplete(User $user): bool
     {
-        // Obtener la empresa del usuario
-        $company = $this->getUserCompany($user);
-
-        if (!$company) {
-            return false;
-        }
-
-        // Solo verificar datos básicos de la empresa y warehouse
-        // Ya no validamos contacto porque no lo usamos en el formulario simplificado
-        if (!$this->isBasicCompanyDataComplete($company)) {
-            return false;
-        }
-
-        // Verificar datos del warehouse
-        if (!$this->isWarehouseDataComplete($company)) {
-            return false;
-        }
-
+        // Siempre retornar true para evitar que aparezca el formulario de setup
         return true;
+
+        // CÓDIGO ORIGINAL COMENTADO - Descomentar si se necesita restaurar la validación
+        // // Obtener la empresa del usuario
+        // $company = $this->getUserCompany($user);
+
+        // if (!$company) {
+        //     return false;
+        // }
+
+        // // Solo verificar datos básicos de la empresa y warehouse
+        // // Ya no validamos contacto porque no lo usamos en el formulario simplificado
+        // if (!$this->isBasicCompanyDataComplete($company)) {
+        //     return false;
+        // }
+
+        // // Verificar datos del warehouse
+        // if (!$this->isWarehouseDataComplete($company)) {
+        //     return false;
+        // }
+
+        // return true;
     }
 
     /**
