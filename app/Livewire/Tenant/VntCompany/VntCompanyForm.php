@@ -34,7 +34,8 @@ class VntCompanyForm extends Component
         'position-changed' => 'updatePosition',
         'warehouse-modal-closed' => 'handleWarehouseModalClosed', 
         'contact-modal-closed' => 'handleContactModalClosed',
-        'citySelected' => 'updateCityName'
+        'citySelected' => 'updateCityName',
+        'user-changed' => 'updateVendedor' 
     ];
 
     public $search = '';
@@ -105,6 +106,9 @@ class VntCompanyForm extends Component
 
     // Propiedad para crear usuario
     public $createUser = false;
+    // Propiedad para el vendedor asignado
+    public $vntUserId = '';
+
 
     public function boot(
         CompanyService $companyService,
@@ -239,6 +243,7 @@ class VntCompanyForm extends Component
         $this->checkDigit = (string)$company->checkDigit;
         $this->verification_digit = (string)$company->checkDigit; // Cargar el DV desde checkDigit
         $this->status = $company->status ?? 1;
+        $this->vntUserId = $company->vntUserId ?? '';
         
         // Log detallado de la carga de datos para verificación
         Log::info('Company data loaded in edit()', [
@@ -552,6 +557,9 @@ class VntCompanyForm extends Component
         // Reset create user checkbox
         $this->createUser = false;
 
+        // Reset vendedor
+        $this->vntUserId = '';
+
         $this->resetErrorBag();
         $this->resetValidation();
     }
@@ -637,6 +645,11 @@ class VntCompanyForm extends Component
     public function updatePosition($positionId)
     {
         $this->positionId = $positionId;
+    }
+
+    public function updateVendedor($userId)
+    {
+        $this->vntUserId = $userId;
     }
 
     public function toggleStatus()
@@ -1169,6 +1182,7 @@ class VntCompanyForm extends Component
             'business_phone' => $this->business_phone,
             'personal_phone' => $this->personal_phone,
             'positionId' => $this->positionId,
+            'vntUserId' => $this->vntUserId,
         ];
     }
 }
