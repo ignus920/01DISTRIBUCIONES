@@ -1,30 +1,7 @@
 <div class="w-full max-w-md lg:max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-visible border-2 border-gray-300 dark:border-gray-700">
     <!-- Header con botones de estado -->
     <div class="bg-gray-50 dark:bg-gray-800 p-3 border-b dark:border-gray-700">
-        <!-- Títulos de secciones -->
-        <div class="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-2">
-            <span>Inventario</span>
-            <span>Surtir</span>
-            <span>Finalizar</span>
-            <span>Historial</span>
-        </div>
-
-        <!-- Botones de estado -->
-        <div class="flex justify-between gap-1 mb-3">
-            <button class="w-12 h-12 bg-red-500 text-white rounded border-2 border-red-600 font-bold hover:bg-red-600 transition">
-                <span class="text-lg font-bold">I</span>
-            </button>
-            <a href="{{ route('tenant.quoter.products') }}"
-               class="w-12 h-12 bg-red-500 text-white rounded border-2 border-red-600 font-bold hover:bg-red-600 transition flex items-center justify-center">
-                <span class="text-lg font-bold">S</span>
-            </a>
-            <button class="w-12 h-12 bg-purple-500 text-white rounded border-2 border-purple-600 font-bold hover:bg-purple-600 transition">
-                <span class="text-lg font-bold">F</span>
-            </button>
-            <button class="w-12 h-12 bg-orange-500 text-white rounded border-2 border-orange-600 font-bold hover:bg-orange-600 transition">
-                <span class="text-lg font-bold">H</span>
-            </button>
-        </div>
+     
 
         <!-- Total -->
         <div class="bg-black dark:bg-gray-950 text-white p-3 rounded mb-3 ring-2 ring-blue-500 dark:ring-blue-600">
@@ -299,7 +276,87 @@
             @endforeach
         </div>
 
+        <!-- Botones de acción -->
+        @if(count($cartItems) > 0)
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-3 mb-3">
+            <div class="flex flex-col sm:flex-row gap-2 justify-center">
+                <button
+                    wire:click="saveQuote"
+                    wire:loading.attr="disabled"
+                    wire:target="saveQuote"
+                    class="flex-1 sm:flex-none px-6 py-3 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-lg font-semibold text-sm transition-colors duration-150 shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
 
+                    <!-- Icono normal (cuando no está cargando) -->
+                    <svg wire:loading.remove wire:target="saveQuote" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+
+                    <!-- Spinner (cuando está cargando) -->
+                    <svg wire:loading wire:target="saveQuote" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+
+                    <!-- Texto normal -->
+                    <span wire:loading.remove wire:target="saveQuote">Registrar Venta</span>
+
+                    <!-- Texto cuando está cargando -->
+                    <span wire:loading wire:target="saveQuote">Guardando...</span>
+                </button>
+
+                <button
+                    wire:click="clearCart"
+                    class="flex-1 sm:flex-none px-4 py-3 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors duration-150 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Limpiar
+                </button>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="mt-2 text-center">
+                <p class="text-xs text-gray-600 dark:text-gray-400">
+                    Total: <span class="font-bold text-gray-800 dark:text-gray-200">${{ number_format($total, 0, '.', '.') }}</span>
+                    | Productos: <span class="font-bold">{{ count($cartItems) }}</span>
+                    @if($selectedCustomer)
+                    | Cliente: <span class="font-bold text-green-600 dark:text-green-400">{{ $selectedCustomer['display_name'] }}</span>
+                    @endif
+                </p>
+            </div>
+        </div>
+        @endif
+
+        <!-- Input de búsqueda dinámico -->
+        <div class="space-y-1">
+            <!-- Siempre mostrar un input activo para nueva búsqueda -->
+           
+
+            <!-- Sugerencias adicionales mejoradas -->
+            @if(!empty($currentSearch) && count($additionalSuggestions) > 0)
+                <div class="mt-2 space-y-2">
+                    <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold px-2">Más resultados:</div>
+                    @foreach($additionalSuggestions as $product)
+                        @php
+                            $hasStock = $product['stock'] > 0;
+                        @endphp
+                        <div class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 transition-all duration-150
+                                    {{ $hasStock ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-400 dark:hover:border-blue-500' : 'cursor-not-allowed opacity-60 bg-red-50 dark:bg-red-900/20' }}"
+                             {{ $hasStock ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}>
+                            <div class="font-medium text-gray-800 dark:text-gray-200 text-sm {{ !$hasStock ? 'line-through' : '' }}">{{ $product['name'] }}</div>
+                            <div class="flex justify-between items-center mt-1">
+                                @if($hasStock)
+                                    <span class="text-xs text-gray-600 dark:text-gray-400">Stock: {{ number_format($product['stock'], 0) }}</span>
+                                @else
+                                    <span class="text-xs text-red-600 dark:text-red-400">Sin Stock</span>
+                                @endif
+                                <span class="text-xs text-blue-600 dark:text-blue-400 font-semibold">${{ number_format($product['price'], 0, '.', '.') }}</span>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
 
     </div>
 </div>
@@ -351,17 +408,35 @@
         if (searchInput) {
             // Mantener el foco en el input después de seleccionar un producto
             Livewire.on('product-selected', () => {
-                setTimeout(() => {
-                    searchInput.focus();
-                }, 100);
+                // Solo enfocar si NO estamos buscando cliente
+                const customerSearchInput = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]');
+                const isCustomerSearchActive = customerSearchInput && document.activeElement === customerSearchInput;
+
+                if (!isCustomerSearchActive) {
+                    setTimeout(() => {
+                        searchInput.focus();
+                    }, 100);
+                }
             });
 
             // Prevenir que el input pierda el foco cuando se hace clic en el dropdown
             searchInput.addEventListener('blur', (e) => {
-                // Solo permitir blur si se hace clic fuera del área de búsqueda
-                if (!e.relatedTarget || !e.relatedTarget.closest('.relative')) {
+                // Verificar si el usuario está buscando cliente
+                const customerSearchInput = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]');
+                const isCustomerSearchActive = customerSearchInput && (
+                    document.activeElement === customerSearchInput ||
+                    e.relatedTarget === customerSearchInput ||
+                    customerSearchInput.matches(':focus-within')
+                );
+
+                // Solo mantener foco si NO está buscando cliente
+                if (!isCustomerSearchActive && (!e.relatedTarget || !e.relatedTarget.closest('.relative'))) {
                     setTimeout(() => {
-                        searchInput.focus();
+                        // Verificar una vez más antes de enfocar
+                        const stillSearchingCustomer = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]:focus');
+                        if (!stillSearchingCustomer) {
+                            searchInput.focus();
+                        }
                     }, 50);
                 }
             });

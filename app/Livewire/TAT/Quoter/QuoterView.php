@@ -423,33 +423,61 @@ class QuoterView extends Component
     }
 
     /**
-     * Guardar cotización
+     * Guardar cotización/venta
      */
     public function saveQuote()
     {
         if (empty($this->cartItems)) {
-            session()->flash('error', 'No hay productos en el carrito para cotizar.');
+            session()->flash('error', 'No hay productos en el carrito para vender.');
+            return;
+        }
+
+        if (!$this->selectedCustomer) {
+            session()->flash('error', 'Debe seleccionar un cliente para realizar la venta.');
+            return;
+        }
+
+        // Validar stock antes de proceder
+        $stockErrors = [];
+        foreach ($this->cartItems as $item) {
+            $product = TatItems::find($item['id']);
+            if (!$product) {
+                $stockErrors[] = "Producto {$item['name']} no encontrado";
+                continue;
+            }
+
+            if ($product->stock < $item['quantity']) {
+                $stockErrors[] = "Stock insuficiente para {$item['name']} (Disponible: {$product->stock}, Requerido: {$item['quantity']})";
+            }
+        }
+
+        if (!empty($stockErrors)) {
+            session()->flash('error', 'No se puede completar la venta: ' . implode(', ', $stockErrors));
             return;
         }
 
         try {
             DB::beginTransaction();
 
-            // Generar consecutivo para la cotización
+            // Generar consecutivo para la venta
             $lastQuote = Quote::byCompany($this->companyId)->orderBy('consecutive', 'desc')->first();
             $consecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
 
-            // Crear la cotización con la estructura real de la BD
+            // Crear observaciones con información del cliente
+            $customerInfo = $this->selectedCustomer['display_name'] . ' (' . $this->selectedCustomer['identification'] . ')';
+            $observations = 'Venta registrada para: ' . $customerInfo . ' - Total productos: ' . count($this->cartItems);
+
+            // Crear la venta
             $quote = Quote::create([
                 'company_id' => $this->companyId,
                 'consecutive' => $consecutive,
                 'status' => 'Registrado',
-                'customerId' => 1, // Por ahora consumidor final, después se puede implementar clientes
+                'customerId' => $this->selectedCustomer['id'],
                 'userId' => Auth::id(),
-                'observations' => 'Cotización generada desde el sistema',
+                'observations' => $observations,
             ]);
 
-            // Agregar items a la cotización con la estructura real de la BD
+            // Agregar items a la venta
             foreach ($this->cartItems as $item) {
                 QuoteItem::create([
                     'quoteId' => $quote->id,
@@ -459,21 +487,44 @@ class QuoterView extends Component
                     'price' => $item['price'],
                     'descripcion' => $item['name'],
                 ]);
+
+                // Opcional: Reducir stock del inventario
+                $product = TatItems::find($item['id']);
+                if ($product) {
+                    $product->decrement('stock', $item['quantity']);
+                }
             }
 
             DB::commit();
 
             $this->clearCart();
-            session()->flash('success', "Cotización #{$consecutive} guardada exitosamente.");
+            session()->flash('success', "¡Venta #{$consecutive} registrada exitosamente! Cliente: {$customerInfo}");
+
+            // Log de la venta
+            Log::info('Venta registrada', [
+                'venta_id' => $quote->id,
+                'consecutive' => $consecutive,
+                'cliente' => $customerInfo,
+                'total_productos' => count($this->cartItems),
+                'total_venta' => $this->total,
+                'company_id' => $this->companyId,
+                'user_id' => Auth::id()
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Error al guardar la cotización: ' . $e->getMessage());
+            Log::error('Error al registrar venta', [
+                'error' => $e->getMessage(),
+                'company_id' => $this->companyId,
+                'user_id' => Auth::id(),
+                'cliente' => $this->selectedCustomer['display_name'] ?? 'N/A'
+            ]);
+            session()->flash('error', 'Error al registrar la venta: ' . $e->getMessage());
         }
     }
 
     /**
-     * Generar factura (placeholder)
+     * Generar factura (igual que venta pero con status diferente)
      */
     public function generateInvoice()
     {
@@ -482,8 +533,13 @@ class QuoterView extends Component
             return;
         }
 
-        // Aquí se implementaría la lógica de facturación
-        session()->flash('info', 'Función de facturación en desarrollo.');
+        if (!$this->selectedCustomer) {
+            session()->flash('error', 'Debe seleccionar un cliente para generar la factura.');
+            return;
+        }
+
+        // Reutilizar la misma lógica de venta
+        $this->saveQuote();
     }
 
     /**
@@ -604,6 +660,7 @@ class QuoterView extends Component
 
     public function render()
     {
-        return view('livewire.TAT.quoter.quoter-view');
+        return view('livewire.TAT.quoter.quoter-view')
+            ->layout('layouts.app');
     }
 }

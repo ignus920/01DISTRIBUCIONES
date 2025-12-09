@@ -74,6 +74,67 @@
                         </svg>
                     </button>
 
+                    <!-- Botones de navegación rápida (solo para profile_id == 17) -->
+                    @auth
+                        <!-- DEBUG: Profile ID = {{ auth()->user()->profile_id ?? 'NULL' }} -->
+                        @if(auth()->user()->profile_id == 17)
+                            <div class="flex items-center gap-3 sm:gap-2 ml-2 sm:ml-4">
+                                <!-- Inventario -->
+                                <div class="relative group">
+                                    <button class="w-9 h-9 sm:w-10 sm:h-10 bg-red-500 dark:bg-red-600 text-white rounded border-2 border-red-600 dark:border-red-700 font-bold hover:bg-red-600 dark:hover:bg-red-700 transition-all duration-200 flex items-center justify-center shadow-md hover:scale-110 active:scale-95"
+                                            title="Inventario">
+                                        <span class="text-xs sm:text-sm font-bold">I</span>
+                                    </button>
+                                    <!-- Tooltip para desktop -->
+                                    <div class="hidden sm:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                                        Inventario
+                                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800 dark:border-t-gray-700"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Surtir -->
+                                <div class="relative group">
+                                    <a href="{{ route('tenant.quoter.products') }}"
+                                       class="w-9 h-9 sm:w-10 sm:h-10 bg-red-500 dark:bg-red-600 text-white rounded border-2 border-red-600 dark:border-red-700 font-bold hover:bg-red-600 dark:hover:bg-red-700 transition-all duration-200 flex items-center justify-center shadow-md hover:scale-110 active:scale-95"
+                                       title="Surtir">
+                                        <span class="text-xs sm:text-sm font-bold">S</span>
+                                    </a>
+                                    <!-- Tooltip para desktop -->
+                                    <div class="hidden sm:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                                        Surtir
+                                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800 dark:border-t-gray-700"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Finalizar -->
+                                <div class="relative group">
+                                    <button class="w-9 h-9 sm:w-10 sm:h-10 bg-purple-500 dark:bg-purple-600 text-white rounded border-2 border-purple-600 dark:border-purple-700 font-bold hover:bg-purple-600 dark:hover:bg-purple-700 transition-all duration-200 flex items-center justify-center shadow-md hover:scale-110 active:scale-95"
+                                            title="Finalizar">
+                                        <span class="text-xs sm:text-sm font-bold">F</span>
+                                    </button>
+                                    <!-- Tooltip para desktop -->
+                                    <div class="hidden sm:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                                        Finalizar
+                                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800 dark:border-t-gray-700"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Historial -->
+                                <div class="relative group">
+                                    <button class="w-9 h-9 sm:w-10 sm:h-10 bg-orange-500 dark:bg-orange-600 text-white rounded border-2 border-orange-600 dark:border-orange-700 font-bold hover:bg-orange-600 dark:hover:bg-orange-700 transition-all duration-200 flex items-center justify-center shadow-md hover:scale-110 active:scale-95"
+                                            title="Historial">
+                                        <span class="text-xs sm:text-sm font-bold">H</span>
+                                    </button>
+                                    <!-- Tooltip para desktop -->
+                                    <div class="hidden sm:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 dark:bg-gray-700 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                                        Historial
+                                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-800 dark:border-t-gray-700"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    @endauth
+
                     <!-- Page title -->
                     <div class="flex flex-1">
                         @if (isset($header))

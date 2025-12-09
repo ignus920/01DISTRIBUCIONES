@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Livewire\TAT\Quoter\QuoterView;
+use App\Livewire\TAT\Quoter\SalesList;
 
 /**
  * Rutas para el módulo de Cotizador TAT (Tiendas)
@@ -12,6 +13,11 @@ use App\Livewire\TAT\Quoter\QuoterView;
 Route::get('/tenant/tat-quoter', QuoterView::class)
     ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
     ->name('tenant.tat.quoter.index');
+
+// Ruta para listar ventas TAT
+Route::get('/tenant/tat-sales', SalesList::class)
+    ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
+    ->name('tenant.tat.sales.list');
 
 // Rutas adicionales para el cotizador si se necesitan más funcionalidades
 Route::prefix('tenant/quoter')->group(function () {

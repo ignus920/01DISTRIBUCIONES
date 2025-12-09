@@ -200,16 +200,8 @@ class Quote extends Model
         parent::boot();
 
         static::creating(function ($quote) {
-            if (!$quote->generated_at) {
-                $quote->generated_at = now();
-            }
-
-            if (!$quote->valid_until) {
-                $quote->valid_until = now()->addDays(30); // Válida por 30 días por defecto
-            }
-
             if (!$quote->status) {
-                $quote->status = 'pending';
+                $quote->status = 'Registrado';
             }
         });
     }

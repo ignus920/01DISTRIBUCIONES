@@ -14,6 +14,9 @@ class QuoteItem extends Model
     protected $connection = 'tenant';
     protected $table = 'tat_detail_quotes';
 
+    // Configurar nombres de timestamps para coincidir con tu tabla
+    const UPDATED_AT = 'update_at'; // Tu tabla tiene 'update_at' no 'updated_at'
+
     protected $fillable = [
         'quoteId',
         'itemId',
@@ -33,7 +36,7 @@ class QuoteItem extends Model
             'tax_percentage' => 'integer',
             'price' => 'float',
             'created_at' => 'datetime',
-            'updated_at' => 'datetime',
+            'update_at' => 'datetime', // Cambiado para coincidir con tu tabla
             'deleted_at' => 'datetime',
         ];
     }
