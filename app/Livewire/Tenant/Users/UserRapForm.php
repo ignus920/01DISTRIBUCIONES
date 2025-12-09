@@ -461,7 +461,7 @@ class UserRapForm extends Component
                 'lastName' => $this->lastName,
                 'secondLastName' => $this->secondLastName,
                 'email' => $this->email,
-                'phone_contact' => $this->phone,
+                'business_phone' => $this->phone,
                 'warehouseId' => $this->warehouseId,
                 'positionId' => $this->positionId,
                 'status' => true,
@@ -534,7 +534,7 @@ class UserRapForm extends Component
                 'lastName' => $this->lastName,
                 'secondLastName' => $this->secondLastName,
                 'email' => $this->email,
-                'phone_contact' => $this->phone,
+                'business_phone' => $this->phone,
                 'warehouseId' => $this->warehouseId,
                 'positionId' => $this->positionId,
             ]);

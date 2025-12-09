@@ -16,7 +16,7 @@ class VntContact extends Model
         'lastName',
         'secondLastName',
         'email',
-        'phone_contact',
+        'business_phone',
         'contact',
         'status',
         'integrationDataId',

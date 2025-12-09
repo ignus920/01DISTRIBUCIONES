@@ -67,6 +67,11 @@ class CompanyValidationService
             'business_phone.max' => 'El teléfono empresarial no puede tener más de 100 caracteres.',
             'personal_phone.max' => 'El teléfono personal no puede tener más de 100 caracteres.',
             'positionId.exists' => 'La posición seleccionada no es válida.',
+            
+            // Vendedor
+            'vntUserId.required' => 'Debe seleccionar un vendedor.',
+            'vntUserId.integer' => 'El vendedor seleccionado no es válido.',
+            'vntUserId.exists' => 'El vendedor seleccionado no existe.',
         ];
     }
 
@@ -106,6 +111,9 @@ class CompanyValidationService
             'business_phone' => 'teléfono empresarial',
             'personal_phone' => 'teléfono personal',
             'positionId' => 'posición',
+            
+            // Vendedor
+            'vntUserId' => 'vendedor',
         ];
     }
 
@@ -150,6 +158,7 @@ class CompanyValidationService
             'integrationDataId' => 'nullable|integer',
             'code_ciiu' => 'nullable|string|max:255',
             'verification_digit' => $verificationDigitRule,
+            'vntUserId' => 'required|integer|exists:users,id',
             'warehouses' => 'array',
             // 'warehouses.*.name' => 'required|string|max:255',
             'warehouses.*.address' => 'required|string|max:255',

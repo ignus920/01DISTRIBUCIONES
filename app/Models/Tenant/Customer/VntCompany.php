@@ -50,6 +50,7 @@ class VntCompany extends Model
         'regimeId',
         'code_ciiu',
         'fiscalResponsabilityId',
+        'vntUserId',
     ];
 
     /**
@@ -69,6 +70,7 @@ class VntCompany extends Model
         'typeIdentificationId' => 'integer',
         'regimeId' => 'integer',
         'fiscalResponsabilityId' => 'integer',
+        'vntUserId' => 'integer',
     ];
 
     /**
@@ -127,5 +129,13 @@ class VntCompany extends Model
             'id',
             'id'
         )->where('vnt_contacts.status', 1);
+    }
+
+    /**
+     * Relación con el vendedor asignado
+     */
+    public function vendedor()
+    {
+        return $this->belongsTo(\App\Models\Auth\User::class, 'vntUserId');
     }
 }
