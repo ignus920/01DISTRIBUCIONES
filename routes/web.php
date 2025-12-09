@@ -182,3 +182,4 @@ require __DIR__.'/TAT/tatCategories.php';
 require __DIR__.'/TAT/tatCustomers.php';
 // Incluir rutas del módulo TAT Quoter
 require __DIR__.'/TAT/quoter.php';
+// Incluir rutas de m
