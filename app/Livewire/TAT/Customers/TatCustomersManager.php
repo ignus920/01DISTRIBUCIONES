@@ -20,12 +20,15 @@ class TatCustomersManager extends Component
     public $sortDirection = 'desc';
 
     protected $listeners = [
-        'type-identification-changed' => 'updateTypeIdentification'
+        'type-identification-changed' => 'updateTypeIdentification',
+        'regime-changed' => 'updateRegime',
+        'city-changed' => 'updateCity'
     ];
 
-    // Form fields
-    public $typePerson = 'Natural';
+    // Form fields - solo los que existen en la base de datos
+    public $typePerson = '';
     public $typeIdentificationId = null;
+    public $identification = '';
     public $regimeId = null;
     public $cityId = null;
     public $businessName = '';
@@ -35,24 +38,31 @@ class TatCustomersManager extends Component
     public $address = '';
     public $business_phone = '';
 
+    // Validation states
+    public $validatingIdentification = false;
+    public $identificationExists = false;
+    public $emailExists = false;
+
     protected $rules = [
+        'typeIdentificationId' => 'required|integer',
+        'identification' => 'required|string|max:15',
         'typePerson' => 'required|in:Natural,Juridica',
-        'typeIdentificationId' => 'nullable|integer',
         'regimeId' => 'nullable|integer',
         'cityId' => 'nullable|integer',
-        'businessName' => 'required_if:typePerson,Juridica|string|max:255',
+        'businessName' => 'required_if:typePerson,Juridica|nullable|string|max:255',
         'billingEmail' => 'nullable|email|max:255',
-        'firstName' => 'required_if:typePerson,Natural|string|max:255',
-        'lastName' => 'required_if:typePerson,Natural|string|max:255',
-        'address' => 'nullable|string|max:500',
-        'business_phone' => 'nullable|string|max:20',
+        'firstName' => 'required_if:typePerson,Natural|nullable|string|max:255',
+        'lastName' => 'nullable|string|max:255',
+        'address' => 'nullable|string|max:255',
+        'business_phone' => 'nullable|string|max:100',
     ];
 
     protected $messages = [
+        'typeIdentificationId.required' => 'El tipo de identificación es obligatorio.',
+        'identification.required' => 'El número de identificación es obligatorio.',
         'typePerson.required' => 'El tipo de persona es obligatorio.',
         'businessName.required_if' => 'El nombre de la empresa es obligatorio para personas jurídicas.',
         'firstName.required_if' => 'El nombre es obligatorio para personas naturales.',
-        'lastName.required_if' => 'El apellido es obligatorio para personas naturales.',
         'billingEmail.email' => 'El email debe tener un formato válido.',
     ];
 
@@ -104,44 +114,60 @@ class TatCustomersManager extends Component
         $customer = TatCustomer::findOrFail($id);
 
         $this->editingId = $id;
-        $this->typePerson = $customer->typePerson;
+        $this->typePerson = $customer->typePerson ?? '';
         $this->typeIdentificationId = $customer->typeIdentificationId;
+        $this->identification = $customer->identification ?? '';
         $this->regimeId = $customer->regimeId;
         $this->cityId = $customer->cityId;
-        $this->businessName = $customer->businessName;
-        $this->billingEmail = $customer->billingEmail;
-        $this->firstName = $customer->firstName;
-        $this->lastName = $customer->lastName;
-        $this->address = $customer->address;
-        $this->business_phone = $customer->business_phone;
+        $this->businessName = $customer->businessName ?? '';
+        $this->billingEmail = $customer->billingEmail ?? '';
+        $this->firstName = $customer->firstName ?? '';
+        $this->lastName = $customer->lastName ?? '';
+        $this->address = $customer->address ?? '';
+        $this->business_phone = $customer->business_phone ?? '';
 
         $this->showModal = true;
     }
 
     public function save()
     {
+        // Validaciones adicionales
+        if ($this->identificationExists) {
+            session()->flash('error', 'El número de identificación ya está registrado.');
+            return;
+        }
+
+        if ($this->emailExists) {
+            session()->flash('error', 'El email ya está registrado.');
+            return;
+        }
+
         $this->validate();
 
         $data = [
             'company_id' => $this->company_id,
             'typePerson' => $this->typePerson,
             'typeIdentificationId' => $this->typeIdentificationId,
+            'identification' => $this->identification,
             'regimeId' => $this->regimeId,
-            'cityId' => $this->cityId,
-            'businessName' => $this->businessName,
-            'billingEmail' => $this->billingEmail,
-            'firstName' => $this->firstName,
-            'lastName' => $this->lastName,
-            'address' => $this->address,
-            'business_phone' => $this->business_phone,
+            'cityId' => $this->cityId ?: null,
+            'businessName' => $this->businessName ?: null,
+            'billingEmail' => $this->billingEmail ?: null,
+            'firstName' => $this->firstName ?: null,
+            'lastName' => $this->lastName ?: null,
+            'address' => $this->address ?: null,
+            'business_phone' => $this->business_phone ?: null,
         ];
 
         if ($this->editingId) {
             TatCustomer::findOrFail($this->editingId)->update($data);
             session()->flash('message', 'Cliente actualizado correctamente.');
         } else {
-            TatCustomer::create($data);
+            $customer = TatCustomer::create($data);
             session()->flash('message', 'Cliente creado correctamente.');
+
+            // Emitir evento para notificar al quoter que se creó un cliente
+            $this->dispatch('customer-created', customerId: $customer->id);
         }
 
         $this->resetForm();
@@ -156,8 +182,9 @@ class TatCustomersManager extends Component
 
     private function resetForm()
     {
-        $this->typePerson = 'Natural';
+        $this->typePerson = '';
         $this->typeIdentificationId = null;
+        $this->identification = '';
         $this->regimeId = null;
         $this->cityId = null;
         $this->businessName = '';
@@ -166,7 +193,16 @@ class TatCustomersManager extends Component
         $this->lastName = '';
         $this->address = '';
         $this->business_phone = '';
+        $this->validatingIdentification = false;
+        $this->identificationExists = false;
+        $this->emailExists = false;
         $this->resetValidation();
+    }
+
+    public function cancelForm()
+    {
+        $this->showModal = false;
+        $this->resetForm();
     }
 
     public function updatingSearch()
@@ -196,5 +232,58 @@ class TatCustomersManager extends Component
     public function updateTypeIdentification($typeIdentificationId)
     {
         $this->typeIdentificationId = $typeIdentificationId;
+        $this->resetErrorBag(['typeIdentificationId']);
+    }
+
+    // Method to handle regime selection
+    public function updateRegime($regimeId)
+    {
+        $this->regimeId = $regimeId;
+        $this->resetErrorBag(['regimeId']);
+    }
+
+    // Method to handle city selection
+    public function updateCity($cityId, $index = null)
+    {
+        $this->cityId = $cityId;
+        $this->resetErrorBag(['cityId']);
+    }
+
+    // Validation methods
+    public function updatedIdentification()
+    {
+        if (strlen($this->identification) >= 3) {
+            $this->validatingIdentification = true;
+            $this->checkIdentificationExists();
+        }
+    }
+
+    public function updatedBillingEmail()
+    {
+        if (filter_var($this->billingEmail, FILTER_VALIDATE_EMAIL)) {
+            $this->checkEmailExists();
+        }
+    }
+
+    private function checkIdentificationExists()
+    {
+        $this->identificationExists = TatCustomer::where('company_id', $this->company_id)
+            ->where('identification', $this->identification)
+            ->when($this->editingId, function($query) {
+                return $query->where('id', '!=', $this->editingId);
+            })
+            ->exists();
+
+        $this->validatingIdentification = false;
+    }
+
+    private function checkEmailExists()
+    {
+        $this->emailExists = TatCustomer::where('company_id', $this->company_id)
+            ->where('billingEmail', $this->billingEmail)
+            ->when($this->editingId, function($query) {
+                return $query->where('id', '!=', $this->editingId);
+            })
+            ->exists();
     }
 }

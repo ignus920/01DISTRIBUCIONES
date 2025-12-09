@@ -7,8 +7,10 @@ use Livewire\WithPagination;
 use App\Models\TAT\Items\TatItems;
 use App\Models\TAT\Quoter\Quote;
 use App\Models\TAT\Quoter\QuoteItem;
+use App\Models\TAT\Customer\Customer as TatCustomer;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class QuoterView extends Component
 {
@@ -20,11 +22,23 @@ class QuoterView extends Component
     public $additionalSuggestions = [];
     public $cartItems = [];
     public $total = 0;
-    public $clientNumber = '22222222222';
     public $companyId;
+    public $selectedIndex = -1;
+
+    // Propiedades para cliente
+    public $selectedCustomer = null;
+    public $customerSearch = '';
+    public $customerSearchResults = [];
+    public $showClientSearch = false;
+    public $showCustomerModal = false;
 
     // Propiedades para paginación
     protected $paginationTheme = 'bootstrap';
+
+    // Listeners para eventos
+    protected $listeners = [
+        'customer-created' => 'handleCustomerCreated'
+    ];
 
     public function mount()
     {
@@ -32,13 +46,29 @@ class QuoterView extends Component
         $user = Auth::user();
         $this->companyId = $this->getUserCompanyId($user);
 
+        Log::info('Mount QuoterView', [
+            'user_id' => $user->id,
+            'user_profile_id' => $user->profile_id,
+            'user_contact_id' => $user->contact_id,
+            'companyId' => $this->companyId
+        ]);
+
         if (!$this->companyId) {
+            Log::error('No se pudo determinar company_id');
             session()->flash('error', 'No se pudo determinar la empresa del usuario.');
             return redirect()->route('tenant.dashboard');
         }
 
         $this->loadCartFromSession();
         $this->calculateTotal();
+        $this->loadDefaultCustomer();
+
+        Log::info('QuoterView mounted successfully', [
+            'companyId' => $this->companyId,
+            'cartItems' => count($this->cartItems),
+            'total' => $this->total,
+            'defaultCustomer' => $this->selectedCustomer ? $this->selectedCustomer['identification'] : null
+        ]);
     }
 
     /**
@@ -94,17 +124,52 @@ class QuoterView extends Component
      */
     public function updatedCurrentSearch()
     {
+        $this->selectedIndex = -1; // Reset selected index when search changes
+
+        Log::info('Búsqueda actualizada', [
+            'search' => $this->currentSearch,
+            'length' => strlen($this->currentSearch),
+            'companyId' => $this->companyId
+        ]);
+
+        // Debug: Ver algunos productos disponibles
+        $allProducts = TatItems::query()
+            ->byCompany($this->companyId)
+            ->active()
+            ->where('stock', '>', 0)
+            ->take(5)
+            ->get(['name', 'sku', 'stock']);
+
+        Log::info('Productos disponibles (muestra)', [
+            'products' => $allProducts->toArray()
+        ]);
+
         if (strlen($this->currentSearch) >= 2) {
-            $results = TatItems::query()
+            $query = TatItems::query()
                 ->byCompany($this->companyId)
                 ->active()
-                ->where('stock', '>', 0)
                 ->where(function ($q) {
-                    $q->where('name', 'like', '%' . $this->currentSearch . '%')
-                      ->orWhere('sku', 'like', '%' . $this->currentSearch . '%');
+                    $q->whereRaw('LOWER(name) like ?', ['%' . strtolower($this->currentSearch) . '%'])
+                      ->orWhereRaw('LOWER(sku) like ?', ['%' . strtolower($this->currentSearch) . '%']);
                 })
-                ->take(20)
-                ->get();
+                ->orderByRaw('CASE WHEN stock > 0 THEN 0 ELSE 1 END') // Productos con stock primero
+                ->orderBy('stock', 'desc'); // Ordenar por stock descendente
+
+            // Obtener el SQL y parámetros para debug
+            $sql = $query->toSql();
+            $bindings = $query->getBindings();
+
+            Log::info('Query SQL', [
+                'sql' => $sql,
+                'bindings' => $bindings
+            ]);
+
+            $results = $query->take(20)->get();
+
+            Log::info('Resultados encontrados', [
+                'total_results' => $results->count(),
+                'results' => $results->take(3)->pluck('name')->toArray()
+            ]);
 
             // Primeros 3 resultados en dropdown principal
             $this->searchResults = $results->take(3)->toArray();
@@ -118,16 +183,93 @@ class QuoterView extends Component
     }
 
     /**
+     * Manejar navegación con flechas del teclado
+     */
+    public function navigateResults($direction)
+    {
+        $totalResults = count($this->searchResults);
+
+        if ($totalResults === 0) {
+            return;
+        }
+
+        if ($direction === 'down') {
+            // Buscar el próximo producto con stock
+            $newIndex = $this->selectedIndex + 1;
+            while ($newIndex < $totalResults && $this->searchResults[$newIndex]['stock'] <= 0) {
+                $newIndex++;
+            }
+            $this->selectedIndex = min($newIndex, $totalResults - 1);
+
+            // Si llegamos al final y no hay stock, volver al último con stock
+            if ($this->selectedIndex < $totalResults && $this->searchResults[$this->selectedIndex]['stock'] <= 0) {
+                $this->selectedIndex = $this->findLastWithStock();
+            }
+        } else if ($direction === 'up') {
+            // Buscar el anterior producto con stock
+            $newIndex = $this->selectedIndex - 1;
+            while ($newIndex >= 0 && $this->searchResults[$newIndex]['stock'] <= 0) {
+                $newIndex--;
+            }
+            $this->selectedIndex = max($newIndex, -1);
+        }
+    }
+
+    /**
+     * Encontrar el último producto con stock
+     */
+    private function findLastWithStock()
+    {
+        for ($i = count($this->searchResults) - 1; $i >= 0; $i--) {
+            if ($this->searchResults[$i]['stock'] > 0) {
+                return $i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Seleccionar el producto actualmente resaltado con Enter
+     */
+    public function selectCurrentProduct()
+    {
+        if ($this->selectedIndex >= 0 && $this->selectedIndex < count($this->searchResults)) {
+            $selectedProduct = $this->searchResults[$this->selectedIndex];
+            $this->selectProduct($selectedProduct['id']);
+        }
+    }
+
+    /**
+     * Limpiar búsqueda con Escape
+     */
+    public function clearSearch()
+    {
+        $this->currentSearch = '';
+        $this->searchResults = [];
+        $this->additionalSuggestions = [];
+        $this->selectedIndex = -1;
+    }
+
+    /**
      * Seleccionar producto desde la búsqueda
      */
     public function selectProduct($productId)
     {
+        // Verificar que el producto tenga stock antes de agregarlo
+        $product = TatItems::find($productId);
+
+        if (!$product || $product->stock <= 0) {
+            session()->flash('error', 'No se puede agregar un producto sin stock.');
+            return;
+        }
+
         $this->addToCart($productId);
 
         // Limpiar la búsqueda para permitir nueva búsqueda
         $this->currentSearch = '';
         $this->searchResults = [];
         $this->additionalSuggestions = [];
+        $this->selectedIndex = -1;
 
         // Emitir evento para limpiar el input en el frontend
         $this->dispatch('product-selected');
@@ -205,6 +347,28 @@ class QuoterView extends Component
             $this->saveCartToSession();
         }
     }
+
+    /**
+     * Actualizar precio de un producto en el carrito
+     */
+    public function updatePrice($productId, $newPrice)
+    {
+        $newPrice = max(0, (float)$newPrice);
+
+        $itemIndex = collect($this->cartItems)->search(function ($item) use ($productId) {
+            return $item['id'] == $productId;
+        });
+
+        if ($itemIndex !== false) {
+            $this->cartItems[$itemIndex]['price'] = $newPrice;
+            $this->cartItems[$itemIndex]['subtotal'] =
+                $this->cartItems[$itemIndex]['quantity'] * $newPrice;
+
+            $this->calculateTotal();
+            $this->saveCartToSession();
+        }
+    }
+
 
     /**
      * Remover producto del carrito
@@ -322,6 +486,121 @@ class QuoterView extends Component
         session()->flash('info', 'Función de facturación en desarrollo.');
     }
 
+    /**
+     * Cargar cliente predefinido (company_id = 0)
+     */
+    protected function loadDefaultCustomer()
+    {
+        $defaultCustomer = TatCustomer::where('company_id', 0)->first();
+
+        if ($defaultCustomer) {
+            $this->selectedCustomer = [
+                'id' => $defaultCustomer->id,
+                'identification' => $defaultCustomer->identification,
+                'display_name' => $defaultCustomer->display_name,
+                'typePerson' => $defaultCustomer->typePerson
+            ];
+        }
+    }
+
+    /**
+     * Habilitar búsqueda de cliente
+     */
+    public function enableClientSearch()
+    {
+        $this->showClientSearch = true;
+        $this->customerSearch = '';
+        $this->customerSearchResults = [];
+    }
+
+    /**
+     * Cancelar búsqueda de cliente y volver al predefinido
+     */
+    public function cancelClientSearch()
+    {
+        $this->showClientSearch = false;
+        $this->customerSearch = '';
+        $this->customerSearchResults = [];
+        $this->loadDefaultCustomer();
+    }
+
+    /**
+     * Buscar clientes en tiempo real
+     */
+    public function updatedCustomerSearch()
+    {
+        if (strlen($this->customerSearch) >= 2) {
+            $this->customerSearchResults = TatCustomer::where('company_id', $this->companyId)
+                ->where(function ($query) {
+                    $query->where('identification', 'like', '%' . $this->customerSearch . '%')
+                          ->orWhere('businessName', 'like', '%' . $this->customerSearch . '%')
+                          ->orWhere('firstName', 'like', '%' . $this->customerSearch . '%')
+                          ->orWhere('lastName', 'like', '%' . $this->customerSearch . '%');
+                })
+                ->take(5)
+                ->get()
+                ->map(function ($customer) {
+                    return [
+                        'id' => $customer->id,
+                        'identification' => $customer->identification,
+                        'display_name' => $customer->display_name,
+                        'typePerson' => $customer->typePerson
+                    ];
+                })
+                ->toArray();
+        } else {
+            $this->customerSearchResults = [];
+        }
+    }
+
+    /**
+     * Seleccionar cliente encontrado
+     */
+    public function selectCustomer($customerId)
+    {
+        $customer = TatCustomer::find($customerId);
+
+        if ($customer) {
+            $this->selectedCustomer = [
+                'id' => $customer->id,
+                'identification' => $customer->identification,
+                'display_name' => $customer->display_name,
+                'typePerson' => $customer->typePerson
+            ];
+
+            $this->showClientSearch = false;
+            $this->customerSearch = '';
+            $this->customerSearchResults = [];
+
+            session()->flash('success', 'Cliente seleccionado: ' . $customer->display_name);
+        }
+    }
+
+    /**
+     * Abrir modal para crear nuevo cliente
+     */
+    public function openCustomerModal()
+    {
+        $this->showCustomerModal = true;
+    }
+
+    /**
+     * Cerrar modal de cliente
+     */
+    public function closeCustomerModal()
+    {
+        $this->showCustomerModal = false;
+    }
+
+    /**
+     * Manejar cuando se crea un cliente nuevo (listener)
+     */
+    public function handleCustomerCreated($customerId)
+    {
+        $this->closeCustomerModal();
+        $this->selectCustomer($customerId);
+        session()->flash('success', 'Cliente creado y seleccionado correctamente.');
+    }
 
     public function render()
     {

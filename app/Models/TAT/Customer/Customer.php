@@ -17,6 +17,7 @@ class Customer extends Model
         'company_id',
         'typePerson',
         'typeIdentificationId',
+        'identification',
         'regimeId',
         'cityId',
         'businessName',

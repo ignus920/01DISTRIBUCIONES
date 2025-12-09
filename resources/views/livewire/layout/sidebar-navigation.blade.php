@@ -410,13 +410,7 @@ new class extends Component
                     <a href="{{url('/inventory/categories')}}" wire:navigate
                         class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
                 @endif
-                @if(auth()->user()->profile_id == 17)
-                    <a href="{{ route('tenant.customers') }}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Clientes</a>
-                @else
-                    <a href="{{ route('customers.customers') }}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Clientes</a>
-                @endif
+             
                 <a href="{{url('/inventory/commands')}}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Comandas</a>
                 <a href="{{url('/inventory/brands')}}" wire:navigate
