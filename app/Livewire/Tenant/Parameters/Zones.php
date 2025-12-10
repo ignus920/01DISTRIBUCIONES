@@ -19,7 +19,7 @@ class Zones extends Component
 
     // Reglas de validación
     protected $rules = [
-        'name' => 'required|min:2|max:10',  // Nombre requerido, mínimo 2 caracteres, máximo 10
+        'name' => 'required|min:2',  // Nombre requerido, mínimo 2 caracteres, máximo 10
     ];
 
     // Mensajes de validación personalizados
