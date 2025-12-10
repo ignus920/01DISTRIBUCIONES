@@ -33,7 +33,7 @@ new class extends Component
         </button>
 
         <!-- Dropdown menu -->
-        <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute right-0 z-20 mt-2.5 w-56 origin-top-right rounded-lg bg-white dark:bg-gray-800 py-2 shadow-xl ring-1 ring-gray-900/5 dark:ring-gray-700">
+        <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="absolute right-0 z-25 mt-2.5 w-56 origin-top-right rounded-lg bg-white dark:bg-gray-800 py-2 shadow-xl ring-1 ring-gray-900/5 dark:ring-gray-700">
 
             <!-- User info -->
             <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
