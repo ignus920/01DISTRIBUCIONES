@@ -53,25 +53,27 @@ class SalesList extends Component
     }
 
     public function render()
-    {
-        $quotes = Quote::where('company_id', $this->companyId)
-            ->with(['user', 'customer', 'items'])
-            ->when($this->search, function ($query) {
-                $query->where(function ($q) {
-                    $q->where('consecutive', 'like', '%' . $this->search . '%')
-                      ->orWhereHas('customer', function ($customerQuery) {
-                          $customerQuery->where('businessName', 'like', '%' . $this->search . '%')
-                                       ->orWhere('firstName', 'like', '%' . $this->search . '%')
-                                       ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                                       ->orWhere('identification', 'like', '%' . $this->search . '%');
-                      });
-                });
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate($this->perPage);
+{
+    $quotes = Quote::where('company_id', $this->companyId)
+        ->with(['user', 'customer', 'items'])
+        ->when($this->search, function ($query) {
+            $query->where(function ($q) {
+                $q->where('consecutive', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('customer', function ($customerQuery) {
+                      $customerQuery->where('businessName', 'like', '%' . $this->search . '%')
+                                   ->orWhere('firstName', 'like', '%' . $this->search . '%')
+                                   ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                                   ->orWhere('identification', 'like', '%' . $this->search . '%');
+                  });
+            });
+        })
+        ->orderBy('created_at', 'desc')
+        ->paginate($this->perPage);
 
-        return view('livewire.TAT.quoter.sales-list', [
+    return view('livewire.TAT.quoter.sales-list', [
             'quotes' => $quotes
-        ]);
-    }
+        ])
+        ->layout('layouts.app'); // 👈 aquí agregas el layout
+}
+
 }

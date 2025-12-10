@@ -31,13 +31,15 @@ class QuoterView extends Component
     public $customerSearchResults = [];
     public $showClientSearch = false;
     public $showCustomerModal = false;
+    public $searchedIdentification = '';
 
     // Propiedades para paginación
     protected $paginationTheme = 'bootstrap';
 
     // Listeners para eventos
     protected $listeners = [
-        'customer-created' => 'handleCustomerCreated'
+        'customer-created' => 'handleCustomerCreated',
+        'customer-modal-closed' => 'handleCustomerModalClosed'
     ];
 
     public function mount()
@@ -498,6 +500,7 @@ class QuoterView extends Component
             DB::commit();
 
             $this->clearCart();
+            $this->loadDefaultCustomer(); // Resetear al cliente por defecto
             session()->flash('success', "¡Venta #{$consecutive} registrada exitosamente! Cliente: {$customerInfo}");
 
             // Log de la venta
@@ -637,6 +640,7 @@ class QuoterView extends Component
      */
     public function openCustomerModal()
     {
+        $this->searchedIdentification = $this->customerSearch;
         $this->showCustomerModal = true;
     }
 
@@ -656,6 +660,14 @@ class QuoterView extends Component
         $this->closeCustomerModal();
         $this->selectCustomer($customerId);
         session()->flash('success', 'Cliente creado y seleccionado correctamente.');
+    }
+
+    /**
+     * Manejar cuando se cierra el modal de cliente (listener)
+     */
+    public function handleCustomerModalClosed()
+    {
+        $this->closeCustomerModal();
     }
 
     public function render()

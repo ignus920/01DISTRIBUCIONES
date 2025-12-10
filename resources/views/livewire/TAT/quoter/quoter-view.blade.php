@@ -1,4 +1,5 @@
-<div class="w-full max-w-md lg:max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-visible border-2 border-gray-300 dark:border-gray-700">
+<div>
+<div class="w-full max-w-md lg:max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-visible border-2 border-gray-300 dark:border-gray-700 mt-10">
     <!-- Header con botones de estado -->
     <div class="bg-gray-50 dark:bg-gray-800 p-3 border-b dark:border-gray-700">
      
@@ -392,12 +393,16 @@
             </div>
 
             <div class="p-6">
-                @livewire('TAT.Customers.tat-customers-manager', key('customer-modal'))
+                @livewire('TAT.Customers.tat-customers-manager', [
+                    'preFilledIdentification' => $searchedIdentification,
+                    'isModalMode' => true
+                ], key('customer-modal'))
             </div>
         </div>
     </div>
 </div>
 @endif
+
 
 @push('scripts')
 <script>
@@ -429,8 +434,15 @@
                     customerSearchInput.matches(':focus-within')
                 );
 
-                // Solo mantener foco si NO está buscando cliente
-                if (!isCustomerSearchActive && (!e.relatedTarget || !e.relatedTarget.closest('.relative'))) {
+                // Verificar si el usuario está editando campos del carrito
+                const isEditingCartItem = e.relatedTarget && (
+                    e.relatedTarget.type === 'number' || // Inputs de cantidad y precio
+                    e.relatedTarget.closest('.space-y-2') || // Área del carrito
+                    e.relatedTarget.hasAttribute('wire:change') // Cualquier input de Livewire
+                );
+
+                // Solo mantener foco si NO está buscando cliente Y NO está editando items del carrito
+                if (!isCustomerSearchActive && !isEditingCartItem && (!e.relatedTarget || !e.relatedTarget.closest('.relative'))) {
                     setTimeout(() => {
                         // Verificar una vez más antes de enfocar
                         const stillSearchingCustomer = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]:focus');
@@ -444,3 +456,4 @@
     });
 </script>
 @endpush
+</div>

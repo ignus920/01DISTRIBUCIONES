@@ -1,4 +1,5 @@
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+<div class="{{ !$isModalMode ? 'min-h-screen bg-gray-50 dark:bg-gray-900 p-6' : '' }}">
+@if(!$isModalMode)
     <div class="max-w-12xl mx-auto">
         <!-- Header -->
         <div
@@ -201,29 +202,45 @@
             @endif
         </div>
     </div>
+@endif
 
-    <!-- Modal -->
+
+
+
+
+
+
+
+    
+
+    <!-- Modal para crear cliente o formulario directo -->
     @if($showModal)
-    <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50"
-        x-data="{ show: true }" x-show="show" x-transition:enter="ease-out duration-300"
-        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-        x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0">
-        <div class="relative min-h-screen flex items-center justify-center p-4">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-                x-transition:enter="ease-out duration-300"
-                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                x-transition:leave="ease-in duration-200"
-                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+        @if(!$isModalMode)
+        <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50"
+            x-data="{ show: true }" x-show="show" x-transition:enter="ease-out duration-300"
+            x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0">
+            <div class="relative min-h-screen flex items-center justify-center p-4">
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                    x-transition:enter="ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave="ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+        @endif
 
+        <!-- Contenido del modal/formulario -->
+        <div class="{{ !$isModalMode ? '' : 'w-full' }}">
                 <!-- Header -->
+                @if(!$isModalMode)
                 <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                         {{ $editingId ? 'Editar Cliente' : 'Nuevo Cliente' }}
                     </h3>
                 </div>
+                @endif
 
                 <!-- Form -->
                 <form wire:submit="save" class="p-6 space-y-6">
@@ -408,8 +425,12 @@
                         </div>
                     </div>
                 </form>
+        </div>
+
+        @if(!$isModalMode)
             </div>
         </div>
     </div>
+        @endif
     @endif
 </div>

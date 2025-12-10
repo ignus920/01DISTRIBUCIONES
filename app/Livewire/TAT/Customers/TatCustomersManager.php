@@ -6,6 +6,8 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\TAT\Customer\Customer as TatCustomer;
 use App\Models\Auth\Tenant;
+use Illuminate\Support\Facades\Log;
+
 
 class TatCustomersManager extends Component
 {
@@ -18,6 +20,10 @@ class TatCustomersManager extends Component
     public $perPage = 10;
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
+
+    // Para modo modal
+    public $isModalMode = false;
+    public $preFilledIdentification = '';
 
     protected $listeners = [
         'type-identification-changed' => 'updateTypeIdentification',
@@ -71,6 +77,22 @@ class TatCustomersManager extends Component
         $tenantId = session('tenant_id');
         $tenant = Tenant::find($tenantId);
         $this->company_id = $tenant->company_id ?? 0;
+
+
+        // Si está en modo modal, activar el modal automáticamente
+        if ($this->isModalMode) {
+            $this->showModal = true;
+
+            // Pre-llenar el número de identificación si se proporcionó
+            if (!empty($this->preFilledIdentification)) {
+                $this->identification = $this->preFilledIdentification;
+            }
+
+            Log::info('Modal activado en modo reutilizable', [
+                'showModal' => $this->showModal,
+                'identification' => $this->identification
+            ]);
+        }
     }
 
     public function render()
@@ -178,6 +200,11 @@ class TatCustomersManager extends Component
     {
         $this->showModal = false;
         $this->resetForm();
+
+        // Si está en modo modal reutilizable, emitir evento al padre
+        if ($this->isModalMode) {
+            $this->dispatch('customer-modal-closed');
+        }
     }
 
     private function resetForm()
