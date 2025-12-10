@@ -50,7 +50,7 @@ class VntCompany extends Model
         'regimeId',
         'code_ciiu',
         'fiscalResponsabilityId',
-        'vntUserId',
+        // 'vntUserId', // Campo no existe en la tabla de base de datos
     ];
 
     /**
@@ -70,7 +70,7 @@ class VntCompany extends Model
         'typeIdentificationId' => 'integer',
         'regimeId' => 'integer',
         'fiscalResponsabilityId' => 'integer',
-        'vntUserId' => 'integer',
+        // 'vntUserId' => 'integer', // Campo no existe en la tabla
     ];
 
     /**
@@ -134,8 +134,9 @@ class VntCompany extends Model
     /**
      * Relación con el vendedor asignado
      */
-    public function vendedor()
-    {
-        return $this->belongsTo(\App\Models\Auth\User::class, 'vntUserId');
-    }
+    // public function vendedor()
+    // {
+    //     return $this->belongsTo(\App\Models\Auth\User::class, 'vntUserId');
+    // }
+    // Relación comentada porque el campo vntUserId no existe en la tabla
 }

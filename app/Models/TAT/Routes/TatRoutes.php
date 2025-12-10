@@ -30,4 +30,8 @@ class TatRoutes extends Model
     public function zones(){
         return $this->belongsTo(\App\Models\TAT\Zones\TatZones::class, 'zone_id');
     }
+
+    public function salesman(){
+        return $this->belongsTo(\App\Models\Auth\User::class, 'salesman_id');
+    }
 }

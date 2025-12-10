@@ -190,7 +190,8 @@ class CompanyService
             'business_phone' => $data['business_phone'] ?? null,
             'personal_phone' => $data['business_phone'] ?? null,
             'status' => $data['status'] ?? 1,
-            'vntUserId' => $data['vntUserId'] ?? null,
+            // 'vntUserId' => $data['vntUserId'] ?? null, // Campo no existe en la tabla
+            'routeId' => $data['routeId'] ?? null,
         ];
 
         $typeIdentificationId = (int) $data['typeIdentificationId'];
