@@ -4,7 +4,7 @@
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 mb-6">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Cotizaciones</h1>
+                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Ventas</h1>
                     <p class="text-sm text-gray-600 dark:text-slate-400 mt-1">Gestión de registros</p>
                 </div>
                 <a href="{{ route('tenant.tat.quoter.index') }}"
@@ -12,7 +12,7 @@
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
-                    Nueva Cotización
+                    Nueva Venta
                 </a>
             </div>
         </div>
