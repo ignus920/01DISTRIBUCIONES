@@ -86,7 +86,7 @@ new class extends Component
 
 
         <!-- Ventas -->
-        @if(PermissionHelper::userCan('Ventas', 'show') && auth()->user()->profile_id != 17)
+        @if(PermissionHelper::userCan('Ventas', 'show'))
         <a href="{{ route('tenant.quoter.products') }}" wire:navigate
             class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 {{ request()->routeIs('tenant.quoter.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400' }}"
             :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
@@ -144,8 +144,6 @@ new class extends Component
                 </div>
             </div>
 
-
-
             <!-- Submenú -->
             <div x-show="open && !sidebarCollapsed" x-transition
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
@@ -157,13 +155,17 @@ new class extends Component
                     class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('tenant.tat.sales.list') ? 'bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'hover:text-green-600 dark:hover:text-green-400' }}">
                     Listar Ventas
                 </a>
+                <a href="{{ route('tenant.tat.restock.list') }}" wire:navigate
+                    class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('tenant.tat.restock.list') ? 'bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'hover:text-green-600 dark:hover:text-green-400' }}">
+                    Solicitudes Reabastecimiento
+                </a>
                 <a href="{{ route('tenant.customers') }}" wire:navigate
                     class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('tenant.customers*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                    Gestión Clientes
+                    Clientes
                 </a>
                 <a href="{{ route('tenant.items') }}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
-                    Items de Tienda
+                    Items
                 </a>
                 <a href="{{ route('tenant.categories') }}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
@@ -176,6 +178,8 @@ new class extends Component
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Nueva Venta</a>
                 <a href="{{ route('tenant.tat.sales.list') }}" wire:navigate
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Listar Ventas</a>
+                <a href="{{ route('tenant.tat.restock.list') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Reabastecimiento</a>
                 <a href="{{ route('tenant.customers') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
                 <a href="{{ route('tenant.items') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
                     Ítems

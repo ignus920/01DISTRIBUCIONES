@@ -303,8 +303,6 @@
 
                     <!-- Texto cuando está cargando -->
                     <span wire:loading wire:target="saveQuote">Guardando...</span>
-                </button>
-
                 <button
                     wire:click="clearCart"
                     class="flex-1 sm:flex-none px-4 py-3 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors duration-150 shadow-md hover:shadow-lg flex items-center justify-center gap-2">

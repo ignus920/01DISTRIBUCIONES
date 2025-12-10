@@ -12,6 +12,9 @@ use App\Models\Tenant\Quoter\VntQuote;
 use App\Models\Tenant\Quoter\VntDetailQuote;
 use \App\Models\Tenant\Items\Category;
 use Illuminate\Support\Facades\Log;
+use App\Models\Tenant\Quoter\TatRestockList;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ProductQuoter extends Component
 {
@@ -38,6 +41,10 @@ class ProductQuoter extends Component
     public $showObservations = false;
      // Nueva propiedad para la categoría seleccionada
     public $selectedCategory = '';
+
+    // Propiedades para edición de restock (TAT)
+    public $editingRestockOrder = null;
+    public $isEditingRestock = false;
 
     protected $listeners = [
         'customer-created' => 'onCustomerCreated',
@@ -73,15 +80,26 @@ class ProductQuoter extends Component
         $this->resetPage();
     }
 
-    public function mount($quoteId = null)
+    public function mount($quoteId = null, $restockOrder = null)
     {
         // Obtener viewType de la ruta o usar desktop por defecto
         $this->viewType = request()->route('viewType', 'desktop');
         $this->ensureTenantConnection();
 
+        // 📝 LOG DEBUG: Inicio del Mount
+        Log::info('ProductQuoter Mount', [
+            'quoteId' => $quoteId,
+            'restockOrder_param' => $restockOrder, 
+            'restockOrder_query' => request()->query('restockOrder'),
+            'user_id' => Auth::id()
+        ]);
+
         // Si se pasa un quoteId, estamos editando
         if ($quoteId) {
             $this->loadQuoteForEditing($quoteId);
+        } elseif ($restockOrder || request()->query('restockOrder')) {
+            $orderToLoad = $restockOrder ?: request()->query('restockOrder');
+            $this->loadRestockForEditing($orderToLoad);
         } else {
             $this->quoterItems = session('quoter_items', []);
         }
@@ -732,6 +750,104 @@ public function validateQuantity($index)
         }
     }
 
+
+
+
+
+
+
+    
+    //funcion para guardar la lista de deseos del TAT
+    public function saveRestockRequest()
+    {
+        if (empty($this->quoterItems)) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No hay productos en la lista'
+            ]);
+            return;
+        }
+
+        // Validación opcional de cliente si fuera necesaria, 
+        // pero la tabla solo pide order_number. 
+        // Si se requiere linkear cliente, falta campo customerId en la tabla SQL.
+
+        $this->ensureTenantConnection();
+
+        // Obtener el usuario autenticado y su company_id
+        $user = Auth::user();
+        $companyId = $this->getUserCompanyId($user);
+
+        if (!$companyId) {
+             Log::warning('No se pudo determinar company_id para el usuario', ['user_id' => $user->id]);
+             // Opcional: Mostrar error o continuar con valor por defecto si la lógica lo permite, 
+             // pero el SQL dice NOT NULL, así que debemos tener un valor.
+             $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No se pudo identificar su empresa asignada.'
+            ]);
+            return;
+        }
+
+        try {
+            // Si estamos editando, usamos el mismo número de orden
+            if ($this->isEditingRestock && $this->editingRestockOrder) {
+                $nextOrderNumber = $this->editingRestockOrder;
+                
+                // Borrar items anteriores para reemplazarlos (estrategia simple)
+                TatRestockList::where('order_number', $nextOrderNumber)
+                    ->where('company_id', $companyId)
+                    ->delete();
+                    
+            } else {
+                // Obtener el siguiente número de orden para agrupar este pedido
+                $lastOrder = TatRestockList::max('order_number');
+                $nextOrderNumber = $lastOrder ? $lastOrder + 1 : 1;
+            }
+
+            foreach ($this->quoterItems as $item) {
+                // Crear registro en tat_restock_list
+                $restock = new TatRestockList();
+                $restock->itemId = $item['id'];
+                $restock->company_id = $companyId; // Guardar company_id
+                $restock->quantity_request = $item['quantity'];
+                $restock->quantity_recive = 0; 
+                $restock->status = 'Registrado';
+                $restock->order_number = $nextOrderNumber;
+                
+                $restock->save();
+            }
+
+            // Limpiar la lista después de guardar
+            $this->quoterItems = [];
+            session()->forget('quoter_items');
+            $this->calculateTotal();
+            $this->showCartModal = false;
+            
+            // Texto del mensaje dependiendo si es actualización o nuevo
+            $msgPart = $this->isEditingRestock ? 'actualizada' : 'enviada';
+            
+            // Resetear estados de edición
+            $this->isEditingRestock = false;
+            $this->editingRestockOrder = null;
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Solicitud de reabastecimiento #' . $nextOrderNumber . ' ' . $msgPart . ' exitosamente'
+            ]);
+
+            // Si se editó desde la lista, quizás redirigir de vuelta
+            // return redirect()->route('tat.restock.list'); // Opcional, si existe la ruta.
+
+        } catch (\Exception $e) {
+            Log::error('Error saving restock request: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al guardar solicitud: ' . $e->getMessage()
+            ]);
+        }
+    }
+
     public function cancelEditing()
     {
         // Limpiar estados de edición
@@ -753,4 +869,116 @@ public function validateQuantity($index)
             'message' => 'Edición cancelada'
         ]);
     }
+
+    protected function getUserCompanyId($user)
+    {
+        if (!$user) return null;
+
+        // Opción 1: Si el usuario tiene contact_id asociado
+        if ($user->contact_id) {
+            $contact = DB::table('vnt_contacts')
+                ->where('id', $user->contact_id)
+                ->first();
+
+            if ($contact && isset($contact->warehouseId)) {
+                $warehouse = DB::table('vnt_warehouses')
+                    ->where('id', $contact->warehouseId)
+                    ->first();
+
+                // Intentar obtener companyId del warehouse
+                if ($warehouse && isset($warehouse->companyId)) {
+                    return $warehouse->companyId;
+                }
+            }
+        }
+        return null;
+    }
+
+    public function loadRestockForEditing($orderNumber)
+    {
+        $this->ensureTenantConnection();
+        $user = Auth::user();
+        $userId = $user ? $user->id : 'guest';
+        $companyId = $this->getUserCompanyId($user);
+        
+        // 📝 LOG DEBUG: Intentando cargar Restock
+        Log::info('loadRestockForEditing', [
+            'orderNumber' => $orderNumber,
+            'userId' => $userId,
+            'companyId' => $companyId
+        ]);
+
+        if(!$companyId) {
+             Log::error("No se pudo cargar la orden $orderNumber para edición: Company ID no encontrado para usuario $userId");
+             $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error: No se pudo verificar su empresa. Por favor contacte soporte.'
+            ]);
+             return;
+        }
+
+        $items = TatRestockList::where('order_number', $orderNumber)
+            ->where('company_id', $companyId)
+            ->with(['item']) 
+            ->get();
+
+        Log::info('Restock Items Search Result', [
+            'count' => $items->count(),
+            'first_item' => $items->first()
+        ]);
+
+        if ($items->isEmpty()) {
+             $this->dispatch('show-toast', [
+                'type' => 'warning',
+                'message' => 'No se encontraron productos para la orden #' . $orderNumber
+            ]);
+            return;
+        }
+
+        $this->editingRestockOrder = $orderNumber;
+        $this->isEditingRestock = true;
+        
+        // Resetear items actuales
+        $this->quoterItems = [];
+
+        foreach ($items as $restockItem) {
+            // Verificar si el item existe (puede haber sido borrado SoftDeletes o no cargado)
+            if ($restockItem->item) {
+                $product = $restockItem->item;
+                $price = $product->price ?? 0;
+
+                // Agregar al array local
+                $this->quoterItems[] = [
+                    'id' => $product->id,
+                    'name' => $product->display_name, 
+                    'sku' => $product->sku,
+                    'price' => $price, 
+                    'price_label' => 'Precio Lista',
+                    'quantity' => $restockItem->quantity_request,
+                    'description' => $product->description ?? '',
+                ];
+            } else {
+                 Log::warning("Item no encontrado para restock ID: " . $restockItem->id);
+            }
+        }
+        
+        // **IMPORTANTE**: Actualizar la sesión inmediatamente
+        session(['quoter_items' => $this->quoterItems]);
+        
+        Log::info('Session Updated with Restock Items', [
+            'items_count' => count($this->quoterItems)
+        ]);
+        
+        $this->calculateTotal();
+        
+        // Forzar renderizado
+        $this->showCartModal = false; 
+        
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Orden #' . $orderNumber . ' cargada. ' . count($this->quoterItems) . ' productos.'
+        ]);
+    }
+
+
 }
