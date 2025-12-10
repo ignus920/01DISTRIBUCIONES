@@ -163,7 +163,7 @@ new class extends Component
                     class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('tenant.tat.sales.list') ? 'bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'hover:text-green-600 dark:hover:text-green-400' }}">
                     Listar Ventas
                 </a>
-              
+
             </div>
 
             <!-- Submenú desplegable (para sidebar colapsado) -->
@@ -174,13 +174,12 @@ new class extends Component
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Nueva Venta</a>
                 <a href="{{ route('tenant.tat.sales.list') }}" wire:navigate
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Listar Ventas</a>
-         
+
             </div>
         </div>
         @endif
 
 
-        
 
 
 
@@ -196,9 +195,10 @@ new class extends Component
 
 
 
-        
 
-        
+
+
+
 
         <!-- Clientes (menú con subitems: ruta por defecto + navegación AJAX) -->
         @if(PermissionHelper::userCanAny(['Usuarios'], 'show'))
@@ -215,7 +215,7 @@ new class extends Component
                 </svg>
 
                 <span x-show="!sidebarCollapsed" class="ml-3 flex-1" x-transition>
-                     Gestión de personas
+                    Gestión de personas
                 </span>
 
                 <!-- Icono desplegable -->
@@ -235,18 +235,11 @@ new class extends Component
             <!-- Submenú -->
             <div x-show="open && !sidebarCollapsed" x-transition
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                @if(auth()->user()->profile_id == 17)
-                    <a href="{{ route('tenant.customers') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('tenant.customers*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Gestión Clientes
-                    </a>
-                @else
-                    <a href="{{ route('customers.customers') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('customers.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Gestión Clientes
-                    </a>
-                @endif
-                 <a href="{{ route('users.users') }}" wire:navigate
+                <a href="{{ route('customers.customers') }}" wire:navigate
+                    class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('customers.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                    Gestión Clientes
+                </a>
+                <a href="{{ route('users.users') }}" wire:navigate
                     class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('users.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Gestión Usuarios
                 </a>
@@ -256,14 +249,10 @@ new class extends Component
             <div x-show="sidebarCollapsed && tooltip" x-transition
                 class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
-                @if(auth()->user()->profile_id == 17)
-                    <a href="{{ route('tenant.customers') }}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Clientes</a>
-                @else
-                    <a href="{{ route('customers.customers') }}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Clientes</a>
-                @endif
-                <a href="{{ route('users.users') }}" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Usuarios</a>
+                <a href="{{ route('customers.customers') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Clientes</a>
+                <a href="{{ route('users.users') }}"
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Usuarios</a>
             </div>
         </div>
         @endif
@@ -337,6 +326,14 @@ new class extends Component
                 <a href="#" class="block rounded-md px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
                     Impuestos
                 </a>
+                <a href="{{ route('tenant.parameters.zones') }}" wire:navigate
+                    class="block rounded-md px-2 py-1 transition-colors duration-150 {{ request()->routeIs('tenant.parameters.zones') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                    Zonas
+                </a>
+                <a href="{{ route('tenant.parameters.routes') }}" wire:navigate
+                    class="block rounded-md px-2 py-1 transition-colors duration-150 {{ request()->routeIs('tenant.parameters.routes') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                    Rutas
+                </a>
             </div>
 
             <!-- Submenú desplegable (para sidebar colapsado) -->
@@ -388,8 +385,8 @@ new class extends Component
             <div class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
                 :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" @mouseenter="tooltip = sidebarCollapsed"
                 @mouseleave="tooltip = false" @click="open = !open">
-                <svg class="h-5 w-5 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
-                    width="24" height="24" fill="none" viewBox="0 0 24 24">
+                <svg class="h-5 w-5 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                    height="24" fill="none" viewBox="0 0 24 24">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
                         d="M13 7h6l2 4m-8-4v8m0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9h2m8 0H9m4 0h2m4 0h2v-4m0 0h-5m3.5 5.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm-10 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z" />
                 </svg>
@@ -418,19 +415,19 @@ new class extends Component
                 <a href="{{ route('tenant.items') }}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
                     @if(auth()->user()->profile_id == 17)
-                        Items de Tienda
+                    Items de Tienda
                     @else
-                        Ítems
+                    Ítems
                     @endif
                 </a>
                 @if(auth()->user()->profile_id == 17)
-                    <a href="{{ route('tenant.categories') }}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
+                <a href="{{ route('tenant.categories') }}" wire:navigate
+                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
                 @else
-                    <a href="{{url('/inventory/categories')}}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
+                <a href="{{url('/inventory/categories')}}" wire:navigate
+                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
                 @endif
-             
+
                 <a href="{{url('/inventory/commands')}}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Comandas</a>
                 <a href="{{url('/inventory/brands')}}" wire:navigate
@@ -440,42 +437,40 @@ new class extends Component
                 <a href="{{url('/inventory/units')}}" wire:navigate
                     class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Unidades de Medida</a>
                 <a href="{{ route('movements.movements') }}" wire:navigate
-                   class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                    class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Gestión movimientos
                 </a>
             </div>
 
             <!-- Submenú desplegable (para sidebar colapsado) -->
-           <div
-             x-show="sidebarCollapsed && tooltip"
-             x-transition
-             class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
-             @mouseenter="tooltip = true"
-             @mouseleave="tooltip = false"
-            >
-             @if(auth()->user()->profile_id == 17)
-                 <a href="{{ route('tenant.categories') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
-             @else
-                 <a href="{{url('/inventory/categories')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
-             @endif
-             @if(auth()->user()->profile_id == 17)
-                 <a href="{{ route('tenant.customers') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
-             @else
-                 <a href="{{ route('customers.customers') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
-             @endif
-             <a href="{{ route('tenant.items') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
+            <div x-show="sidebarCollapsed && tooltip" x-transition
+                class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
+                @mouseenter="tooltip = true" @mouseleave="tooltip = false">
                 @if(auth()->user()->profile_id == 17)
-                    Items de Tienda
+                <a href="{{ route('tenant.categories') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
                 @else
-                    Ítems
+                <a href="{{url('/inventory/categories')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
                 @endif
-             </a>
-             <a href="{{url('/inventory/brands')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Marcas</a>
-             <a href="{{url('/inventory/commands')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Comandas</a>
-             <a href="{{url('/inventory/units')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Unidades de Medida</a>
-             <a href="{{url('/inventory/houses')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Casas</a>
-             <a href="{{ route('movements.movements') }}" wire:navigate
-                class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                <a href="{{ route('tenant.items') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
+                    @if(auth()->user()->profile_id == 17)
+                    Items de Tienda
+                    @else
+                    Ítems
+                    @endif
+                </a>
+                <a href="{{url('/inventory/brands')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Marcas</a>
+                <a href="{{url('/inventory/commands')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Comandas</a>
+                <a href="{{url('/inventory/units')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Unidades de Medida</a>
+                <a href="{{url('/inventory/houses')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Casas</a>
+                <a href="{{ route('movements.movements') }}" wire:navigate
+                    class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Gestión movimientos
                 </a>
 
