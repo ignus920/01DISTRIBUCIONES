@@ -281,13 +281,13 @@ new class extends Component
             <!-- Submenú -->
             <div x-show="open && !sidebarCollapsed" x-transition
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <a href="{{ route('tenant.parameters.pricelists') }}" wire:navigate
+                <!-- <a href="{{ route('tenant.parameters.pricelists') }}" wire:navigate
                     class="block rounded-md px-2 py-1 transition-colors duration-150 {{ request()->routeIs('tenant.parameters.pricelists') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Listas de Precios
-                </a>
-                <a href="#" class="block rounded-md px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
+                </a> -->
+                <!-- <a href="#" class="block rounded-md px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
                     Impuestos
-                </a>
+                </a> -->
                 <a href="{{ route('tenant.parameters.zones') }}" wire:navigate
                     class="block rounded-md px-2 py-1 transition-colors duration-150 {{ request()->routeIs('tenant.parameters.zones') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Zonas
@@ -301,10 +301,12 @@ new class extends Component
             <div x-show="sidebarCollapsed && tooltip" x-transition
                 class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
-                <a href="{{ route('tenant.parameters.pricelists') }}" wire:navigate
+        <!-- <a href="{{ route('tenant.parameters.pricelists') }}" wire:navigate
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Listas de Precios</a>
-                <a href="#" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Impuestos</a>
-            </div>
+                <a href="#" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Impuestos</a> -->
+                  <a href="{{ route('tenant.parameters.zones') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Zonas</a>
+                    <a href="{{ route('tenant.parameters.routes') }}" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Rutas</a>
         </div>
         @endif
 
