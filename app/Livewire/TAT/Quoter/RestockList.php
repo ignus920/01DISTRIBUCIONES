@@ -106,10 +106,30 @@ class RestockList extends Component
     }
 
     public function editPreliminaryRestock()
-{
-    return $this->redirect(
-        route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
-    );
-}
+    {
+        return $this->redirect(
+            route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
+        );
+    }
 
+    public function createNewRestock()
+    {
+        // Verificar si ya existe una lista preliminar para esta empresa
+        $existingPreliminary = TatRestockList::where('company_id', $this->companyId)
+            ->where('status', 'Registrado')
+            ->whereNull('order_number')
+            ->exists();
+
+        if ($existingPreliminary) {
+            // Si ya existe lista preliminar, redirigir a editarla
+            return $this->redirect(
+                route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
+            );
+        } else {
+            // Si no existe lista preliminar, crear nueva
+            return $this->redirect(
+                route('tenant.quoter.products.desktop')
+            );
+        }
+    }
 }

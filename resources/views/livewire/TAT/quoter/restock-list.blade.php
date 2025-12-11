@@ -8,13 +8,13 @@
                 <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Gestión de pedidos realizados a la distribuidora</p>
             </div>
             <div class="flex items-center space-x-3">
-                <a href="{{ route('tenant.quoter.products.desktop') }}" 
-                   class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded text-sm font-medium flex items-center transition-colors">
+                <button wire:click="createNewRestock"
+                        class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded text-sm font-medium flex items-center transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
                     Nueva Solicitud
-                </a>
+                </button>
             </div>
         </div>
     </div>

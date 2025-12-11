@@ -1101,6 +1101,50 @@ public function validateQuantity($index)
                 'branchId' => session('branch_id', 1)
             ]);
 
+            // **PASO 1: Actualizar el order_number con el ID de la cotización recién creada**
+            $quote->update(['order_number' => $quote->id]);
+
+            Log::info("🎯 PASO 1 COMPLETADO - Quote actualizada", [
+                'quote_id' => $quote->id,
+                'consecutive' => $quote->consecutive,
+                'order_number_updated' => $quote->id
+            ]);
+
+            // **PASO 2: Buscar registros tat_restock_list que ya están confirmados con el order_number anterior**
+            $recordsToUpdate = TatRestockList::where('order_number', $orderNumber)
+                ->where('company_id', $companyId)
+                ->where('status', 'Confirmado')
+                ->get();
+
+            Log::info("🔍 PASO 2 - Registros confirmados encontrados para actualizar", [
+                'order_number' => $orderNumber,
+                'company_id' => $companyId,
+                'records_count' => $recordsToUpdate->count(),
+                'records_ids' => $recordsToUpdate->pluck('id')->toArray()
+            ]);
+
+            // **PASO 3: Actualizar los registros confirmados para que tengan el ID de la cotización**
+            if ($recordsToUpdate->count() > 0) {
+                $updatedRecords = TatRestockList::where('order_number', $orderNumber)
+                    ->where('company_id', $companyId)
+                    ->where('status', 'Confirmado')
+                    ->update([
+                        'order_number' => $quote->id, // El ID de la cotización (reemplazar el order_number anterior)
+                    ]);
+
+                Log::info("✅ PASO 3 COMPLETADO - Registros tat_restock_list actualizados con quote ID", [
+                    'old_order_number' => $orderNumber,
+                    'new_quote_id_assigned' => $quote->id,
+                    'company_id' => $companyId,
+                    'records_updated' => $updatedRecords
+                ]);
+            } else {
+                Log::warning("⚠️ PASO 3 OMITIDO - No se encontraron registros confirmados para actualizar", [
+                    'order_number' => $orderNumber,
+                    'company_id' => $companyId
+                ]);
+            }
+
             // Crear detalles usando getProductData()
             $detailsCreated = 0;
             foreach ($restockItems as $restockItem) {
