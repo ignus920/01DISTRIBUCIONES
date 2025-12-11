@@ -34,4 +34,8 @@ class TatRoutes extends Model
     public function salesman(){
         return $this->belongsTo(\App\Models\Auth\User::class, 'salesman_id');
     }
+
+    public function companies(){
+        return $this->hasMany(\App\Models\Tenant\Customer\TatCompanyRoute::class, 'route_id');
+    }
 }

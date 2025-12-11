@@ -37,7 +37,9 @@ class VntCompanyForm extends Component
         'contact-modal-closed' => 'handleContactModalClosed',
         'citySelected' => 'updateCityName',
         'user-changed' => 'updateVendedor',
-        'route-changed' => 'updateRoute'
+        'route-changed' => 'updateRoute',
+        'routes-modal-closed' => 'handleRoutesModalClosed',
+        'move-district-modal-closed' => 'handleMoveDistrictModalClosed'
     ];
 
     public $search = '';
@@ -56,6 +58,13 @@ class VntCompanyForm extends Component
     // Contact modal properties
     public $showContactModal = false;
     public $selectedCompanyIdForContacts = null;
+    
+
+    
+    // Routes modal properties
+    public $showRoutesModal = false;
+    // Move district modal properties
+    public $showMoveDistrictModal = false;
 
     // Propiedades del formulario
     public $businessName = '';
@@ -256,7 +265,9 @@ class VntCompanyForm extends Component
         $this->verification_digit = (string)$company->checkDigit; // Cargar el DV desde checkDigit
         $this->status = $company->status ?? 1;
         $this->vntUserId = $company->vntUserId ?? '';
-        $this->routeId = $company->routeId ?? '';
+        // Cargar ruta asignada si existe
+        $route = TatCompanyRoute::where('company_id', $id)->first();
+        $this->routeId = $route ? $route->route_id : '';
         $this->district = $company->district ?? '';
         
         // Log detallado de la carga de datos para verificación
@@ -422,6 +433,27 @@ class VntCompanyForm extends Component
 
                 // Disparar evento para componentes que escuchan
                 $this->dispatch('customer-updated', $this->editingId);
+
+                // Actualizar ruta si ha cambiado
+                if ($this->routeId) {
+                     $existingRoute = TatCompanyRoute::where('company_id', $this->editingId)->first();
+                     
+                     if ($existingRoute) {
+                         if ($existingRoute->route_id != $this->routeId) {
+                            // Si existe y es diferente, actualizar
+                            $existingRoute->update(['route_id' => $this->routeId]);
+                            Log::info('Route updated for company', ['companyId' => $this->editingId, 'newRouteId' => $this->routeId]);
+                         }
+                     } else {
+                        // Si no existe, crear
+                         $this->createRouteFromCompany($company);
+                         Log::info('Route created during update for company', ['companyId' => $this->editingId, 'routeId' => $this->routeId]);
+                     }
+                } else {
+                    // Si se deseleccionó la ruta (valor vacío), eliminar la asignación existente
+                     TatCompanyRoute::where('company_id', $this->editingId)->delete();
+                     Log::info('Route removed for company', ['companyId' => $this->editingId]);
+                }
             } else {
                 Log::info('Creating new company');
                 $company = $this->companyService->create($data, $warehouses);
@@ -548,6 +580,26 @@ class VntCompanyForm extends Component
     {
         $this->showContactModal = true;
         $this->selectedCompanyIdForContacts = $companyId;
+    }
+
+    public function openRoutes()
+    {
+        $this->showRoutesModal = true;
+    }
+
+    public function openMoveDistrict()
+    {
+        $this->showMoveDistrictModal = true;
+    }
+
+    public function handleRoutesModalClosed()
+    {
+        $this->showRoutesModal = false;
+    }
+
+    public function handleMoveDistrictModalClosed()
+    {
+        $this->showMoveDistrictModal = false;
     }
 
     public function exportExcel()
@@ -1105,7 +1157,6 @@ class VntCompanyForm extends Component
     
          // Obtener el último consecutivo para esta combinación de route_id y company_id
         $lastRoute = TatCompanyRoute::where('route_id', $this->routeId)
-        ->where('company_id', $company->id)
         ->orderBy('sales_order', 'desc')
         ->first();
     

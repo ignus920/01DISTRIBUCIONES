@@ -23,7 +23,7 @@ class TatCompanyRoute extends Model
      *
      * @var string
      */
-    protected $table = 'tat_companies_routes';
+    protected $table = 'tat_companies_routes';  
 
     
     protected $fillable = [
