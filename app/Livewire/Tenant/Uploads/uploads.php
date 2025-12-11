@@ -28,6 +28,11 @@ class Uploads extends Component
     public $remissions = [];
     public $selectedRoute = '';
 
+
+    // impresion de carges 
+    public $showCharge = "pedidos";  
+
+
     public function updatedSelectedDate($value)
     {
         // Solo hacer la consulta si hay fecha válida
