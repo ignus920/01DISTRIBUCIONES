@@ -1172,48 +1172,39 @@ public function validateQuantity($index)
     protected function getProductData($itemId)
     {
         try {
-            // Buscar el producto en la tabla Items (Tenant)
-            $product = Items::find($itemId);
+            // Buscar el producto en la tabla TAT específica
+            $product = \App\Models\TAT\Items\TatItems::find($itemId);
 
             if (!$product) {
-                Log::warning("Producto no encontrado para migración", ['item_id' => $itemId]);
+                Log::warning("Producto TAT no encontrado para migración", ['item_id' => $itemId]);
                 return [
-                    'name' => 'Producto no encontrado',
+                    'name' => 'Producto TAT no encontrado',
                     'price' => 0,
                     'tax' => 0
                 ];
             }
 
             // Obtener información de impuestos si existe la relación
-            // Nota: Items tiene taxId, pero deberíamos verificar la relación en Items.php
-            // Asumiendo que Items tiene relación tax similar a TatItems o usamos el taxId directo
-            // Por seguridad, si Items no tiene relación tax cargada, usamos 0 o buscamos tax por id
             $taxValue = 0;
-            // Verificar si el modelo Items tiene la relación tax definida comúnmente en este proyecto
-            if ($product->taxId) {
-                 // Si necesitamos el porcentaje, podríamos necesitar consultarlo si no está en la relación
-                 // Para simplificar y dado que VntDetailQuote usa tax value, usaremos 0 si no estamos seguros
-                 // O mejor, intentamos cargarla si existe la relación
-                 if($product->relationLoaded('tax') && $product->tax) {
-                     $taxValue = $product->tax->percentage ?? 0;
-                 }
+            if ($product->tax) {
+                $taxValue = $product->tax->percentage ?? 0;
             }
 
             return [
                 'name' => $product->display_name ?? $product->name ?? 'Sin nombre',
-                'description' => $product->description ?? '',
+                'description' => $product->name ?? '', // TatItems no tiene description, usamos name
                 'price' => $product->price ?? 0,
                 'tax' => $taxValue,
                 'sku' => $product->sku ?? ''
             ];
 
         } catch (\Exception $e) {
-            Log::error('Error obteniendo datos del producto: ' . $e->getMessage(), [
+            Log::error('Error obteniendo datos del producto TAT: ' . $e->getMessage(), [
                 'item_id' => $itemId
             ]);
 
             return [
-                'name' => 'Error al cargar producto',
+                'name' => 'Error al cargar producto TAT',
                 'price' => 0,
                 'tax' => 0
             ];

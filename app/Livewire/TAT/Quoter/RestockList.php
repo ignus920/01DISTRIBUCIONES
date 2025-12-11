@@ -58,7 +58,8 @@ class RestockList extends Component
             DB::raw('MAX(created_at) as created_at'),
             DB::raw('COUNT(*) as total_items')
         )
-        ->groupBy('order_number');
+        ->groupBy('order_number')
+        ->having('total_items', '>', 0); // Filtrar grupos con 0 productos
 
     // ====================================================
     // 2. Preliminares agrupados COMO UNA SOLA ORDEN
@@ -71,7 +72,8 @@ class RestockList extends Component
             DB::raw("'Registrado' as status"),
             DB::raw('MAX(created_at) as created_at'),
             DB::raw('COUNT(*) as total_items')
-        );
+        )
+        ->having('total_items', '>', 0); // Filtrar si no hay productos preliminares
 
     // ====================================================
     // 3. Unimos confirmados + preliminar
