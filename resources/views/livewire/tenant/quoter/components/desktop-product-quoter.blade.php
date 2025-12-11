@@ -599,8 +599,8 @@ $header = 'Seleccionar productos';
                     </button>
                     @endif
 
-                    @if(auth()->user()->profile_id == 17)
-                    <!-- Botón para agregar productos a lista preliminar (SIN order_number) -->
+                    @if(auth()->user()->profile_id == 17 && !$isEditingRestock)
+                    <!-- Botón para agregar productos a lista preliminar (SIN order_number) - Solo cuando NO se está editando -->
                     <button wire:click="saveRestockRequest(false)"
                         wire:loading.attr="disabled"
                         wire:target="saveRestockRequest"
@@ -618,6 +618,7 @@ $header = 'Seleccionar productos';
                         <span wire:loading.remove wire:target="saveRestockRequest">Agregar a Lista Preliminar</span>
                         <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
                     </button>
+                     @endif
 
                     <!-- Botón Confirmar Lista Preliminar (convierte Registrado a Confirmado) -->
                     <button wire:click="saveRestockRequest(true)"
@@ -637,7 +638,7 @@ $header = 'Seleccionar productos';
                         <span wire:loading.remove wire:target="saveRestockRequest">Confirmar y Migrar Directamente</span>
                         <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
                     </button>
-                    @endif
+                   
                     @endif
 
                     @if($isEditingRestock)
