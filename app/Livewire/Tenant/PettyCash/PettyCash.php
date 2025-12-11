@@ -128,7 +128,7 @@ class PettyCash extends Component
                 $this->showModal = false;
             }
         }catch(\Exception $e){
-            session()->flash('error', 'El registro realizó correctamente.'. $e->getMessage());
+            session()->flash('error', 'Error al registrar la caja.'. $e->getMessage());
         }
     }
 
