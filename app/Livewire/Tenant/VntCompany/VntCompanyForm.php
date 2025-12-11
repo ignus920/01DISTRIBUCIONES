@@ -13,6 +13,7 @@ use App\Livewire\Tenant\VntCompany\Services\CompanyQueryService;
 use App\Livewire\Tenant\VntCompany\Services\CompanyValidationService;
 use App\Livewire\Tenant\VntCompany\Services\ExportService;
 use App\Models\Auth\User;
+use App\Models\Tenant\Customer\TatCompanyRoute;
 use Illuminate\Support\Facades\Hash;
 
 
@@ -35,7 +36,10 @@ class VntCompanyForm extends Component
         'warehouse-modal-closed' => 'handleWarehouseModalClosed', 
         'contact-modal-closed' => 'handleContactModalClosed',
         'citySelected' => 'updateCityName',
-        'user-changed' => 'updateVendedor' 
+        'user-changed' => 'updateVendedor',
+        'route-changed' => 'updateRoute',
+        'routes-modal-closed' => 'handleRoutesModalClosed',
+        'move-district-modal-closed' => 'handleMoveDistrictModalClosed'
     ];
 
     public $search = '';
@@ -54,6 +58,13 @@ class VntCompanyForm extends Component
     // Contact modal properties
     public $showContactModal = false;
     public $selectedCompanyIdForContacts = null;
+    
+
+    
+    // Routes modal properties
+    public $showRoutesModal = false;
+    // Move district modal properties
+    public $showMoveDistrictModal = false;
 
     // Propiedades del formulario
     public $businessName = '';
@@ -108,6 +119,10 @@ class VntCompanyForm extends Component
     public $createUser = false;
     // Propiedad para el vendedor asignado
     public $vntUserId = '';
+    // Propiedad para la ruta asignada
+    public $routeId = '';
+    // Propiedad para el barrio
+    public $district = '';
 
 
     public function boot(
@@ -189,12 +204,18 @@ class VntCompanyForm extends Component
     
    public function getItemsProperty()
    {
-     return $this->queryService->getPaginatedCompanies(
-        $this->search,
-        $this->perPage,
-        $this->sortField,
-        $this->sortDirection
-     ); 
+     try {
+         return $this->queryService->getPaginatedCompanies(
+            $this->search,
+            $this->perPage,
+            $this->sortField,
+            $this->sortDirection
+         );
+     } catch (\Exception $e) {
+         \Illuminate\Support\Facades\Log::error('Error getting companies: ' . $e->getMessage());
+         // Return empty paginator to avoid 500 error
+         return new \Illuminate\Pagination\LengthAwarePaginator([], 0, $this->perPage);
+     }
    }
 
    public function render()
@@ -244,6 +265,10 @@ class VntCompanyForm extends Component
         $this->verification_digit = (string)$company->checkDigit; // Cargar el DV desde checkDigit
         $this->status = $company->status ?? 1;
         $this->vntUserId = $company->vntUserId ?? '';
+        // Cargar ruta asignada si existe
+        $route = TatCompanyRoute::where('company_id', $id)->first();
+        $this->routeId = $route ? $route->route_id : '';
+        $this->district = $company->district ?? '';
         
         // Log detallado de la carga de datos para verificación
         Log::info('Company data loaded in edit()', [
@@ -290,6 +315,7 @@ class VntCompanyForm extends Component
             $this->warehouseAddress = $mainWarehouse->address;
             $this->warehousePostcode = $mainWarehouse->postcode;
             $this->warehouseCityId = $mainWarehouse->cityId;
+            $this->district = $mainWarehouse->district ?? '';
             
             // Load contact data if exists
             $mainContact = $mainWarehouse->contacts->first();
@@ -326,6 +352,14 @@ class VntCompanyForm extends Component
 
     public function save()
     {
+        // Log para debugging
+        Log::info('Save method called', [
+            'createUser' => $this->createUser,
+            'billingEmail' => $this->billingEmail,
+            'identification' => $this->identification,
+            'typeIdentificationId' => $this->typeIdentificationId
+        ]);
+        
         // Establecer typePerson automáticamente si no es NIT antes de validar
         if ($this->typeIdentificationId && (int) $this->typeIdentificationId !== 2 && empty($this->typePerson)) {
             $this->typePerson = 'Natural';
@@ -340,61 +374,41 @@ class VntCompanyForm extends Component
         // Validar que identification y email no existan antes de proceder
         if ($this->identificationExists) {
             $this->addError('identification', 'Este número de identificación ya está registrado.');
+            Log::warning('Save blocked: identification exists');
             return;
         }
         
         if ($this->emailExists) {
             $this->addError('billingEmail', 'Este email de facturación ya está registrado.');
+            Log::warning('Save blocked: email exists');
             return;
         }
 
-          if (!$this->cityValidate(0)) {
-              $this->addError('warehouseName', 'La ciudad seleccionada no es válida.');
+        if (!$this->cityValidate(0)) {
+            $this->addError('warehouseCityId', 'La ciudad seleccionada no es válida.');
+            Log::warning('Save blocked: invalid city');
             return; // Si la validación de ciudad falla, detener el guardado
         }
         
         
         // Validación simple usando Livewire nativo
-        $this->validate();
+        try {
+            $this->validate();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed', [
+                'errors' => $e->errors()
+            ]);
+            throw $e;
+        }
+        
+        Log::info('Validation passed, preparing data');
         
         $data = $this->getFormData();
         
-        // DEBUG: Mostrar todos los valores del formulario
-        // dd([
-        //     'action' => $this->editingId ? 'update' : 'create',
-        //     'editingId' => $this->editingId,
-        //     'form_data' => $data,
-        //     'warehouses' => $this->warehouses,
-        //     'permissions' => [
-        //         'canAddMoreWarehouses' => $this->canAddMoreWarehouses,
-        //         'warehouseLimitsInfo' => $this->getWarehouseLimitsInfo()
-        //     ],
-        //     'all_component_properties' => [
-        //         'businessName' => $this->businessName,
-        //         'billingEmail' => $this->billingEmail,
-        //         'firstName' => $this->firstName,
-        //         'lastName' => $this->lastName,
-        //         'secondName' => $this->secondName,
-        //         'secondLastName' => $this->secondLastName,
-        //         'integrationDataId' => $this->integrationDataId,
-        //         'identification' => $this->identification,
-        //         'checkDigit' => $this->checkDigit,
-        //         'status' => $this->status,
-        //         'typePerson' => $this->typePerson,
-        //         'typeIdentificationId' => $this->typeIdentificationId,
-        //         'regimeId' => $this->regimeId,
-        //         'code_ciiu' => $this->code_ciiu,
-        //         'fiscalResponsabilityId' => $this->fiscalResponsabilityId,
-        //         'verification_digit' => $this->verification_digit,
-        //         'warehouseName' => $this->warehouseName,
-        //         'warehouseAddress' => $this->warehouseAddress,
-        //         'warehousePostcode' => $this->warehousePostcode,
-        //         'warehouseCityId' => $this->warehouseCityId,
-        //         'warehouseIsMain' => $this->warehouseIsMain,
-        //     ],
-        //     'validation_rules' => $this->rules(),
-        //     'timestamp' => now()->toDateTimeString()
-        // ]);
+        Log::info('Form data prepared', [
+            'data' => $data,
+            'createUser' => $this->createUser
+        ]);
         
         // Preparar array de warehouses con los datos del formulario
         $warehouses = [[
@@ -405,29 +419,112 @@ class VntCompanyForm extends Component
             'address' => $this->warehouseAddress,
             'postcode' => $this->warehousePostcode,
             'cityId' => $this->warehouseCityId, 
+            'district' => $this->district,
             'main' => true, // Siempre es la sucursal principal
         ]];
-        // dd($warehouses);
+        
+        Log::info('Warehouses prepared', ['warehouses' => $warehouses]);
+        
         try {
             if ($this->editingId) {
+                Log::info('Updating existing company', ['companyId' => $this->editingId]);
                 $company = $this->companyService->update($this->editingId, $data, $warehouses, $this->mainContactId);
                 session()->flash('message', 'Registro actualizado exitosamente.');
 
                 // Disparar evento para componentes que escuchan
                 $this->dispatch('customer-updated', $this->editingId);
+
+                // Actualizar ruta si ha cambiado
+                if ($this->routeId) {
+                     $existingRoute = TatCompanyRoute::where('company_id', $this->editingId)->first();
+                     
+                     if ($existingRoute) {
+                         if ($existingRoute->route_id != $this->routeId) {
+                            // Si existe y es diferente, actualizar
+                            $existingRoute->update(['route_id' => $this->routeId]);
+                            Log::info('Route updated for company', ['companyId' => $this->editingId, 'newRouteId' => $this->routeId]);
+                         }
+                     } else {
+                        // Si no existe, crear
+                         $this->createRouteFromCompany($company);
+                         Log::info('Route created during update for company', ['companyId' => $this->editingId, 'routeId' => $this->routeId]);
+                     }
+                } else {
+                    // Si se deseleccionó la ruta (valor vacío), eliminar la asignación existente
+                     TatCompanyRoute::where('company_id', $this->editingId)->delete();
+                     Log::info('Route removed for company', ['companyId' => $this->editingId]);
+                }
             } else {
+                Log::info('Creating new company');
                 $company = $this->companyService->create($data, $warehouses);
                 $message = 'Registro creado exitosamente.';
+                
+                Log::info('Company created successfully', [
+                    'companyId' => $company->id ?? 'unknown',
+                    'createUser' => $this->createUser,
+                    'routeId' => $this->routeId
+                ]);
+
+                // Crear ruta si se ha seleccionado una ruta
+                Log::info('Checking route creation', [
+                    'routeId' => $this->routeId,
+                    'routeId_type' => gettype($this->routeId),
+                    'routeId_empty' => empty($this->routeId),
+                    'company' => $company ? $company->id : null
+                ]);
+                
+                if ($this->routeId && $company) {
+                    try {
+                        Log::info('Creating route for company', [
+                            'company_id' => $company->id,
+                            'route_id' => $this->routeId
+                        ]);
+                        $route = $this->createRouteFromCompany($company);
+                        Log::info('Route created successfully', [
+                            'route_id' => $route->id ?? 'unknown',
+                            'company_id' => $route->company_id ?? 'unknown',
+                            'sales_order' => $route->sales_order ?? 'unknown'
+                        ]);
+                        $message = 'Registro y ruta creados exitosamente.';
+                    } catch (\Exception $e) {
+                         // Log error but don't fail operation
+                         Log::error('Error creando ruta', [
+                             'error' => $e->getMessage(),
+                             'trace' => $e->getTraceAsString()
+                         ]);
+                         $message = 'Registro creado exitosamente, pero hubo un error al crear la ruta.';
+                    }
+                } else {
+                    Log::info('Skipping route creation', [
+                        'routeId' => $this->routeId,
+                        'hasCompany' => $company !== null
+                    ]);
+                }
+
 
                 // Crear usuario si está marcado el checkbox
                 if ($this->createUser && $company) {
                     try {
+                        Log::info('Creating user for company', ['createUser' => $this->createUser]);
                         $this->createUserFromCompany($company);
-                        $message = 'Registro y usuario creados exitosamente.';
+                        
+                        // Verificar si hubo advertencia de productos
+                        if (session()->has('warning')) {
+                            $message = session()->pull('warning');
+                        } else {
+                            $message = 'Registro, usuario y productos creados exitosamente.';
+                        }
                     } catch (\Exception $e) {
+                        Log::error('Error creating user', ['error' => $e->getMessage()]);
                         $message = 'Registro creado exitosamente, pero hubo un error al crear el usuario: ' . $e->getMessage();
                     }
+                } else {
+                    Log::info('Skipping user creation', [
+                        'createUser' => $this->createUser,
+                        'hasCompany' => $company !== null
+                    ]);
                 }
+
 
                 session()->flash('message', $message);
 
@@ -438,9 +535,14 @@ class VntCompanyForm extends Component
                 }
             }
 
+            Log::info('Save completed successfully, resetting form');
             $this->resetForm();
             $this->showModal = false;
         } catch (\Exception $e) {
+            Log::error('Error in save method', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             session()->flash('error', 'Error al guardar: ' . $e->getMessage());
             return;
         }
@@ -478,6 +580,26 @@ class VntCompanyForm extends Component
     {
         $this->showContactModal = true;
         $this->selectedCompanyIdForContacts = $companyId;
+    }
+
+    public function openRoutes()
+    {
+        $this->showRoutesModal = true;
+    }
+
+    public function openMoveDistrict()
+    {
+        $this->showMoveDistrictModal = true;
+    }
+
+    public function handleRoutesModalClosed()
+    {
+        $this->showRoutesModal = false;
+    }
+
+    public function handleMoveDistrictModalClosed()
+    {
+        $this->showMoveDistrictModal = false;
     }
 
     public function exportExcel()
@@ -541,6 +663,7 @@ class VntCompanyForm extends Component
         $this->warehouseAddress = '';
         $this->warehousePostcode = '';
         $this->warehouseCityId = '';
+        $this->district = '';
         $this->warehouseIsMain = false;
         $this->canAddMoreWarehouses = false;
         
@@ -557,8 +680,9 @@ class VntCompanyForm extends Component
         // Reset create user checkbox
         $this->createUser = false;
 
-        // Reset vendedor
+        // Reset vendedor y ruta
         $this->vntUserId = '';
+        $this->routeId = '';
 
         $this->resetErrorBag();
         $this->resetValidation();
@@ -650,6 +774,11 @@ class VntCompanyForm extends Component
     public function updateVendedor($userId)
     {
         $this->vntUserId = $userId;
+    }
+
+    public function updateRoute($routeId)
+    {
+        $this->routeId = $routeId;
     }
 
     public function toggleStatus()
@@ -980,8 +1109,17 @@ class VntCompanyForm extends Component
           // Si cityId viene del evento, usarlo directamente
           $cityIdToValidate = $cityId ?? $this->warehouseCityId;
           
+          // Log para debugging
+          Log::info('City validation', [
+              'index' => $index,
+              'cityId' => $cityId,
+              'warehouseCityId' => $this->warehouseCityId,
+              'cityIdToValidate' => $cityIdToValidate
+          ]);
+          
           // Validar que se haya seleccionado una ciudad válida
           if (empty($cityIdToValidate) || !is_numeric($cityIdToValidate)) {
+              Log::warning('City validation failed: empty or not numeric');
               $this->addError('warehouseCityId', 'Debe seleccionar una ciudad válida para la sucursal principal.');
             return false;
           }
@@ -989,6 +1127,7 @@ class VntCompanyForm extends Component
           // Obtener el nombre de la ciudad para validar que existe
           $city = \App\Models\Central\CnfCity::find($cityIdToValidate);
           if (!$city) {
+              Log::warning('City validation failed: city not found', ['cityId' => $cityIdToValidate]);
               $this->addError('warehouseCityId', 'La ciudad seleccionada no es válida.');
             return false;
           }
@@ -999,9 +1138,54 @@ class VntCompanyForm extends Component
               $this->warehouseCityName = $city->name;
           }
           
+          Log::info('City validation passed');
           return true;
         }
 
+    /**
+     * Crear ruta a partir de los datos del cliente
+     */
+    /**
+     * Crear ruta a partir de los datos del cliente
+     */
+    private function createRouteFromCompany($company)
+    {
+        Log::info('createRouteFromCompany called', [
+            'company_id' => $company->id,
+            'route_id' => $this->routeId
+        ]);
+    
+         // Obtener el último consecutivo para esta combinación de route_id y company_id
+        $lastRoute = TatCompanyRoute::where('route_id', $this->routeId)
+        ->orderBy('sales_order', 'desc')
+        ->first();
+    
+        Log::info('Last route found', [
+            'lastRoute' => $lastRoute ? $lastRoute->toArray() : null
+        ]);
+    
+       // Si existe un registro previo, incrementar el consecutivo, si no, empezar en 1
+       $nextSalesOrder = $lastRoute ? ($lastRoute->sales_order + 1) : 1;
+    
+       $routeData = [
+        'company_id' => $company->id, 
+        'route_id' => $this->routeId,
+        'sales_order' => $nextSalesOrder
+       ];
+
+       Log::info('Creating route with data', ['routeData' => $routeData]);
+
+       $route = TatCompanyRoute::create($routeData);
+       
+       Log::info('Route created', [
+           'route' => $route ? $route->toArray() : null
+       ]);
+       
+       return $route;
+
+    }
+
+    
     /**
      * Crear usuario a partir de los datos del cliente
      */
@@ -1033,9 +1217,27 @@ class VntCompanyForm extends Component
 
         // Crear el usuario
         $newUser = User::create($userData);
+        
+        Log::info('Usuario creado exitosamente', [
+            'user_id' => $newUser->id,
+            'company_id' => $company->id,
+            'email' => $this->billingEmail
+        ]);
 
-        // Copiar productos de la distribuidora al cliente
-        $this->copyProductsToClient($company->id);
+        // Intentar copiar productos - si falla, no afecta la creación del usuario
+        try {
+            $this->copyProductsToClient($company->id);
+        } catch (\Exception $e) {
+            // Log del error pero no lanzar excepción
+            Log::warning('Usuario creado pero falló la copia de productos', [
+                'user_id' => $newUser->id,
+                'company_id' => $company->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Agregar mensaje informativo sin fallar
+            session()->flash('warning', 'Usuario creado exitosamente, pero hubo un problema al copiar los productos. Puede hacerlo manualmente más tarde.');
+        }
 
         return $newUser;
     }
@@ -1182,7 +1384,9 @@ class VntCompanyForm extends Component
             'business_phone' => $this->business_phone,
             'personal_phone' => $this->personal_phone,
             'positionId' => $this->positionId,
-            'vntUserId' => $this->vntUserId,
+            // 'vntUserId' => $this->vntUserId === '' ? null : $this->vntUserId, // Campo no existe en la tabla
+            'routeId' => $this->routeId === '' ? null : $this->routeId,
+            'district' => $this->district,
         ];
     }
 }

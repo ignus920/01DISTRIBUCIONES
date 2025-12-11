@@ -9,13 +9,36 @@
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Parámetros clientes</h1>
                         <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de registros</p>
                     </div>
-                    <button wire:click="create"
-                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Crear Nuevo Cliente
-                    </button>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-start justify-start sm:justify-between gap-4">
+                        <button wire:click="create"
+                            class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Crear Nuevo Cliente
+                        </button>
+                        <div class="flex flex-col sm:flex-row items-start sm:items-start justify-start sm:justify-between gap-4">
+                            <button wire:click="openRoutes"
+                                class="inline-flex items-center px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                                    </path>
+                                </svg>
+                                Ruteros
+                            </button>
+                            <button wire:click="openMoveDistrict"
+                                class="inline-flex items-center px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 bg-slate-600 hover:bg-slate-700 dark:bg-slate-500 dark:hover:bg-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4">
+                                    </path>
+                                </svg>
+                                Mover Barrios
+                            </button>
+
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -231,26 +254,6 @@
                                                     </svg>
                                                     Contactos
                                                 </button>
-                                                <button wire:click="openNeighborhoodModal({{ $item->id }})"
-                                                    class="w-full text-left px-4 py-2 text-sm text-purple-800 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center">
-                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                                            d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z">
-                                                    </path>
-                                                    </svg>
-                                                    Mover Barrios
-                                                </button>
-
-                                                <button wire:click="openRouterModal({{ $item->id }})"
-                                                    class="w-full text-left px-4 py-2 text-sm text-red-800 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
-                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
-                                                        </path>
-                                                    </svg>
-                                                    Ruteros
-                                                </button>
-
                                             </div>
                                         </div>
                                     </div>
@@ -606,13 +609,23 @@
 
 
                         <!--  vendedor -->
-                         @livewire('selects.user-vnts-select', [
-                         'name' => 'vntUserId',
-                         'label' => 'Vendededor',
-                         'required' => true,
-                         'placeholder' => 'Seleccione un vendedor',
-                         'userId' => $vntUserId ?? ''
+
+                        @livewire('selects.route-sales-day', [
+                        'name' => 'routeId',
+                        'label' => 'Ruta',
+                        'required' => false,
+                        'placeholder' => 'Seleccione una ruta (opcional)',
+                        'routeId' => $routeId ?? ''
                         ])
+
+                        <!-- district -->
+                        <div>
+                            <label for="district" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Barrio</label>
+                            <input wire:model="district" type="text" id="district"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="ej: Galan" required>
+                            @error('district') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
 
                         <!-- Teléfono Empresarial -->
                         <div>
@@ -1205,5 +1218,15 @@
         </div>
         @endif
     </div>
+    @endif
+
+    <!-- Routes Modal -->
+    @if($showRoutesModal)
+        @livewire('tenant.vnt-company.company-routes-modal', ['showModal' => true], key('routes-modal'))
+    @endif
+
+    <!-- Move District Modal -->
+    @if($showMoveDistrictModal)
+        @livewire('tenant.vnt-company.move-district-modal', ['showModal' => true], key('move-district-modal'))
     @endif
 </div>
