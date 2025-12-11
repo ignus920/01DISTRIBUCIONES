@@ -89,8 +89,9 @@ class ProductQuoter extends Component
         // 📝 LOG DEBUG: Inicio del Mount
         Log::info('ProductQuoter Mount', [
             'quoteId' => $quoteId,
-            'restockOrder_param' => $restockOrder, 
+            'restockOrder_param' => $restockOrder,
             'restockOrder_query' => request()->query('restockOrder'),
+            'editPreliminary_query' => request()->query('editPreliminary'),
             'user_id' => Auth::id()
         ]);
 
@@ -100,6 +101,8 @@ class ProductQuoter extends Component
         } elseif ($restockOrder || request()->query('restockOrder')) {
             $orderToLoad = $restockOrder ?: request()->query('restockOrder');
             $this->loadRestockForEditing($orderToLoad);
+        } elseif (request()->query('editPreliminary') === 'true') {
+            $this->loadPreliminaryRestockForEditing();
         } else {
             $this->quoterItems = session('quoter_items', []);
         }
@@ -757,87 +760,141 @@ public function validateQuantity($index)
 
 
     
-    //funcion para guardar la lista de deseos del TAT
-    public function saveRestockRequest()
+    /**
+     * Función unificada para guardar solicitudes de reabastecimiento TAT
+     * Maneja tanto lista preliminar como confirmación directa
+     * @param bool $confirmDirectly - true: confirma y migra de una vez, false: guarda como lista preliminar
+     */
+    public function saveRestockRequest($confirmDirectly = false)
     {
-        if (empty($this->quoterItems)) {
+        // Solo para perfil TAT
+        if (auth()->user()->profile_id != 17) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
-                'message' => 'No hay productos en la lista'
+                'message' => 'Función exclusiva para tiendas TAT'
             ]);
             return;
         }
 
-        // Validación opcional de cliente si fuera necesaria, 
-        // pero la tabla solo pide order_number. 
-        // Si se requiere linkear cliente, falta campo customerId en la tabla SQL.
+        if (empty($this->quoterItems)) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No hay productos en el cotizador'
+            ]);
+            return;
+        }
 
         $this->ensureTenantConnection();
-
-        // Obtener el usuario autenticado y su company_id
-        $user = Auth::user();
-        $companyId = $this->getUserCompanyId($user);
+        $companyId = $this->getUserCompanyId(auth()->user());
 
         if (!$companyId) {
-             Log::warning('No se pudo determinar company_id para el usuario', ['user_id' => $user->id]);
-             // Opcional: Mostrar error o continuar con valor por defecto si la lógica lo permite, 
-             // pero el SQL dice NOT NULL, así que debemos tener un valor.
-             $this->dispatch('show-toast', [
+            $this->dispatch('show-toast', [
                 'type' => 'error',
-                'message' => 'No se pudo identificar su empresa asignada.'
+                'message' => 'No se pudo identificar su empresa asignada'
             ]);
             return;
         }
 
         try {
-            // Si estamos editando, usamos el mismo número de orden
-            if ($this->isEditingRestock && $this->editingRestockOrder) {
-                $nextOrderNumber = $this->editingRestockOrder;
-                
-                // Borrar items anteriores para reemplazarlos (estrategia simple)
-                TatRestockList::where('order_number', $nextOrderNumber)
-                    ->where('company_id', $companyId)
+            $orderNumber = null;
+            $status = 'Registrado'; // Por defecto para lista preliminar
+
+            // Si estamos editando una lista preliminar, borrar todos los registros preliminares
+            if ($this->isEditingRestock && !$this->editingRestockOrder) {
+                // Edición de lista preliminar: borrar todos los items preliminares existentes
+                TatRestockList::where('company_id', $companyId)
+                    ->where('status', 'Registrado')
+                    ->whereNull('order_number')
                     ->delete();
-                    
-            } else {
-                // Obtener el siguiente número de orden para agrupar este pedido
-                $lastOrder = TatRestockList::max('order_number');
-                $nextOrderNumber = $lastOrder ? $lastOrder + 1 : 1;
             }
+
+            // Si se confirma directamente o estamos editando una orden confirmada, necesitamos order_number
+            if ($confirmDirectly || ($this->isEditingRestock && $this->editingRestockOrder)) {
+                if ($this->isEditingRestock && $this->editingRestockOrder) {
+                    // Usar order_number existente para edición de orden confirmada
+                    $orderNumber = $this->editingRestockOrder;
+
+                    // Borrar items anteriores para reemplazarlos
+                    TatRestockList::where('order_number', $orderNumber)
+                        ->where('company_id', $companyId)
+                        ->delete();
+                } else {
+                    // Generar nuevo order_number
+                    $lastOrder = TatRestockList::where('company_id', $companyId)->max('order_number');
+                    $orderNumber = $lastOrder ? $lastOrder + 1 : 1;
+                }
+
+                $status = 'Confirmado';
+            }
+
+            $addedCount = 0;
+            $updatedCount = 0;
 
             foreach ($this->quoterItems as $item) {
-                // Crear registro en tat_restock_list
-                $restock = new TatRestockList();
-                $restock->itemId = $item['id'];
-                $restock->company_id = $companyId; // Guardar company_id
-                $restock->quantity_request = $item['quantity'];
-                $restock->quantity_recive = 0; 
-                $restock->status = 'Registrado';
-                $restock->order_number = $nextOrderNumber;
-                
-                $restock->save();
+                // Para lista preliminar, verificar si ya existe el producto
+                if (!$confirmDirectly && !$this->isEditingRestock) {
+                    $existing = TatRestockList::where('itemId', $item['id'])
+                                              ->where('company_id', $companyId)
+                                              ->where('status', 'Registrado')
+                                              ->whereNull('order_number')
+                                              ->first();
+
+                    if ($existing) {
+                        // Sumar cantidades al registro existente
+                        $existing->quantity_request += $item['quantity'];
+                        $existing->save();
+                        $updatedCount++;
+                        continue;
+                    }
+                }
+
+                // Crear nuevo registro
+                TatRestockList::create([
+                    'itemId' => $item['id'],
+                    'company_id' => $companyId,
+                    'quantity_request' => $item['quantity'],
+                    'quantity_recive' => 0,
+                    'status' => $status,
+                    'order_number' => $orderNumber // NULL para lista preliminar
+                ]);
+                $addedCount++;
             }
 
-            // Limpiar la lista después de guardar
+            // Si se confirma directamente, migrar a cotizaciones
+            if ($confirmDirectly || ($this->isEditingRestock && $status === 'Confirmado')) {
+                $quote = $this->migrateRestockToQuotes($orderNumber, $companyId);
+
+                if ($quote) {
+                    $message = $this->isEditingRestock ?
+                        "Solicitud #{$orderNumber} actualizada y migrada a cotización #{$quote->consecutive}" :
+                        "Solicitud #{$orderNumber} confirmada y migrada a cotización #{$quote->consecutive}";
+                } else {
+                    $message = "Solicitud #{$orderNumber} confirmada, pero no se pudo migrar a cotizaciones";
+                }
+            } else {
+                // Mensaje para lista preliminar
+                if ($this->isEditingRestock && !$this->editingRestockOrder) {
+                    $message = "Lista preliminar actualizada: {$addedCount} productos";
+                } else {
+                    $message = "Lista preliminar actualizada: {$addedCount} productos agregados";
+                    if ($updatedCount > 0) {
+                        $message .= ", {$updatedCount} cantidades actualizadas";
+                    }
+                }
+            }
+
+            // Limpiar cotizador y resetear estados
             $this->quoterItems = [];
             session()->forget('quoter_items');
             $this->calculateTotal();
             $this->showCartModal = false;
-            
-            // Texto del mensaje dependiendo si es actualización o nuevo
-            $msgPart = $this->isEditingRestock ? 'actualizada' : 'enviada';
-            
-            // Resetear estados de edición
             $this->isEditingRestock = false;
             $this->editingRestockOrder = null;
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
-                'message' => 'Solicitud de reabastecimiento #' . $nextOrderNumber . ' ' . $msgPart . ' exitosamente'
+                'message' => $message
             ]);
-
-            // Si se editó desde la lista, quizás redirigir de vuelta
-            // return redirect()->route('tat.restock.list'); // Opcional, si existe la ruta.
 
         } catch (\Exception $e) {
             Log::error('Error saving restock request: ' . $e->getMessage());
@@ -980,5 +1037,369 @@ public function validateQuantity($index)
         ]);
     }
 
+    // ============================================
+    // NUEVAS FUNCIONES PARA EL FLUJO TAT COMPLETO
+    // ============================================
+
+
+
+    /**
+     * Función de migración a vnt_quotes - reutiliza lógica existente adaptada para TAT
+     */
+    protected function migrateRestockToQuotes($orderNumber, $companyId)
+    {
+        try {
+            Log::info("Iniciando migración a cotizaciones", [
+                'order_number' => $orderNumber,
+                'company_id' => $companyId
+            ]);
+
+            // Primero verificar QUE registros existen en tat_restock_list
+            $allRestockItems = TatRestockList::where('order_number', $orderNumber)
+                                             ->where('company_id', $companyId)
+                                             ->get();
+
+            Log::info("Registros encontrados en tat_restock_list", [
+                'total_records' => $allRestockItems->count(),
+                'records_data' => $allRestockItems->toArray()
+            ]);
+
+            // Obtener items confirmados del pedido
+            $restockItems = TatRestockList::where('order_number', $orderNumber)
+                                          ->where('company_id', $companyId)
+                                          ->where('status', 'Confirmado')
+                                          ->with(['item']) // Cargar relación con productos
+                                          ->get();
+
+            Log::info("Registros confirmados encontrados", [
+                'confirmed_records' => $restockItems->count(),
+                'confirmed_data' => $restockItems->toArray()
+            ]);
+
+            if ($restockItems->isEmpty()) {
+                Log::warning("No se encontraron items confirmados para migrar", [
+                    'order_number' => $orderNumber,
+                    'company_id' => $companyId,
+                    'total_records_found' => $allRestockItems->count()
+                ]);
+                return null;
+            }
+
+            // Usar lógica existente para generar consecutivo
+            $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
+            $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
+
+            // Crear cotización (adaptando saveQuote() existente para TAT)
+            $quote = VntQuote::create([
+                'consecutive' => $nextConsecutive,
+                'status' => 'REGISTRADO',
+                'typeQuote' => 'INSTITUCIONAL', // Para TAT es institucional
+                'customerId' => $companyId, // La tienda TAT como cliente
+                'warehouseId' => session('warehouse_id', 1),
+                'userId' => auth()->id(),
+                'observations' => "Solicitud de reabastecimiento TAT #{$orderNumber}",
+                'branchId' => session('branch_id', 1)
+            ]);
+
+            // Crear detalles usando getProductData()
+            $detailsCreated = 0;
+            foreach ($restockItems as $restockItem) {
+                Log::info("Procesando item para migrar", [
+                    'itemId' => $restockItem->itemId,
+                    'quantity_request' => $restockItem->quantity_request
+                ]);
+
+                $productData = $this->getProductData($restockItem->itemId);
+
+                Log::info("Datos del producto obtenidos", [
+                    'itemId' => $restockItem->itemId,
+                    'productData' => $productData
+                ]);
+
+                try {
+                    $detail = VntDetailQuote::create([
+                        'quantity' => $restockItem->quantity_request,
+                        'tax' => $productData['tax'] ?? 0,
+                        'value' => $productData['price'] ?? 0,
+                        'quoteId' => $quote->id,
+                        'itemId' => $restockItem->itemId,
+                        'description' => $productData['name'] ?? 'Producto TAT',
+                        'priceList' => $productData['price'] ?? 0
+                    ]);
+
+                    $detailsCreated++;
+                    Log::info("Detalle creado exitosamente", [
+                        'detail_id' => $detail->id,
+                        'quoteId' => $quote->id,
+                        'itemId' => $restockItem->itemId
+                    ]);
+                } catch (\Exception $detailError) {
+                    Log::error('Error creando detalle de cotización: ' . $detailError->getMessage(), [
+                        'itemId' => $restockItem->itemId,
+                        'quoteId' => $quote->id,
+                        'productData' => $productData
+                    ]);
+                }
+            }
+
+            Log::info("Detalles de cotización procesados", [
+                'total_items' => $restockItems->count(),
+                'details_created' => $detailsCreated
+            ]);
+
+            Log::info("Solicitud TAT migrada exitosamente", [
+                'order_number' => $orderNumber,
+                'quote_id' => $quote->id,
+                'consecutive' => $quote->consecutive,
+                'items_count' => $restockItems->count()
+            ]);
+
+            return $quote;
+
+        } catch (\Exception $e) {
+            Log::error('Error migrando restock a quotes: ' . $e->getMessage(), [
+                'order_number' => $orderNumber,
+                'company_id' => $companyId
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Obtener datos del producto TAT para migración a cotizaciones
+     * Usa el modelo correcto TatItems específico para tiendas TAT
+     */
+    protected function getProductData($itemId)
+    {
+        try {
+            // Buscar el producto en la tabla Items (Tenant)
+            $product = Items::find($itemId);
+
+            if (!$product) {
+                Log::warning("Producto no encontrado para migración", ['item_id' => $itemId]);
+                return [
+                    'name' => 'Producto no encontrado',
+                    'price' => 0,
+                    'tax' => 0
+                ];
+            }
+
+            // Obtener información de impuestos si existe la relación
+            // Nota: Items tiene taxId, pero deberíamos verificar la relación en Items.php
+            // Asumiendo que Items tiene relación tax similar a TatItems o usamos el taxId directo
+            // Por seguridad, si Items no tiene relación tax cargada, usamos 0 o buscamos tax por id
+            $taxValue = 0;
+            // Verificar si el modelo Items tiene la relación tax definida comúnmente en este proyecto
+            if ($product->taxId) {
+                 // Si necesitamos el porcentaje, podríamos necesitar consultarlo si no está en la relación
+                 // Para simplificar y dado que VntDetailQuote usa tax value, usaremos 0 si no estamos seguros
+                 // O mejor, intentamos cargarla si existe la relación
+                 if($product->relationLoaded('tax') && $product->tax) {
+                     $taxValue = $product->tax->percentage ?? 0;
+                 }
+            }
+
+            return [
+                'name' => $product->display_name ?? $product->name ?? 'Sin nombre',
+                'description' => $product->description ?? '',
+                'price' => $product->price ?? 0,
+                'tax' => $taxValue,
+                'sku' => $product->sku ?? ''
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error obteniendo datos del producto: ' . $e->getMessage(), [
+                'item_id' => $itemId
+            ]);
+
+            return [
+                'name' => 'Error al cargar producto',
+                'price' => 0,
+                'tax' => 0
+            ];
+        }
+    }
+
+    /**
+     * Función para "Actualizar Solicitud" - edición específica de productos TAT
+     * Permite editar cantidades o confirmar solicitudes existentes
+     */
+    public function updateRestockRequest($itemId, $newQuantity = null, $confirmOrder = false)
+    {
+        // Solo para perfil TAT
+        if (auth()->user()->profile_id != 17) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Función exclusiva para tiendas TAT'
+            ]);
+            return;
+        }
+
+        $this->ensureTenantConnection();
+        $companyId = $this->getUserCompanyId(auth()->user());
+
+        if (!$companyId) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No se pudo identificar su empresa asignada'
+            ]);
+            return;
+        }
+
+        try {
+            $existing = TatRestockList::where('itemId', $itemId)
+                                      ->where('company_id', $companyId)
+                                      ->where('status', '!=', 'Anulado')
+                                      ->first();
+
+            if (!$existing) {
+                $this->dispatch('show-toast', [
+                    'type' => 'error',
+                    'message' => 'No hay solicitud previa para actualizar'
+                ]);
+                return;
+            }
+
+            if ($existing->status == 'Confirmado' && !$confirmOrder) {
+                $this->dispatch('show-toast', [
+                    'type' => 'warning',
+                    'message' => 'La solicitud ya está confirmada. No se puede editar.'
+                ]);
+                return;
+            }
+
+            // Actualizar cantidad si se proporciona
+            if ($newQuantity !== null && $newQuantity > 0) {
+                $existing->quantity_request = $newQuantity;
+                $existing->save();
+
+                $this->dispatch('show-toast', [
+                    'type' => 'success',
+                    'message' => 'Cantidad actualizada exitosamente'
+                ]);
+            }
+
+            // Confirmar orden si se solicita
+            if ($confirmOrder && $existing->status == 'Registrado') {
+                // Generar order_number si no tiene
+                if (!$existing->order_number) {
+                    $lastOrder = TatRestockList::where('company_id', $companyId)->max('order_number');
+                    $nextOrderNumber = $lastOrder ? $lastOrder + 1 : 1;
+                    $existing->order_number = $nextOrderNumber;
+                }
+
+                $existing->status = 'Confirmado';
+                $existing->save();
+
+                // Migrar a cotizaciones
+                $quote = $this->migrateRestockToQuotes($existing->order_number, $companyId);
+
+                if ($quote) {
+                    $this->dispatch('show-toast', [
+                        'type' => 'success',
+                        'message' => "Solicitud confirmada y migrada a cotización #{$quote->consecutive}"
+                    ]);
+                }
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error updating restock request: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al actualizar solicitud: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+
+    
+
+    public function loadPreliminaryRestockForEditing()
+    {
+        $this->ensureTenantConnection();
+        $user = Auth::user();
+        $userId = $user ? $user->id : 'guest';
+        $companyId = $this->getUserCompanyId($user);
+
+        Log::info('loadPreliminaryRestockForEditing', [
+            'userId' => $userId,
+            'companyId' => $companyId
+        ]);
+
+        if(!$companyId) {
+             Log::error("No se pudo cargar la lista preliminar para edición: Company ID no encontrado para usuario $userId");
+             $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error: No se pudo verificar su empresa. Por favor contacte soporte.'
+            ]);
+             return;
+        }
+
+        // Obtener la query para debug
+        $query = TatRestockList::where('company_id', $companyId)
+            ->where('status', 'Registrado')
+            ->whereNull('order_number');
+            
+        Log::info('Preliminary Restock Query Debug', [
+            'sql' => $query->toSql(),
+            'bindings' => $query->getBindings(),
+            'company_id_used' => $companyId
+        ]);
+
+        $items = $query->with(['item'])->get();
+
+        Log::info('Preliminary Restock Items Search Result', [
+            'count' => $items->count()
+        ]);
+
+        if ($items->isEmpty()) {
+             $this->dispatch('show-toast', [
+                'type' => 'info',
+                'message' => 'No hay productos en lista preliminar para editar'
+            ]);
+            return;
+        }
+
+        // Marcar que estamos editando lista preliminar
+        $this->isEditingRestock = true;
+        $this->editingRestockOrder = null; // No hay order_number para preliminares
+
+        // Resetear items actuales
+        $this->quoterItems = [];
+
+        foreach ($items as $restockItem) {
+            if ($restockItem->item) {
+                $product = $restockItem->item;
+                $price = $product->price ?? 0;
+
+                // Agregar al array local
+                $this->quoterItems[] = [
+                    'id' => $product->id,
+                    'name' => $product->display_name,
+                    'sku' => $product->sku,
+                    'price' => $price,
+                    'price_label' => 'Precio Lista',
+                    'quantity' => $restockItem->quantity_request,
+                    'description' => $product->description ?? '',
+                ];
+            } else {
+                 Log::warning("Item no encontrado para restock preliminar ID: " . $restockItem->id);
+            }
+        }
+
+        // Actualizar la sesión inmediatamente
+        session(['quoter_items' => $this->quoterItems]);
+
+        Log::info('Session Updated with Preliminary Restock Items', [
+            'items_count' => count($this->quoterItems)
+        ]);
+
+        $this->calculateTotal();
+
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Lista preliminar cargada. ' . count($this->quoterItems) . ' productos.'
+        ]);
+    }
 
 }

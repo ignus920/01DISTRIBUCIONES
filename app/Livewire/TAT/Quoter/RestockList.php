@@ -15,6 +15,7 @@ class RestockList extends Component
     public $search = '';
     public $perPage = 10;
     public $companyId;
+    public $selectedOrderNumber;
 
     protected $paginationTheme = 'tailwind';
 
@@ -44,31 +45,69 @@ class RestockList extends Component
     }
 
     public function render()
-    {
-        // Agrupar estrictamente por order_number. Usamos max(created_at) para mostrar la fecha más reciente del grupo.
-        // Asumimos que el status es el mismo para todo el pedido, tomamos cualquiera (max o min).
-        $restockOrders = TatRestockList::where('company_id', $this->companyId)
-            ->select(
-                'order_number', 
-                DB::raw('MAX(status) as status'), 
-                DB::raw('MAX(created_at) as created_at'), 
-                DB::raw('count(*) as total_items')
-            )
-            ->groupBy('order_number')
-            ->orderBy('created_at', 'desc')
-            ->when($this->search, function ($query) {
-               $query->having('order_number', 'like', '%' . $this->search . '%');
-            })
-            ->paginate($this->perPage);
+{
+    // ====================================================
+    // 1. Confirmados agrupados por order_number
+    // ====================================================
+    $confirmed = TatRestockList::where('company_id', $this->companyId)
+        ->where('status', 'Confirmado')
+        ->whereNotNull('order_number')
+        ->select(
+            'order_number',
+            DB::raw('MAX(status) as status'),
+            DB::raw('MAX(created_at) as created_at'),
+            DB::raw('COUNT(*) as total_items')
+        )
+        ->groupBy('order_number');
 
-        return view('livewire.TAT.quoter.restock-list', [
-            'restockOrders' => $restockOrders
-        ])->layout('layouts.app');
-    }
+    // ====================================================
+    // 2. Preliminares agrupados COMO UNA SOLA ORDEN
+    // ====================================================
+    $preliminary = TatRestockList::where('company_id', $this->companyId)
+        ->where('status', 'Registrado')
+        ->whereNull('order_number')
+        ->select(
+            DB::raw('NULL as order_number'),
+            DB::raw("'Registrado' as status"),
+            DB::raw('MAX(created_at) as created_at'),
+            DB::raw('COUNT(*) as total_items')
+        );
 
-    public function editRestock($orderNumber)
+    // ====================================================
+    // 3. Unimos confirmados + preliminar
+    // ====================================================
+    $query = $confirmed->union($preliminary);
+
+    // ====================================================
+    // 4. Subconsulta con paginación y ordenamiento
+    // ====================================================
+    $restockOrders = DB::table(DB::raw("({$query->toSql()}) as restocks"))
+        ->mergeBindings($query->getQuery())
+        ->when($this->search, function ($q) {
+            $q->where('order_number', 'like', '%' . $this->search . '%');
+        })
+        ->orderBy('created_at', 'desc')
+        ->paginate($this->perPage);
+
+    return view('livewire.TAT.quoter.restock-list', [
+        'restockOrders' => $restockOrders
+    ])->layout('layouts.app');
+}
+
+
+    public function editConfirmedRestock($orderNumber)
     {
+        $this->selectedOrderNumber = $orderNumber;
+
         // Redirigir al ProductQuoter Desktop con el parámetro restockOrder
-        return redirect()->route('tenant.quoter.products.desktop', ['restockOrder' => $orderNumber]);
+        return $this->redirect(route('tenant.quoter.products.desktop', ['restockOrder' => $this->selectedOrderNumber]));
     }
+
+    public function editPreliminaryRestock()
+{
+    return $this->redirect(
+        route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
+    );
+}
+
 }

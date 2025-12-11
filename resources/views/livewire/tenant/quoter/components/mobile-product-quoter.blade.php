@@ -503,6 +503,7 @@ $header = 'Seleccionar productos';
                 <div class="px-4 py-4 border-t border-gray-200 dark:border-gray-700 space-y-4 flex-shrink-0 bg-white dark:bg-gray-800">
 
                     <!-- Observaciones -->
+                     @if(auth()->user()->profile_id != 17)
                     <div x-data="{ open: @entangle('showObservations') }" class="w-full">
 
                         <button @click="open = !open"
@@ -533,6 +534,7 @@ $header = 'Seleccionar productos';
                                dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
                         </div>
                     </div>
+                    @endif
 
                     <!-- Total -->
                     <div class="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
@@ -623,24 +625,46 @@ $header = 'Seleccionar productos';
                         @endif
 
                         @if(auth()->user()->profile_id == 17)
-                        <!-- Botón Solicitar Reabastecimiento (solo para tienda) -->
-                        <button wire:click="saveRestockRequest"
-                            wire:loading.attr="disabled"
-                            wire:target="saveRestockRequest"
-                            class="w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                        <!-- Botones TAT específicos según diagrama de flujo -->
+                        <div class="space-y-2">
+                            <!-- Botón Confirmar y Migrar Directamente -->
+                            <button wire:click="saveRestockRequest(true)"
+                                wire:loading.attr="disabled"
+                                wire:target="saveRestockRequest"
+                                class="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
 
-                            <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                            </svg>
+                                <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
 
-                            <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                                <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
 
-                            <span wire:loading.remove wire:target="saveRestockRequest">Solicitar Reabastecimiento</span>
-                            <span wire:loading wire:target="saveRestockRequest">Enviando...</span>
-                        </button>
+                                <span wire:loading.remove wire:target="saveRestockRequest">Confirmar y Migrar Directamente</span>
+                                <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
+                            </button>
+
+                            <!-- Botón Agregar a Lista Preliminar -->
+                            <button wire:click="saveRestockRequest(false)"
+                                wire:loading.attr="disabled"
+                                wire:target="saveRestockRequest"
+                                class="w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+
+                                <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+
+                                <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+
+                                <span wire:loading.remove wire:target="saveRestockRequest">Agregar a Lista Preliminar</span>
+                                <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
+                            </button>
+                        </div>
                         @endif
                     </div>
 
