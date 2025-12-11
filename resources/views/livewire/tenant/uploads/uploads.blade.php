@@ -8,9 +8,10 @@
             <!-- Ajustado padding -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Parámetros Caja</h1>
+                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Parámetros cargue de pedidos
+                    </h1>
                     <!-- Ajustado tamaño texto -->
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de registros</p>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de cargue de pedidos</p>
                 </div>
             </div>
         </div>
@@ -74,22 +75,32 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="border-b border-default justify-center">
+                        {{-- <div class="border-b border-default justify-center flex">
                             <ul class="flex flex-wrap -mb-px text-sm font-medium text-center text-body">
                                 <li class="me-2">
                                     <a href="#"
                                         class="inline-flex items-center justify-center p-4 border-b border-transparent rounded-t-base hover:text-fg-brand hover:border-brand group">
-                                        Profile
+                                        Rutas
                                     </a>
                                 </li>
                                 <li class="me-2">
                                     <a href="#"
                                         class="inline-flex items-center justify-center p-4 text-fg-brand border-b border-brand rounded-t-base active group"
                                         aria-current="page">
-                                        Dashboard
+                                        Cargue
                                     </a>
                                 </li>
                             </ul>
+                        </div> --}}
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full pt-3">
+                            <button wire:click="preupload"
+                                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Previa del Cargue
+                            </button>
                         </div>
                     </div>
 
@@ -177,6 +188,18 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+
+                                    </th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div> --}}
                 </div>
             </div>
         </div>

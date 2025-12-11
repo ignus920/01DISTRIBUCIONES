@@ -180,11 +180,14 @@ new class extends Component
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Listar Ventas</a>
                 <a href="{{ route('tenant.tat.restock.list') }}" wire:navigate
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Reabastecimiento</a>
-                <a href="{{ route('tenant.customers') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
-                <a href="{{ route('tenant.items') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
+                <a href="{{ route('tenant.customers') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
+                <a href="{{ route('tenant.items') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
                     Ítems
                 </a>
-                <a href="{{ route('tenant.categories') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
+                <a href="{{ route('tenant.categories') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
 
             </div>
         </div>
@@ -239,13 +242,14 @@ new class extends Component
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
                 <a href="{{ route('customers.customers') }}" wire:navigate
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Clientes</a>
-                <a href="{{ route('users.users') }}" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Usuarios</a>
+                <a href="{{ route('users.users') }}"
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Usuarios</a>
             </div>
         </div>
         @endif
 
 
-   
+
 
 
         <!-- Parámetros (menú con subitems) -->
@@ -301,170 +305,125 @@ new class extends Component
             <div x-show="sidebarCollapsed && tooltip" x-transition
                 class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
-        <!-- <a href="{{ route('tenant.parameters.pricelists') }}" wire:navigate
+                <!-- <a href="{{ route('tenant.parameters.pricelists') }}" wire:navigate
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Listas de Precios</a>
                 <a href="#" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Impuestos</a> -->
-                  <a href="{{ route('tenant.parameters.zones') }}" wire:navigate
+                <a href="{{ route('tenant.parameters.zones') }}" wire:navigate
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Zonas</a>
-                    <a href="{{ route('tenant.parameters.routes') }}" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Rutas</a>
-        </div>
-        @endif
+                <a href="{{ route('tenant.parameters.routes') }}"
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Rutas</a>
+            </div>
+            @endif
 
 
 
 
 
 
-        <!-- Inventario (menú con subitems) -->
-        @if(auth()->user()->profile_id != 17)
-        <div x-data="{ tooltip: false, open: false }" class="w-full">
-            <!-- Botón principal -->
-            <div class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
-                :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" @mouseenter="tooltip = sidebarCollapsed"
-                @mouseleave="tooltip = false" @click="open = !open">
-                <svg class="h-5 w-5 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
-                    width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
-                        d="M13 7h6l2 4m-8-4v8m0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9h2m8 0H9m4 0h2m4 0h2v-4m0 0h-5m3.5 5.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm-10 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z" />
-                </svg>
+            <!-- Inventario (menú con subitems) -->
+            @if(auth()->user()->profile_id != 17)
+            <div x-data="{ tooltip: false, open: false }" class="w-full">
+                <!-- Botón principal -->
+                <div class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                    :class="sidebarCollapsed ? 'justify-center' : 'justify-start'"
+                    @mouseenter="tooltip = sidebarCollapsed" @mouseleave="tooltip = false" @click="open = !open">
+                    <svg class="h-5 w-5 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
+                        height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                            d="M13 7h6l2 4m-8-4v8m0-8V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v9h2m8 0H9m4 0h2m4 0h2v-4m0 0h-5m3.5 5.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm-10 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z" />
+                    </svg>
 
-                <span x-show="!sidebarCollapsed" class="ml-3 flex-1" x-transition>
-                    Inventario
-                </span>
+                    <span x-show="!sidebarCollapsed" class="ml-3 flex-1" x-transition>
+                        Inventario
+                    </span>
 
-                <!-- Icono desplegable -->
-                <svg x-show="!sidebarCollapsed" :class="open ? 'rotate-90' : ''"
-                    class="w-4 h-4 ml-auto transition-transform duration-200" fill="none" stroke="currentColor"
-                    stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
-                </svg>
+                    <!-- Icono desplegable -->
+                    <svg x-show="!sidebarCollapsed" :class="open ? 'rotate-90' : ''"
+                        class="w-4 h-4 ml-auto transition-transform duration-200" fill="none" stroke="currentColor"
+                        stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+                    </svg>
 
-                <!-- Tooltip (solo cuando está colapsado) -->
-                <div x-show="tooltip" x-transition
-                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                    Inventario
+                    <!-- Tooltip (solo cuando está colapsado) -->
+                    <div x-show="tooltip" x-transition
+                        class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
+                        Inventario
+                    </div>
+                </div>
+
+                <!-- Submenú -->
+                <div x-show="open && !sidebarCollapsed" x-transition
+                    class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                    <a href="{{ route('tenant.items') }}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
+
+
+                        Ítems
+
+                    </a>
+
+
+                    <a href="{{url('/inventory/categories')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
+
+
+                    <a href="{{url('/inventory/commands')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Comandas</a>
+                    <a href="{{url('/inventory/brands')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Marcas</a>
+                    <a href="{{url('/inventory/houses')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Casas</a>
+                    <a href="{{url('/inventory/units')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Unidades de Medida</a>
+                    <a href="{{ route('movements.movements') }}" wire:navigate
+                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                        Gestión movimientos
+                    </a>
+                </div>
+
+                <!-- Submenú desplegable (para sidebar colapsado) -->
+                <div x-show="sidebarCollapsed && tooltip" x-transition
+                    class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
+                    @mouseenter="tooltip = true" @mouseleave="tooltip = false">
+                    <a href="{{url('/inventory/categories')}}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
+                    <a href="{{ route('customers.customers') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
+                    <a href="{{ route('tenant.items') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
+                        Ítems
+                    </a>
+                    <a href="{{url('/inventory/brands')}}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Marcas</a>
+                    <a href="{{url('/inventory/commands')}}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Comandas</a>
+                    <a href="{{url('/inventory/units')}}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Unidades de Medida</a>
+                    <a href="{{url('/inventory/houses')}}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Casas</a>
+                    <a href="{{ route('movements.movements') }}" wire:navigate
+                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                        Gestión movimientos
+                    </a>
                 </div>
             </div>
-
-            <!-- Submenú -->
-            <div x-show="open && !sidebarCollapsed" x-transition
-                class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <a href="{{ route('tenant.items') }}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
-
-
-                    Ítems
-
-                </a>
-
-
-                <a href="{{url('/inventory/categories')}}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
-
-
-                <a href="{{url('/inventory/commands')}}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Comandas</a>
-                <a href="{{url('/inventory/brands')}}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Marcas</a>
-                <a href="{{url('/inventory/houses')}}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Casas</a>
-                <a href="{{url('/inventory/units')}}" wire:navigate
-                    class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Unidades de Medida</a>
-                <a href="{{ route('movements.movements') }}" wire:navigate
-                    class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                    Gestión movimientos
-                </a>
-            </div>
-
-            <!-- Submenú desplegable (para sidebar colapsado) -->
-            <div
-                x-show="sidebarCollapsed && tooltip"
-                x-transition
-                class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
-                @mouseenter="tooltip = true"
-                @mouseleave="tooltip = false">
-                <a href="{{url('/inventory/categories')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
-                <a href="{{ route('customers.customers') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
-                <a href="{{ route('tenant.items') }}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
-                Ítems
-                </a>
-                <a href="{{url('/inventory/brands')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Marcas</a>
-                <a href="{{url('/inventory/commands')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Comandas</a>
-                <a href="{{url('/inventory/units')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Unidades de Medida</a>
-                <a href="{{url('/inventory/houses')}}" wire:navigate class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Casas</a>
-                <a href="{{ route('movements.movements') }}" wire:navigate
-                    class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                    Gestión movimientos
-                </a>
-            </div>
-        </div>
-        @endif
+            @endif
 
 
 
 
 
-        <!-- Caja -->
-        @if(auth()->user()->profile_id != 17)
-        <a href="{{ route('petty-cash.petty-cash') }}" wire:navigate
-            class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 {{ request()->routeIs('petty-cash.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400' }}"
-            :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
-            @mouseenter="tooltip = sidebarCollapsed" @mouseleave="tooltip = false">
-
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                stroke="currentColor" class="h-5 w-5 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-            </svg>
-            <span x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 translate-x-0" x-transition:leave-end="opacity-0 translate-x-4"
-                class="ml-3">
-                Caja
-            </span>
-            <!-- Tooltip -->
-            <div x-show="tooltip" x-transition
-                class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                Caja
-            </div>
-        </a>
-        @endif
-
-        <!-- Cargue de pedidos -->
-        <a href="{{ route('tenant.uploads.uploads') }}" wire:navigate
-            class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 {{ request()->routeIs('tenant.uploads.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400' }}"
-            :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
-            @mouseenter="tooltip = sidebarCollapsed" @mouseleave="tooltip = false">
-            <x-heroicon-o-clipboard-document-list class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" />
-
-            <span x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-x-4" x-transition:enter-end="opacity-100 translate-x-0"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 translate-x-0" x-transition:leave-end="opacity-0 translate-x-4"
-                class="ml-3">
-                Cargue de Pedidos
-            </span>
-
-            <!-- Tooltip -->
-            <div x-show="tooltip" x-transition
-                class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                Cargue de Pedidos
-            </div>
-        </a>
-
-        <!-- Spacer -->
-        <div class="flex-1"></div>
-
-        <!-- Logout -->
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-            <button wire:click="logout"
-                class="group flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+            <!-- Caja -->
+            @if(auth()->user()->profile_id != 17)
+            <a href="{{ route('petty-cash.petty-cash') }}" wire:navigate
+                class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 {{ request()->routeIs('petty-cash.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400' }}"
                 :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
                 @mouseenter="tooltip = sidebarCollapsed" @mouseleave="tooltip = false">
-                <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                    stroke="currentColor" class="h-5 w-5 shrink-0">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
                 </svg>
                 <span x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 translate-x-4"
@@ -472,15 +431,69 @@ new class extends Component
                     x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100 translate-x-0"
                     x-transition:leave-end="opacity-0 translate-x-4" class="ml-3">
-                    Cerrar Sesión
+                    Caja
+                </span>
+                <!-- Tooltip -->
+                <div x-show="tooltip" x-transition
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
+                    Caja
+                </div>
+            </a>
+            @endif
+
+            <!-- Cargue de pedidos -->
+            @if(auth()->user()->profile_id != 17)
+            <a href="{{ route('tenant.uploads.uploads') }}" wire:navigate
+                class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 {{ request()->routeIs('tenant.uploads.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400' }}"
+                :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
+                @mouseenter="tooltip = sidebarCollapsed" @mouseleave="tooltip = false">
+                <x-heroicon-o-clipboard-document-list class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" />
+
+                <span x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
+                    x-transition:enter-start="opacity-0 translate-x-4"
+                    x-transition:enter-end="opacity-100 translate-x-0"
+                    x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100 translate-x-0"
+                    x-transition:leave-end="opacity-0 translate-x-4" class="ml-3">
+                    Cargue de Pedidos
                 </span>
 
                 <!-- Tooltip -->
                 <div x-show="tooltip" x-transition
                     class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                    Cerrar Sesión
+                    Cargue de Pedidos
                 </div>
-            </button>
-        </div>
+            </a>
+            @endif
+
+            <!-- Spacer -->
+            <div class="flex-1"></div>
+
+            <!-- Logout -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <button wire:click="logout"
+                    class="group flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
+                    :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
+                    @mouseenter="tooltip = sidebarCollapsed" @mouseleave="tooltip = false">
+                    <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 translate-x-4"
+                        x-transition:enter-end="opacity-100 translate-x-0"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100 translate-x-0"
+                        x-transition:leave-end="opacity-0 translate-x-4" class="ml-3">
+                        Cerrar Sesión
+                    </span>
+
+                    <!-- Tooltip -->
+                    <div x-show="tooltip" x-transition
+                        class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
+                        Cerrar Sesión
+                    </div>
+                </button>
+            </div>
     </nav>
 </div>
