@@ -3,8 +3,7 @@
     <div class="w-full mx-auto px-2 sm:px-4">
         <!-- Cambiado max-w-12xl por w-full y añadido padding horizontal -->
         <!-- Header -->
-        <div
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6 mb-4 md:mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6 mb-4 md:mb-6">
             <!-- Ajustado padding -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -12,16 +11,40 @@
                     <!-- Ajustado tamaño texto -->
                     <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de registros</p>
                 </div>
+
+                <div>
+                 <button wire:click="$set('showCharge', 'pedidos')"  
+                  class="inline-flex items-center px-4 py-2 {{ $showCharge === 'pedidos' ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600' : 'bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500' }} border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                   Pedidos
+                </button>
+                <button wire:click="$set('showCharge', 'cargues')"  
+                  class="inline-flex items-center px-4 py-2 {{ $showCharge === 'cargues' ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600' : 'bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500' }} border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                   Cargues
+                </button>
+
+                </div>
+             
             </div>
         </div>
 
         <div class="w-full">
-            <!--CARD IZQUIERDO-->
+
+        
+        
             <div class="w-full mx-auto">
                 <!-- Ajustado para ocupar todo el ancho disponible -->
                 <!-- Mensajes -->
-                @if (session()->has('message'))
-                <div
+                  
+                @if($showCharge == "pedidos")
+                    <!--CARD IZQUIERDO-->
+                  @if (session()->has('message'))
+                  <div
                     class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg mb-6">
                     <div class="flex items-center">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,10 +53,11 @@
                         </svg>
                         {{ session('message') }}
                     </div>
-                </div>
-                @endif
-                <!-- DataTable Card -->
-                <div
+                  </div>
+                  @endif
+                  <!-- DataTable Card -->
+             
+                  <div
                     class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
                     <!-- Toolbar -->
                     <div class="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
@@ -177,12 +201,20 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
+                  </div>
+                @else
+                   <div>
+                        <livewire:tenant.uploads.components.print-uploads-charges />
+                   </div>
+                @endif
+
             </div>
         </div>
     </div>
     <!-- Modal -->
     @if($showModal)
+
+
 
     @endif
 </div>
