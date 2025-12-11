@@ -68,10 +68,14 @@ class CompanyValidationService
             'personal_phone.max' => 'El teléfono personal no puede tener más de 100 caracteres.',
             'positionId.exists' => 'La posición seleccionada no es válida.',
             
-            // Vendedor
-            'vntUserId.required' => 'Debe seleccionar un vendedor.',
-            'vntUserId.integer' => 'El vendedor seleccionado no es válido.',
-            'vntUserId.exists' => 'El vendedor seleccionado no existe.',
+            // Vendedor (campo no existe en la tabla)
+            // 'vntUserId.integer' => 'El vendedor seleccionado no es válido.',
+            // 'vntUserId.exists' => 'El vendedor seleccionado no existe.',
+            // Ruta
+            'routeId.integer' => 'La ruta seleccionada no es válida.',
+            'routeId.exists' => 'La ruta seleccionada no existe.',
+            // Barrio
+            'district.required' => 'El barrio es obligatorio.',
         ];
     }
 
@@ -112,8 +116,10 @@ class CompanyValidationService
             'personal_phone' => 'teléfono personal',
             'positionId' => 'posición',
             
-            // Vendedor
-            'vntUserId' => 'vendedor',
+            // Vendedor y Ruta
+            // 'vntUserId' => 'vendedor', // Campo no existe en la tabla
+            'routeId' => 'ruta',
+            'district' => 'barrio',
         ];
     }
 
@@ -158,7 +164,8 @@ class CompanyValidationService
             'integrationDataId' => 'nullable|integer',
             'code_ciiu' => 'nullable|string|max:255',
             'verification_digit' => $verificationDigitRule,
-            'vntUserId' => 'required|integer|exists:users,id',
+            // 'vntUserId' => 'nullable|integer|exists:users,id', // Campo no existe en la tabla
+            'routeId' => 'nullable|integer|exists:tat_routes,id',
             'warehouses' => 'array',
             // 'warehouses.*.name' => 'required|string|max:255',
             'warehouses.*.address' => 'required|string|max:255',

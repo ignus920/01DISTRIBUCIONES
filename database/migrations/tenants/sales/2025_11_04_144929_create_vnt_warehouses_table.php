@@ -22,6 +22,7 @@ return new class extends Migration
                 $table->string('creditLimit', 20)->default(0);
                 $table->integer('priceList')->default(1);
                 $table->integer('status')->nullable()->default(1);
+                 $table->string('district', 255);
                 $table->integer('api_data_id')->nullable();
                 $table->integer('main')->nullable()->default(1);
                 $table->enum('branch_type', ['FIJA', 'DESPACHO'])->default('FIJA');

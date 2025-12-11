@@ -20,6 +20,7 @@ class WarehouseService
                     'address' => $warehouseData['address'],
                     'postcode' => $warehouseData['postcode'] ?? null,
                     'cityId' => !empty($warehouseData['cityId']) ? $warehouseData['cityId'] : null,
+                    'district' => $warehouseData['district'] ?? null,
                     'main' => $warehouseData['main'] ? 1 : 0,
                     'status' => 1,
                 ]);
@@ -61,6 +62,7 @@ class WarehouseService
                 'address' => $warehouse->address,
                 'postcode' => $warehouse->postcode,
                 'cityId' => $warehouse->cityId,
+                'district' => $warehouse->district,
                 'main' => (bool) $warehouse->main,
             ];
         })->toArray();
@@ -124,6 +126,7 @@ class WarehouseService
             'address' => $warehouseData['address'],
             'postcode' => $warehouseData['postcode'] ?? null,
             'cityId' => !empty($warehouseData['cityId']) ? $warehouseData['cityId'] : null,
+            'district' => $warehouseData['district'] ?? null,
             'main' => $warehouseData['main'] ? 1 : 0,
         ]);
     }
@@ -227,6 +230,7 @@ class WarehouseService
             'address' => $warehouseData['address'],
             'postcode' => $warehouseData['postcode'] ?? null,
             'cityId' => !empty($warehouseData['cityId']) ? $warehouseData['cityId'] : null,
+            'district' => $warehouseData['district'] ?? null,
             'main' => $warehouseData['main'] ? 1 : 0,
             'status' => 1,
         ]);
