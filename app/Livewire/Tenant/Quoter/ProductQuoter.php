@@ -1092,15 +1092,47 @@ public function validateQuantity($index)
             $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
             $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
 
+            // Obtener warehouseId correcto del contacto del usuario
+            $userId = auth()->id();
+            $warehouseId = session('warehouse_id', 1); // Valor por defecto (fallback)
+            $contactName = '';
+
+            if (auth()->check() && auth()->user()->contact_id) {
+                $contact = DB::table('vnt_contacts')
+                    ->where('id', auth()->user()->contact_id)
+                    ->first();
+                
+                if ($contact) {
+                    if (isset($contact->warehouseId)) {
+                        $warehouseId = $contact->warehouseId;
+                        Log::info("Warehouse ID obtenido del contacto", ['userId' => $userId, 'warehouseId' => $warehouseId]);
+                    }
+                    
+                    // Construir nombre completo
+                    $names = array_filter([
+                        $contact->firstName,
+                        $contact->secondName,
+                        $contact->lastName,
+                        $contact->secondLastName
+                    ]);
+                    $contactName = implode(' ', $names);
+                }
+            }
+
+            $observations = "Solicitud de reabastecimiento TAT #{$orderNumber}";
+            if (!empty($contactName)) {
+                $observations .= " - " . $contactName;
+            }
+
             // Crear cotización (adaptando saveQuote() existente para TAT)
             $quote = VntQuote::create([
                 'consecutive' => $nextConsecutive,
                 'status' => 'REGISTRADO',
-                'typeQuote' => 'INSTITUCIONAL', // Para TAT es institucional
+                'typeQuote' => 'POS', // Para TAT es institucional/POS
                 'customerId' => $companyId, // La tienda TAT como cliente
-                'warehouseId' => session('warehouse_id', 1),
-                'userId' => auth()->id(),
-                'observations' => "Solicitud de reabastecimiento TAT #{$orderNumber}",
+                'warehouseId' => $warehouseId,
+                'userId' => $userId,
+                'observations' => $observations,
                 'branchId' => session('branch_id', 1)
             ]);
 
