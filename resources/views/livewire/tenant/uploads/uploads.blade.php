@@ -93,13 +93,13 @@
                             </ul>
                         </div> --}}
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full pt-3">
-                            <button wire:click="con"
+                            <button wire:click="confirmUpload"
                                 class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 4v16m8-8H4"></path>
                                 </svg>
-                                Previa del Cargue
+                                Confirmar Cargue
                             </button>
                         </div>
                     </div>

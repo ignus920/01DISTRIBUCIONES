@@ -144,7 +144,7 @@ class Uploads extends Component
     
     }
 
-    public function delete($userId)
+    public function eliminar($userId)
     {   
         if (!$this->selectedDate) {
             session()->flash('error', 'Por favor selecciona una fecha primero');
@@ -193,7 +193,18 @@ class Uploads extends Component
         return $result->hay_faltantes;        
     }
 
-    
+    public function confirmUpload()
+    {
+        $hayFaltantes = $this->validateScarce();
+
+        if ($hayFaltantes === 'SI') {
+            dd('hay faltantes');
+            return;
+        }
+
+        // Si no hay faltantes, proceder con la lógica de confirmación
+        session()->flash('message', 'Cargue confirmado exitosamente.');
+    }
 
     public function render()
     {
