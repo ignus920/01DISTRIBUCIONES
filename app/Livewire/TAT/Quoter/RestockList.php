@@ -49,17 +49,20 @@ class RestockList extends Component
     // ====================================================
     // 1. Confirmados agrupados por order_number
     // ====================================================
+    // ====================================================
+    // 1. Confirmados y Recibidos agrupados por order_number
+    // ====================================================
     $confirmed = TatRestockList::where('company_id', $this->companyId)
-        ->where('status', 'Confirmado')
+        ->whereIn('status', ['Confirmado', 'Recibido'])
         ->whereNotNull('order_number')
         ->select(
             'order_number',
-            DB::raw('MAX(status) as status'),
+            DB::raw('MAX(status) as status'), // Esto podría necesitar ajuste si mezclan estados, pero por ahora MAX funciona si Recibido > Confirmado alfabéticamente? R > C, sí.
             DB::raw('MAX(created_at) as created_at'),
             DB::raw('COUNT(*) as total_items')
         )
         ->groupBy('order_number')
-        ->having('total_items', '>', 0); // Filtrar grupos con 0 productos
+        ->having('total_items', '>', 0);
 
     // ====================================================
     // 2. Preliminares agrupados COMO UNA SOLA ORDEN

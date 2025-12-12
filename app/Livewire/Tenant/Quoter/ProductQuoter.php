@@ -30,6 +30,7 @@ class ProductQuoter extends Component
     public $showCartModal = false;
     public $viewType = 'desktop'; // 'desktop' o 'mobile'
     public $customerSearch = '';
+    public $customerSearchResults = [];
     public $selectedCustomer = null;
     public $observaciones = null;
     public $searchingCustomer = false;
@@ -172,10 +173,40 @@ class ProductQuoter extends Component
     public function addToQuoter($productId, $selectedPrice, $priceLabel)
     {
         // Validar si el producto ya está confirmado (Perfil 17)
-        if (!$this->validateConfirmedProduct($productId)) {
+        $warningMessage = $this->checkConfirmedProductStatus($productId);
+        
+        if ($warningMessage) {
+            // Si hay advertencia, pedir confirmación al usuario
+            $this->dispatch('confirm-add-duplicate', [
+                'message' => $warningMessage,
+                'productId' => $productId,
+                'selectedPrice' => $selectedPrice,
+                'priceLabel' => $priceLabel
+            ]);
             return;
         }
 
+        $this->performAddToQuoter($productId, $selectedPrice, $priceLabel);
+    }
+
+    #[On('force-add-to-quoter')]
+    public function forceAddToQuoter($productId, $selectedPrice, $priceLabel)
+    {
+        Log::info('forceAddToQuoter triggered (Direct Call or Event)', [
+            'productId' => $productId,
+            'selectedPrice' => $selectedPrice,
+            'priceLabel' => $priceLabel
+        ]);
+
+        if ($productId) {
+            $this->performAddToQuoter($productId, $selectedPrice, $priceLabel);
+        } else {
+            Log::warning('forceAddToQuoter: Missing productId');
+        }
+    }
+
+    private function performAddToQuoter($productId, $selectedPrice, $priceLabel)
+    {
         // Verificar si el producto ya está en el cotizador (sin consulta DB)
         $existingIndex = $this->findProductInQuoter($productId);
 
@@ -1479,20 +1510,20 @@ public function validateQuantity($index)
 
     /**
      * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
-     * Si existe, evita que se agregue nuevamente a una solicitud.
+     * Retorna mensaje de advertencia si existe, o null si pasa la validación.
      */
-    protected function validateConfirmedProduct($productId)
+    protected function checkConfirmedProductStatus($productId)
     {
         // Solo aplica para perfil 17
         if (!auth()->check() || auth()->user()->profile_id != 17) {
-            return true; // Pasa la validación
+            return null; // Pasa la validación
         }
 
         $this->ensureTenantConnection();
         $companyId = $this->getUserCompanyId(auth()->user());
 
         if (!$companyId) {
-            return true; // No podemos validar sin compañía
+            return null; // No podemos validar sin compañía
         }
 
         // Buscar en la tabla de restock si existe confirmado
@@ -1502,14 +1533,84 @@ public function validateQuantity($index)
             ->first();
 
         if ($confirmedItem) {
-            $this->dispatch('show-toast', [
-                'type' => 'warning',
-                'message' => "Este producto ya está confirmado con {$confirmedItem->quantity_request} unidades en la orden #{$confirmedItem->order_number}"
-            ]);
-            return false; // Falla la validación
+            return "Este producto ya está confirmado con {$confirmedItem->quantity_request} unidades en la orden #{$confirmedItem->order_number}";
+        }
+        
+        return null; // Pasa la validación
+    }
+
+    /**
+     * Método para búsqueda en tiempo real de clientes (como en quoter-view)
+     */
+    public function updatedCustomerSearch()
+    {
+        if (strlen($this->customerSearch) >= 1) {
+            $this->searchCustomersLive();
+        } else {
+            $this->customerSearchResults = [];
+        }
+    }
+
+    /**
+     * Buscar clientes en tiempo real
+     */
+    public function searchCustomersLive()
+    {
+        $this->ensureTenantConnection();
+
+        if (strlen($this->customerSearch) < 1) {
+            $this->customerSearchResults = [];
+            return;
         }
 
-        return true; // Exitoso
+        $customers = VntCompany::select('id', 'businessName', 'firstName', 'lastName', 'identification', 'billingEmail')
+            ->where(function($query) {
+                $query->where('identification', 'like', '%' . $this->customerSearch . '%')
+                      ->orWhere('businessName', 'like', '%' . $this->customerSearch . '%')
+                      ->orWhere('firstName', 'like', '%' . $this->customerSearch . '%')
+                      ->orWhere('lastName', 'like', '%' . $this->customerSearch . '%');
+            })
+            ->get();
+
+        $this->customerSearchResults = $customers->map(function($customer) {
+            return [
+                'id' => $customer->id,
+                'identification' => $customer->identification,
+                'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName)
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Seleccionar un cliente de los resultados
+     */
+    public function selectCustomer($customerId)
+    {
+        $this->ensureTenantConnection();
+
+        $customer = VntCompany::find($customerId);
+
+        if ($customer) {
+            $this->selectedCustomer = $customer->toArray();
+            $this->customerSearch = '';
+            $this->customerSearchResults = [];
+
+            $name = $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName);
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Cliente seleccionado: ' . $name
+            ]);
+        }
+    }
+
+    /**
+     * Cancelar búsqueda de cliente
+     */
+    public function cancelClientSearch()
+    {
+        $this->customerSearch = '';
+        $this->customerSearchResults = [];
     }
 
 }

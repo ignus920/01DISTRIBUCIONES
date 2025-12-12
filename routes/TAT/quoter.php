@@ -24,6 +24,11 @@ Route::get('/tenant/tat-restock', \App\Livewire\TAT\Quoter\RestockList::class)
     ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
     ->name('tenant.tat.restock.list');
 
+// Ruta para recibir pedidos (TAT)
+Route::get('/tenant/tat-receive-orders', \App\Livewire\TAT\Orders\ReceiveOrders::class)
+    ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
+    ->name('tenant.tat.receive.orders');
+
 // Rutas adicionales para el cotizador si se necesitan más funcionalidades
 Route::prefix('tenant/quoter')->group(function () {
 

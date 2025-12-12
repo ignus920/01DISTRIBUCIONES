@@ -8,6 +8,13 @@
                 <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Gestión de pedidos realizados a la distribuidora</p>
             </div>
             <div class="flex items-center space-x-3">
+                <a href="{{ route('tenant.tat.receive.orders') }}"
+                   class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium flex items-center transition-colors">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    Recibir Pedidos
+                </a>
                 <button wire:click="createNewRestock"
                         class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded text-sm font-medium flex items-center transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,21 +111,41 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full
-                                    {{ $order->status === 'Registrado' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                                    {{ $order->status === 'Registrado' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                                       ($order->status === 'Recibido' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                                       'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200') }}">
                                     {{ $order->status }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                 @if($order->order_number)
-                                    <!-- Registro confirmado: se puede editar por order_number -->
-                                    <button wire:click="editConfirmedRestock({{ $order->order_number }})"
-                                        class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 inline-flex items-center transition-colors"
-                                        title="Editar Solicitud Confirmada">
-                                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                        </svg>
-                                        Editar Orden
-                                    </button>
+                                    <!-- Registro confirmado -->
+                                    @if($order->status === 'Confirmado')
+                                         <a href="{{ route('tenant.tat.receive.orders', ['search' => $order->order_number]) }}"
+                                           class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 inline-flex items-center transition-colors text-sm font-medium">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            Recibir
+                                        </a>
+                                    @elseif($order->status === 'Recibido')
+                                        <span class="text-blue-600 dark:text-blue-400 inline-flex items-center text-sm font-medium">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Completado
+                                        </span>
+                                    @else
+                                        <!-- Fallback para editar si es necesario, pero órdenes confirmadas/recibidas usualmente no se editan igual -->
+                                         <button wire:click="editConfirmedRestock({{ $order->order_number }})"
+                                            class="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 inline-flex items-center transition-colors"
+                                            title="Editar Solicitud">
+                                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                            Ver Detalle
+                                        </button>
+                                    @endif
                                 @else
                                     <!-- Registro preliminar: se puede editar también -->
                                     <button wire:click="editPreliminaryRestock"
