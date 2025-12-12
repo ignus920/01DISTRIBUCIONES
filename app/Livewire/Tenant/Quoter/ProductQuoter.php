@@ -171,6 +171,11 @@ class ProductQuoter extends Component
 
     public function addToQuoter($productId, $selectedPrice, $priceLabel)
     {
+        // Validar si el producto ya está confirmado (Perfil 17)
+        if (!$this->validateConfirmedProduct($productId)) {
+            return;
+        }
+
         // Verificar si el producto ya está en el cotizador (sin consulta DB)
         $existingIndex = $this->findProductInQuoter($productId);
 
@@ -1041,8 +1046,6 @@ public function validateQuantity($index)
     // NUEVAS FUNCIONES PARA EL FLUJO TAT COMPLETO
     // ============================================
 
-
-
     /**
      * Función de migración a vnt_quotes - reutiliza lógica existente adaptada para TAT
      */
@@ -1435,6 +1438,46 @@ public function validateQuantity($index)
             'type' => 'info',
             'message' => 'Lista preliminar cargada. ' . count($this->quoterItems) . ' productos.'
         ]);
+    }
+
+
+
+
+    
+
+    /**
+     * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
+     * Si existe, evita que se agregue nuevamente a una solicitud.
+     */
+    protected function validateConfirmedProduct($productId)
+    {
+        // Solo aplica para perfil 17
+        if (!auth()->check() || auth()->user()->profile_id != 17) {
+            return true; // Pasa la validación
+        }
+
+        $this->ensureTenantConnection();
+        $companyId = $this->getUserCompanyId(auth()->user());
+
+        if (!$companyId) {
+            return true; // No podemos validar sin compañía
+        }
+
+        // Buscar en la tabla de restock si existe confirmado
+        $confirmedItem = TatRestockList::where('company_id', $companyId)
+            ->where('itemId', $productId)
+            ->where('status', 'Confirmado')
+            ->first();
+
+        if ($confirmedItem) {
+            $this->dispatch('show-toast', [
+                'type' => 'warning',
+                'message' => "Este producto ya está confirmado con {$confirmedItem->quantity_request} unidades en la orden #{$confirmedItem->order_number}"
+            ]);
+            return false; // Falla la validación
+        }
+
+        return true; // Exitoso
     }
 
 }

@@ -697,3 +697,20 @@ $header = 'Seleccionar productos';
     @endif
     @endif
 </div>
+
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        Livewire.on('show-toast', (data) => {
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true,
+                icon: payload.type || 'info',
+                title: payload.message
+            });
+        });
+    });
+</script>
