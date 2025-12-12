@@ -51,22 +51,51 @@ class Uploads extends Component
     }
 
     public function getRemissions($date, $routeId = null){
-        $query = DB::table('inv_remissions as r')
-                        ->join('users as u', 'r.userId', '=', 'u.id')
-                        ->select(
-                            'u.name',
-                            'r.userId',
-                            DB::raw('COUNT(r.userId) as total_registros'),
-                            DB::raw('DATE(r.deliveryDate) as fecha')
-                        )
-                        ->whereDate('r.deliveryDate', $date);
+        // Usamos una subconsulta para calcular el campo "existe"
+        $subquery = DB::table('vnt_quotes as q')
+            ->select(
+                'q.id',
+                'q.userId',
+                'q.created_at',
+                'q.customerId',
+                DB::raw("CASE WHEN EXISTS (
+                    SELECT 1 
+                    FROM dis_deliveries_list d 
+                    WHERE d.salesman_id = q.userId
+                    AND d.sale_date = DATE(q.created_at)
+                ) THEN 'SI' ELSE 'NO' END as existe")
+            );
         
-        if ($routeId) {
-            $query->where('r.routeId', $routeId);
-        }
-        
-        return $query->groupBy('u.id', 'u.name', DB::raw('DATE(r.deliveryDate)'))
-                     ->get();
+        // if ($routeId) {
+        //     $subquery->where('r.routeId', $routeId);
+        // }
+    
+        // Consulta principal
+        $query = DB::table(DB::raw("({$subquery->toSql()}) as q"))
+            ->mergeBindings($subquery)
+            ->join('users as u', 'q.userId', '=', 'u.id')
+            ->join('inv_remissions as r', 'q.id', '=', 'r.quoteId')
+            ->join('tat_companies_routes as cXr', 'q.customerId', '=', 'cXr.company_id')
+            ->join('tat_routes as rt', 'cXr.route_id', '=', 'rt.id')
+            ->select(
+                'u.name',
+                'q.userId',
+                'rt.name as ruta',
+                DB::raw('DATE(q.created_at) as fecha'),
+                DB::raw('COUNT(*) as total_registros'),
+                DB::raw('MAX(q.existe) as existe')
+            )
+            ->whereDate('q.created_at', $date);
+
+            // Agregar esto para depurar
+    Log::info('Consulta SQL:', [
+        'sql' => $query->toSql(),
+        'bindings' => $query->getBindings(),
+        'date' => $date,
+        'routeId' => $routeId
+    ]);
+
+        return $query->groupBy('u.id', 'u.name', DB::raw('DATE(q.created_at)'),'rt.name')->get();
     }
 
     public function sortBy($field)
@@ -103,14 +132,68 @@ class Uploads extends Component
                 'created_at' => Carbon::now()
             ];
             DisDeliveriesList::create($uploadData);
+
+             $this->remissions = $this->getRemissions($this->selectedDate, $this->selectedRoute);
             
             session()->flash('message', "Cargando datos para el usuario ID: $userId - Fecha: {$this->selectedDate}");
+
         }catch(\Exception $e){
             // Para debug, muestra un mensaje
             session()->flash('error', "Error al registrar el cargue".$e->getMessage());
         }
     
     }
+
+    public function delete($userId)
+    {   
+        if (!$this->selectedDate) {
+            session()->flash('error', 'Por favor selecciona una fecha primero');
+            return;
+        }
+
+        try {
+            // Buscar y eliminar el registro
+            $deleted = DisDeliveriesList::where('salesman_id', $userId)
+                ->whereDate('sale_date', $this->selectedDate)
+                ->delete();
+
+            if ($deleted) {
+                // Recargar los datos de la tabla
+                $this->remissions = $this->getRemissions($this->selectedDate, $this->selectedRoute);
+
+                session()->flash('message', "Registro eliminado exitosamente");
+            } else {
+                session()->flash('warning', "No se encontró el registro para eliminar");
+            }
+
+        } catch(\Exception $e) {
+            session()->flash('error', "Error al eliminar el registro: " . $e->getMessage());
+        }
+    }
+
+    public function validateScarce(){
+        $result = DB::selectOne("
+        SELECT 
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 
+                    FROM dis_deliveries_list dl 
+                    INNER JOIN vnt_quotes q ON dl.salesman_id = q.userId 
+                        AND DATE(q.created_at) = dl.sale_date 
+                    INNER JOIN vnt_detail_quotes dt ON dt.quoteId = q.id 
+                    LEFT JOIN inv_items_store its ON dt.itemId = its.itemId 
+                    GROUP BY dt.itemId, its.stock_items_store 
+                    HAVING SUM(dt.quantity) > COALESCE(its.stock_items_store, 0)
+                       OR its.stock_items_store IS NULL
+                    LIMIT 1
+                ) THEN 'SI' 
+                ELSE 'NO' 
+            END AS hay_faltantes");
+    
+        return $result->hay_faltantes;        
+    }
+
+    
 
     public function render()
     {

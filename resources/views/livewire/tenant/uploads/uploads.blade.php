@@ -93,7 +93,7 @@
                             </ul>
                         </div> --}}
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full pt-3">
-                            <button wire:click="preupload"
+                            <button wire:click="con"
                                 class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -114,6 +114,9 @@
                                         Vendedor</th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Ruta</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Cantidad</th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -132,6 +135,10 @@
                                         class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                         {{ $remission->name }}
                                     </td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ $remission->ruta }}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {{ $remission->total_registros }}
                                     </td>
@@ -140,6 +147,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                         <div class="flex items-center justify-center gap-2">
+                                            @if($remission->existe == "NO")
                                             <button wire:click="cargar({{ $remission->userId }})"
                                                 wire:loading.attr="disabled"
                                                 wire:target="cargar({{ $remission->userId }})"
@@ -161,11 +169,13 @@
                                                     Cargando...
                                                 </span>
                                             </button>
-                                            <button
+                                            @else
+                                            <button wire:click="eliminar({{ $remission->userId }})"
                                                 class="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs font-medium rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
                                                 <x-heroicon-o-trash class="w-5 h-4" />
                                                 Eliminar
                                             </button>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
