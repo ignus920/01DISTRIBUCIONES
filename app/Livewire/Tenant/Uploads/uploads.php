@@ -222,7 +222,16 @@ class Uploads extends Component
                         'sale_date' => $deliveryListItem->sale_date,
                         'created_at' => Carbon::now()
                     ];
-                    DisDeliveries::create($dataDeliveries);
+
+                    //Registro en la tabla dis_deliveries
+                    $dis_deliveries = DisDeliveries::create($dataDeliveries);
+
+                    //Actualización registros en la tabla inv_remissions
+                    InvRemissions::whereHas('quote', function ($query) use ($deliveryListItem) {
+                        $query->where('userId', $deliveryListItem->salesman_id)
+                              ->whereDate('created_at', $deliveryListItem->sale_date);
+                    })->update(['delivery_id' => $dis_deliveries->id, 'deliveryDate' => $dis_deliveries->sale_date]);
+
                 }
                 // Si no hay faltantes, proceder con la lógica de confirmación
                 session()->flash('message', 'Cargue confirmado exitosamente.');
@@ -262,6 +271,12 @@ class Uploads extends Component
     }
 
     public function closeAlertScares(){
+        $this->showScares = false;
+    }
+
+    public function openMovementsForm()
+    {
+        $this->showModal = true;
         $this->showScares = false;
     }
 

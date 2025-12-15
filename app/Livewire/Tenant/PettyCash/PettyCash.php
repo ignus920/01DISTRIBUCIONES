@@ -94,7 +94,7 @@ class PettyCash extends Component
         try{
             $this->ensureTenantConnection();
     
-            $exists=$this->PettyCashExits(6);
+            $exists=$this->PettyCashExits($this->getwarehouse());
     
             if ($exists) {
                 $this->addError('base', 'No se puede registrar, hay cajas abiertas');
@@ -103,7 +103,7 @@ class PettyCash extends Component
                 $this->validate();
             
                 // Determine the next consecutive number for the given warehouse
-                $lastConsecutive = PettyCashModel::where('warehouseId', 6)->where('user')->max('consecutive');
+                $lastConsecutive = PettyCashModel::where('warehouseId', $this->getwarehouse())->where('userIdOpen')->max('consecutive');
             
                 $newConsecutive = $lastConsecutive ? $lastConsecutive + 1 : 1;
             
@@ -113,7 +113,7 @@ class PettyCash extends Component
                     'status' => 1,
                     'created_at' => Carbon::now(),
                     'userIdOpen' => Auth::id(),
-                    'warehouseId' => 6,//$this->warehouseId, // Use the dynamic warehouseId
+                    'warehouseId' => $this->getwarehouse(),//$this->warehouseId, // Use the dynamic warehouseId
                     'cashier' => Auth::id(),
                 ];
             
@@ -128,6 +128,7 @@ class PettyCash extends Component
                 $this->showModal = false;
             }
         }catch(\Exception $e){
+            Log::error($e);
             session()->flash('error', 'Error al registrar la caja.'. $e->getMessage());
         }
     }
@@ -300,7 +301,7 @@ class PettyCash extends Component
 
         // Obtener los datos del detalle del cierre/arqueo, compañia, sucursal, cajero, número de caja
         $detailPettyCash = VntDetailReconciliations::with('reconciliation', 'methodPayments')->where('reconciliationId', $close_id)->get();
-        $infoCompany = $this->cashierPettyCash();
+        $infoCompany = $this->cashierPettyCash($close_id);
         $infoPettyCash = PettyCashModel::where('id', $pettyCash_id)->get();
 
         // Convertir a array y limpiar los datos de las consultas
@@ -371,7 +372,7 @@ class PettyCash extends Component
         $this->showModal = false;
     }
 
-    public function cashierPettyCash()
+    public function cashierPettyCash($close_id)
     {
         // 1. Establecer el contexto del tenant para poder obtener su información.
         $this->ensureTenantConnection();
@@ -402,12 +403,25 @@ class PettyCash extends Component
 
             // Condiciones
             ->where('uXt.tenant_id', '8fb35c7f-b3b6-4e6b-b240-a4acefb1ab9a')
-            ->where('uXt.user_id', 8)
-            ->where('r.id', 13)
+            ->where('uXt.user_id', Auth::id())
+            ->where('r.id', $close_id)
             ->first();
 
         // Para depurar, puedes descomentar la siguiente línea:
         // dd($data);
+        return $data;
+    }
+
+    public function getwarehouse(){
+        $this->ensureTenantConnection();
+
+        $centralDbName = config('database.connections.central.database');
+
+        $data=DB::table("{$centralDbName}.users", 'u')
+                    ->select('w.id')
+                    ->join("{$centralDbName}.vnt_contacts as c", 'u.contact_id', '=', 'c.id')
+                    ->join("{$centralDbName}.vnt_warehouses as w", 'c.warehouseId', '=', 'w.id')
+                    ->where('u.id', Auth::id());
         return $data;
     }
 

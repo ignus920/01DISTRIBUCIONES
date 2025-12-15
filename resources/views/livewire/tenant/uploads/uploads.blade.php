@@ -342,7 +342,7 @@
                             class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium text-sm transition-colors order-2 sm:order-1">
                             No
                         </button>
-                        <button type="button" wire:click=""
+                        <button type="button" wire:click="openMovementsForm"
                             class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors order-1 sm:order-2">
                             Si
                         </button>
@@ -351,6 +351,10 @@
             </div>
         </div>
     </div>
+    @endif
+
+    @if($showModal)
+    <livewire:tenant.movements.movement-form :reusable=true />
     @endif
 
 
