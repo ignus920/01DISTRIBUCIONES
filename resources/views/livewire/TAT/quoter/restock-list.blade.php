@@ -121,7 +121,7 @@
                                 @if($order->order_number)
                                     <!-- Registro confirmado -->
                                     @if($order->status === 'Confirmado')
-                                         <a href="{{ route('tenant.tat.receive.orders', ['search' => $order->order_number]) }}"
+                                         <a href="{{ route('tenant.tat.receive.orders', ['order_number' => $order->order_number]) }}"
                                            class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 inline-flex items-center transition-colors text-sm font-medium">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -129,12 +129,13 @@
                                             Recibir
                                         </a>
                                     @elseif($order->status === 'Recibido')
-                                        <span class="text-blue-600 dark:text-blue-400 inline-flex items-center text-sm font-medium">
+                                        <a href="{{ route('tenant.tat.receive.orders', ['order_number' => $order->order_number]) }}" 
+                                           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center text-sm font-medium transition-colors">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                             </svg>
-                                            Completado
-                                        </span>
+                                            Ver Completado
+                                        </a>
                                     @else
                                         <!-- Fallback para editar si es necesario, pero órdenes confirmadas/recibidas usualmente no se editan igual -->
                                          <button wire:click="editConfirmedRestock({{ $order->order_number }})"
