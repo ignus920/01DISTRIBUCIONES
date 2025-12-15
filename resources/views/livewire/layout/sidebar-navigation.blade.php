@@ -387,8 +387,7 @@ new class extends Component
                     @mouseenter="tooltip = true" @mouseleave="tooltip = false">
                     <a href="{{url('/inventory/categories')}}" wire:navigate
                         class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
-                    <a href="{{ route('customers.customers') }}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
+                    
                     <a href="{{ route('tenant.items') }}" wire:navigate
                         class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
                         Ítems
