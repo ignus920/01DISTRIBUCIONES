@@ -32,6 +32,7 @@ class Uploads extends Component
     public $selectedRoute = '';
     public $showScares = false;
     public $scarceUnits = [];
+    public $showformMovements = false;
 
 
     // impresion de carges 
@@ -213,19 +214,21 @@ class Uploads extends Component
             return;
         }else{
             try{
-                $infoDisDeliveriesList=DisDeliveriesList::query()->get();
-                $dataDeliveries=[
-                    'salesman_id' => $infoDisDeliveriesList->salesman_id,
-                    'user_id' => Auth::id(),
-                    'sale_date' => $infoDisDeliveriesList->sale_date,
-                    'created_at' => Carbon::now()
-                ];
-                DisDeliveries::create($dataDeliveries);
+                $infoDisDeliveriesList = DisDeliveriesList::query()->get();
+                foreach ($infoDisDeliveriesList as $deliveryListItem) {
+                    $dataDeliveries = [
+                        'salesman_id' => $deliveryListItem->salesman_id,
+                        'user_id' => Auth::id(),
+                        'sale_date' => $deliveryListItem->sale_date,
+                        'created_at' => Carbon::now()
+                    ];
+                    DisDeliveries::create($dataDeliveries);
+                }
                 // Si no hay faltantes, proceder con la lógica de confirmación
                 session()->flash('message', 'Cargue confirmado exitosamente.');
             }catch(\Exception $e){
                 // Para debug, muestra un mensaje
-                session()->flash('error', "Error al registrar el cargue".$e->getMessage()); 
+                session()->flash('error', "Error al registrar el cargue: " . $e->getMessage());
             }
         }
     }

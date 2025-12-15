@@ -333,6 +333,9 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="mb-3">
+                        <p class="px-3 pt-3">¿Desea agregar unidades de productos?</p>
+                    </div>
                     <div
                         class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 px-4 pb-4 border-t border-gray-200 dark:border-gray-700">
                         <button type="button" wire:click="closeAlertScares"
@@ -349,6 +352,8 @@
         </div>
     </div>
     @endif
+
+
 </div>
 
 <script>
