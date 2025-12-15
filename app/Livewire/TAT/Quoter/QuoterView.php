@@ -501,7 +501,6 @@ class QuoterView extends Component
 
             $this->clearCart();
             $this->loadDefaultCustomer(); // Resetear al cliente por defecto
-            session()->flash('success', "¡Venta #{$consecutive} registrada exitosamente! Cliente: {$customerInfo}");
 
             // Log de la venta
             Log::info('Venta registrada', [
@@ -513,6 +512,9 @@ class QuoterView extends Component
                 'company_id' => $this->companyId,
                 'user_id' => Auth::id()
             ]);
+
+            // Redirigir a la vista de pagos
+            return redirect()->route('tenant.payment.quote', ['quoteId' => $quote->id]);
 
         } catch (\Exception $e) {
             DB::rollBack();
