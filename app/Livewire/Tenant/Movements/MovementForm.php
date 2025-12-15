@@ -19,6 +19,9 @@ use Illuminate\Support\Facades\Auth;
 
 class MovementForm extends Component
 {
+    //  Properties of component
+    public $reusable = false;
+
     // Modal state
     public $showModal = false;
     public $showDetailsModal = false;
