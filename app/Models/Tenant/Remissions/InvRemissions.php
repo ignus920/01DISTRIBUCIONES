@@ -37,4 +37,12 @@ class InvRemissions extends Model
     public function quote(){
         return $this->belongsTo(\App\Models\Tenant\Quoter\VntQuote::class, 'quoteId');
     }
+
+    /**
+     * Relación con los detalles de la remisión
+     */
+    public function details()
+    {
+        return $this->hasMany(InvDetailRemissions::class, 'remissionId', 'id');
+    }
 }
