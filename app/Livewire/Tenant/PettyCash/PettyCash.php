@@ -332,22 +332,23 @@ class PettyCash extends Component
 
 
     public function render()
-    {   
-        $this->ensureTenantConnection();
-        $petty_cashes = PettyCashModel::query()
-            ->select('vnt_petty_cash.*', 'u.name')
-            ->join('rap.users as u', 'u.id', '=', 'vnt_petty_cash.userIdOpen')
-            ->when($this->search, function ($query) {
-                $query->where('vnt_petty_cash.consecutive', 'like', '%' . $this->search . '%')
-                    ->orWhere('u.name', 'like', '%' . $this->search . '%');
-            })
-            ->orderBy($this->sortField, $this->sortDirection)
-            ->paginate($this->perPage);
+{   
+    $this->ensureTenantConnection();
 
-        return view('livewire.tenant.petty-cash.petty-cash', [
-            'boxes'=>$petty_cashes
-        ]);
-    }
+    $petty_cashes = PettyCashModel::query()
+        ->select('vnt_petty_cash.*', 'u.name')
+        ->join('users as u', 'u.id', '=', 'vnt_petty_cash.userIdOpen')
+        ->when($this->search, function ($query) {
+            $query->where('vnt_petty_cash.consecutive', 'like', '%' . $this->search . '%')
+                  ->orWhere('u.name', 'like', '%' . $this->search . '%');
+        })
+        ->orderBy($this->sortField, $this->sortDirection)
+        ->paginate($this->perPage);
+
+    return view('livewire.tenant.petty-cash.petty-cash', [
+        'boxes' => $petty_cashes
+    ]);
+}
 
     public function canOpenPettyCash(): bool{
         $result = $this->isOptionEnabled(17);
