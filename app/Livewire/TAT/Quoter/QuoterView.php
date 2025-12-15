@@ -146,7 +146,7 @@ class QuoterView extends Component
             'products' => $allProducts->toArray()
         ]);
 
-        if (strlen($this->currentSearch) >= 2) {
+        if (strlen($this->currentSearch) >= 1) {
             $query = TatItems::query()
                 ->byCompany($this->companyId)
                 ->active()
@@ -588,7 +588,7 @@ class QuoterView extends Component
      */
     public function updatedCustomerSearch()
     {
-        if (strlen($this->customerSearch) >= 2) {
+        if (strlen($this->customerSearch) >= 1) {
             $this->customerSearchResults = TatCustomer::where('company_id', $this->companyId)
                 ->where(function ($query) {
                     $query->where('identification', 'like', '%' . $this->customerSearch . '%')

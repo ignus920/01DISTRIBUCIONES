@@ -339,37 +339,48 @@ $header = 'Seleccionar productos';
                     <!-- Formulario de búsqueda -->
                     <div class="space-y-2">
                         <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Buscar Cliente</label>
-                        <div x-data="{ searching: false }" class="flex gap-2">
+                        <div>
 
                             <!-- Input de búsqueda -->
                             <input
-                                wire:model.defer="customerSearch"
+                                wire:model.live.debounce.300ms="customerSearch"
                                 type="text"
-                                placeholder="NIT o cédula..."
-                                class="flex-1 px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                placeholder="Buscar por nombre o cédula... (↑↓ navegar, Enter seleccionar)"
+                                class="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                onkeydown="handleCustomerSearchKeydownDesktop(event)"
+                                id="customerSearchInputDesktop">
 
-                            <!-- Botón con respuesta instantánea -->
-                            <button
-                                @click="searching = true; $wire.searchCustomer().then(() => searching = false)"
-                                :class="searching ? 'opacity-50 cursor-wait' : ''"
-                                class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">
-
-                                <!-- Ícono normal -->
-                                <svg x-show="!searching" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-
-                                <!-- Ícono loading instantáneo (no espera Livewire) -->
-                                <svg x-show="searching" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor"
-                                        d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                            </button>
 
                         </div>
+
+                        <!-- Resultados de búsqueda -->
+                        @if(count($customerSearchResults) > 0)
+                            <div id="customerSearchResultsDesktop" class="max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
+                                @foreach($customerSearchResults as $index => $customer)
+                                    <div
+                                        wire:click="selectCustomer({{ $customer['id'] }})"
+                                        data-customer-id="{{ $customer['id'] }}"
+                                        data-index="{{ $index }}"
+                                        class="customer-result-desktop px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0 transition-colors duration-150"
+                                    >
+                                        <div class="font-mono font-bold text-gray-900 dark:text-white">{{ $customer['identification'] }}</div>
+                                        <div class="text-gray-600 dark:text-gray-300">{{ $customer['display_name'] }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @elseif(strlen($customerSearch) >= 1)
+                            <div class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
+                                <div class="p-3 text-sm text-gray-500 dark:text-gray-400">
+                                    <div class="mb-2">No se encontraron clientes</div>
+                                    <button
+                                        wire:click="openCustomerModal"
+                                        class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs transition-colors"
+                                    >
+                                        Crear nuevo cliente
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
 
                     </div>
                     @endif
@@ -599,8 +610,8 @@ $header = 'Seleccionar productos';
                     </button>
                     @endif
 
-                    @if(auth()->user()->profile_id == 17)
-                    <!-- Botón para agregar productos a lista preliminar (SIN order_number) -->
+                    @if(auth()->user()->profile_id == 17 && !$isEditingRestock)
+                    <!-- Botón para agregar productos a lista preliminar (SIN order_number) - Solo cuando NO se está editando -->
                     <button wire:click="saveRestockRequest(false)"
                         wire:loading.attr="disabled"
                         wire:target="saveRestockRequest"
@@ -618,6 +629,7 @@ $header = 'Seleccionar productos';
                         <span wire:loading.remove wire:target="saveRestockRequest">Agregar a Lista Preliminar</span>
                         <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
                     </button>
+                     @endif
 
                     <!-- Botón Confirmar Lista Preliminar (convierte Registrado a Confirmado) -->
                     <button wire:click="saveRestockRequest(true)"
@@ -637,7 +649,7 @@ $header = 'Seleccionar productos';
                         <span wire:loading.remove wire:target="saveRestockRequest">Confirmar y Migrar Directamente</span>
                         <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
                     </button>
-                    @endif
+                   
                     @endif
 
                     @if($isEditingRestock)
@@ -660,4 +672,115 @@ $header = 'Seleccionar productos';
             @endif
         </div>
     </div>
+    </div>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        Livewire.on('show-toast', (data) => {
+            const payload = Array.isArray(data) ? data[0] : data;
+            console.log('Toast triggered:', payload); // Debug
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 6000,
+                timerProgressBar: true,
+                icon: payload.type || 'info',
+                title: payload.message
+            });
+        });
+
+        Livewire.on('confirm-add-duplicate', (data) => {
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                title: 'Producto ya confirmado',
+                text: payload.message + "\n¿Deseas agregarlo de todas formas?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, agregar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                   console.log('Calling forceAddToQuoter directly:', payload);
+                   // Usamos call directo para evitar problemas de mapeo de eventos
+                   Livewire.find('{{ $this->getId() }}').call('forceAddToQuoter', 
+                       payload.productId, 
+                       payload.selectedPrice, 
+                       payload.priceLabel
+                   );
+                }
+            });
+        });
+    });
+
+    // Variables para navegación por teclado en búsqueda de clientes (Desktop)
+    let selectedCustomerIndexDesktop = -1;
+    let customerResultsDesktop = [];
+
+    // Función para manejar navegación por teclado en búsqueda de clientes (Desktop)
+    function handleCustomerSearchKeydownDesktop(event) {
+        const resultsContainer = document.getElementById('customerSearchResultsDesktop');
+
+        if (!resultsContainer) return;
+
+        customerResultsDesktop = Array.from(resultsContainer.querySelectorAll('.customer-result-desktop'));
+
+        if (customerResultsDesktop.length === 0) return;
+
+        switch(event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                selectedCustomerIndexDesktop = Math.min(selectedCustomerIndexDesktop + 1, customerResultsDesktop.length - 1);
+                updateCustomerSelectionDesktop();
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                selectedCustomerIndexDesktop = Math.max(selectedCustomerIndexDesktop - 1, -1);
+                updateCustomerSelectionDesktop();
+                break;
+
+            case 'Enter':
+                event.preventDefault();
+                if (selectedCustomerIndexDesktop >= 0 && customerResultsDesktop[selectedCustomerIndexDesktop]) {
+                    const customerId = customerResultsDesktop[selectedCustomerIndexDesktop].dataset.customerId;
+                    // Disparar el evento de Livewire para seleccionar cliente
+                    Livewire.find('{{ $this->getId() }}').call('selectCustomer', customerId);
+                }
+                break;
+
+            case 'Escape':
+                event.preventDefault();
+                selectedCustomerIndexDesktop = -1;
+                updateCustomerSelectionDesktop();
+                break;
+        }
+    }
+
+    // Función para actualizar la selección visual (Desktop)
+    function updateCustomerSelectionDesktop() {
+        customerResultsDesktop.forEach((result, index) => {
+            result.classList.remove('bg-green-100', 'dark:bg-green-800', 'border-green-500');
+
+            if (index === selectedCustomerIndexDesktop) {
+                result.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500');
+                // Scroll hacia el elemento seleccionado si está fuera de vista
+                result.scrollIntoView({
+                    block: 'nearest',
+                    behavior: 'smooth'
+                });
+            }
+        });
+    }
+
+    // Reset de selección cuando cambian los resultados (Desktop)
+    document.addEventListener('livewire:updated', () => {
+        selectedCustomerIndexDesktop = -1;
+        customerResultsDesktop = [];
+    });
+</script>
+@endpush

@@ -30,6 +30,7 @@ class ProductQuoter extends Component
     public $showCartModal = false;
     public $viewType = 'desktop'; // 'desktop' o 'mobile'
     public $customerSearch = '';
+    public $customerSearchResults = [];
     public $selectedCustomer = null;
     public $observaciones = null;
     public $searchingCustomer = false;
@@ -170,6 +171,41 @@ class ProductQuoter extends Component
     }
 
     public function addToQuoter($productId, $selectedPrice, $priceLabel)
+    {
+        // Validar si el producto ya está confirmado (Perfil 17)
+        $warningMessage = $this->checkConfirmedProductStatus($productId);
+        
+        if ($warningMessage) {
+            // Si hay advertencia, pedir confirmación al usuario
+            $this->dispatch('confirm-add-duplicate', [
+                'message' => $warningMessage,
+                'productId' => $productId,
+                'selectedPrice' => $selectedPrice,
+                'priceLabel' => $priceLabel
+            ]);
+            return;
+        }
+
+        $this->performAddToQuoter($productId, $selectedPrice, $priceLabel);
+    }
+
+    #[On('force-add-to-quoter')]
+    public function forceAddToQuoter($productId, $selectedPrice, $priceLabel)
+    {
+        Log::info('forceAddToQuoter triggered (Direct Call or Event)', [
+            'productId' => $productId,
+            'selectedPrice' => $selectedPrice,
+            'priceLabel' => $priceLabel
+        ]);
+
+        if ($productId) {
+            $this->performAddToQuoter($productId, $selectedPrice, $priceLabel);
+        } else {
+            Log::warning('forceAddToQuoter: Missing productId');
+        }
+    }
+
+    private function performAddToQuoter($productId, $selectedPrice, $priceLabel)
     {
         // Verificar si el producto ya está en el cotizador (sin consulta DB)
         $existingIndex = $this->findProductInQuoter($productId);
@@ -1041,8 +1077,6 @@ public function validateQuantity($index)
     // NUEVAS FUNCIONES PARA EL FLUJO TAT COMPLETO
     // ============================================
 
-
-
     /**
      * Función de migración a vnt_quotes - reutiliza lógica existente adaptada para TAT
      */
@@ -1089,17 +1123,93 @@ public function validateQuantity($index)
             $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
             $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
 
+            // Obtener warehouseId correcto del contacto del usuario
+            $userId = auth()->id();
+            $warehouseId = session('warehouse_id', 1); // Valor por defecto (fallback)
+            $contactName = '';
+
+            if (auth()->check() && auth()->user()->contact_id) {
+                $contact = DB::table('vnt_contacts')
+                    ->where('id', auth()->user()->contact_id)
+                    ->first();
+                
+                if ($contact) {
+                    if (isset($contact->warehouseId)) {
+                        $warehouseId = $contact->warehouseId;
+                        Log::info("Warehouse ID obtenido del contacto", ['userId' => $userId, 'warehouseId' => $warehouseId]);
+                    }
+                    
+                    // Construir nombre completo
+                    $names = array_filter([
+                        $contact->firstName,
+                        $contact->secondName,
+                        $contact->lastName,
+                        $contact->secondLastName
+                    ]);
+                    $contactName = implode(' ', $names);
+                }
+            }
+
+            $observations = "Solicitud de reabastecimiento TAT #{$orderNumber}";
+            if (!empty($contactName)) {
+                $observations .= " - " . $contactName;
+            }
+
             // Crear cotización (adaptando saveQuote() existente para TAT)
             $quote = VntQuote::create([
                 'consecutive' => $nextConsecutive,
                 'status' => 'REGISTRADO',
-                'typeQuote' => 'INSTITUCIONAL', // Para TAT es institucional
+                'typeQuote' => 'POS', // Para TAT es institucional/POS
                 'customerId' => $companyId, // La tienda TAT como cliente
-                'warehouseId' => session('warehouse_id', 1),
-                'userId' => auth()->id(),
-                'observations' => "Solicitud de reabastecimiento TAT #{$orderNumber}",
+                'warehouseId' => $warehouseId,
+                'userId' => $userId,
+                'observations' => $observations,
                 'branchId' => session('branch_id', 1)
             ]);
+
+            // **PASO 1: Actualizar el order_number con el ID de la cotización recién creada**
+            $quote->update(['order_number' => $quote->id]);
+
+            Log::info("🎯 PASO 1 COMPLETADO - Quote actualizada", [
+                'quote_id' => $quote->id,
+                'consecutive' => $quote->consecutive,
+                'order_number_updated' => $quote->id
+            ]);
+
+            // **PASO 2: Buscar registros tat_restock_list que ya están confirmados con el order_number anterior**
+            $recordsToUpdate = TatRestockList::where('order_number', $orderNumber)
+                ->where('company_id', $companyId)
+                ->where('status', 'Confirmado')
+                ->get();
+
+            Log::info("🔍 PASO 2 - Registros confirmados encontrados para actualizar", [
+                'order_number' => $orderNumber,
+                'company_id' => $companyId,
+                'records_count' => $recordsToUpdate->count(),
+                'records_ids' => $recordsToUpdate->pluck('id')->toArray()
+            ]);
+
+            // **PASO 3: Actualizar los registros confirmados para que tengan el ID de la cotización**
+            if ($recordsToUpdate->count() > 0) {
+                $updatedRecords = TatRestockList::where('order_number', $orderNumber)
+                    ->where('company_id', $companyId)
+                    ->where('status', 'Confirmado')
+                    ->update([
+                        'order_number' => $quote->id, // El ID de la cotización (reemplazar el order_number anterior)
+                    ]);
+
+                Log::info("✅ PASO 3 COMPLETADO - Registros tat_restock_list actualizados con quote ID", [
+                    'old_order_number' => $orderNumber,
+                    'new_quote_id_assigned' => $quote->id,
+                    'company_id' => $companyId,
+                    'records_updated' => $updatedRecords
+                ]);
+            } else {
+                Log::warning("⚠️ PASO 3 OMITIDO - No se encontraron registros confirmados para actualizar", [
+                    'order_number' => $orderNumber,
+                    'company_id' => $companyId
+                ]);
+            }
 
             // Crear detalles usando getProductData()
             $detailsCreated = 0;
@@ -1172,48 +1282,39 @@ public function validateQuantity($index)
     protected function getProductData($itemId)
     {
         try {
-            // Buscar el producto en la tabla Items (Tenant)
-            $product = Items::find($itemId);
+            // Buscar el producto en la tabla TAT específica
+            $product = \App\Models\TAT\Items\TatItems::find($itemId);
 
             if (!$product) {
-                Log::warning("Producto no encontrado para migración", ['item_id' => $itemId]);
+                Log::warning("Producto TAT no encontrado para migración", ['item_id' => $itemId]);
                 return [
-                    'name' => 'Producto no encontrado',
+                    'name' => 'Producto TAT no encontrado',
                     'price' => 0,
                     'tax' => 0
                 ];
             }
 
             // Obtener información de impuestos si existe la relación
-            // Nota: Items tiene taxId, pero deberíamos verificar la relación en Items.php
-            // Asumiendo que Items tiene relación tax similar a TatItems o usamos el taxId directo
-            // Por seguridad, si Items no tiene relación tax cargada, usamos 0 o buscamos tax por id
             $taxValue = 0;
-            // Verificar si el modelo Items tiene la relación tax definida comúnmente en este proyecto
-            if ($product->taxId) {
-                 // Si necesitamos el porcentaje, podríamos necesitar consultarlo si no está en la relación
-                 // Para simplificar y dado que VntDetailQuote usa tax value, usaremos 0 si no estamos seguros
-                 // O mejor, intentamos cargarla si existe la relación
-                 if($product->relationLoaded('tax') && $product->tax) {
-                     $taxValue = $product->tax->percentage ?? 0;
-                 }
+            if ($product->tax) {
+                $taxValue = $product->tax->percentage ?? 0;
             }
 
             return [
                 'name' => $product->display_name ?? $product->name ?? 'Sin nombre',
-                'description' => $product->description ?? '',
+                'description' => $product->name ?? '', // TatItems no tiene description, usamos name
                 'price' => $product->price ?? 0,
                 'tax' => $taxValue,
                 'sku' => $product->sku ?? ''
             ];
 
         } catch (\Exception $e) {
-            Log::error('Error obteniendo datos del producto: ' . $e->getMessage(), [
+            Log::error('Error obteniendo datos del producto TAT: ' . $e->getMessage(), [
                 'item_id' => $itemId
             ]);
 
             return [
-                'name' => 'Error al cargar producto',
+                'name' => 'Error al cargar producto TAT',
                 'price' => 0,
                 'tax' => 0
             ];
@@ -1400,6 +1501,116 @@ public function validateQuantity($index)
             'type' => 'info',
             'message' => 'Lista preliminar cargada. ' . count($this->quoterItems) . ' productos.'
         ]);
+    }
+
+
+
+
+    
+
+    /**
+     * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
+     * Retorna mensaje de advertencia si existe, o null si pasa la validación.
+     */
+    protected function checkConfirmedProductStatus($productId)
+    {
+        // Solo aplica para perfil 17
+        if (!auth()->check() || auth()->user()->profile_id != 17) {
+            return null; // Pasa la validación
+        }
+
+        $this->ensureTenantConnection();
+        $companyId = $this->getUserCompanyId(auth()->user());
+
+        if (!$companyId) {
+            return null; // No podemos validar sin compañía
+        }
+
+        // Buscar en la tabla de restock si existe confirmado
+        $confirmedItem = TatRestockList::where('company_id', $companyId)
+            ->where('itemId', $productId)
+            ->where('status', 'Confirmado')
+            ->first();
+
+        if ($confirmedItem) {
+            return "Este producto ya está confirmado con {$confirmedItem->quantity_request} unidades en la orden #{$confirmedItem->order_number}";
+        }
+        
+        return null; // Pasa la validación
+    }
+
+    /**
+     * Método para búsqueda en tiempo real de clientes (como en quoter-view)
+     */
+    public function updatedCustomerSearch()
+    {
+        if (strlen($this->customerSearch) >= 1) {
+            $this->searchCustomersLive();
+        } else {
+            $this->customerSearchResults = [];
+        }
+    }
+
+    /**
+     * Buscar clientes en tiempo real
+     */
+    public function searchCustomersLive()
+    {
+        $this->ensureTenantConnection();
+
+        if (strlen($this->customerSearch) < 1) {
+            $this->customerSearchResults = [];
+            return;
+        }
+
+        $customers = VntCompany::select('id', 'businessName', 'firstName', 'lastName', 'identification', 'billingEmail')
+            ->where(function($query) {
+                $query->where('identification', 'like', '%' . $this->customerSearch . '%')
+                      ->orWhere('businessName', 'like', '%' . $this->customerSearch . '%')
+                      ->orWhere('firstName', 'like', '%' . $this->customerSearch . '%')
+                      ->orWhere('lastName', 'like', '%' . $this->customerSearch . '%');
+            })
+            ->get();
+
+        $this->customerSearchResults = $customers->map(function($customer) {
+            return [
+                'id' => $customer->id,
+                'identification' => $customer->identification,
+                'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName)
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Seleccionar un cliente de los resultados
+     */
+    public function selectCustomer($customerId)
+    {
+        $this->ensureTenantConnection();
+
+        $customer = VntCompany::find($customerId);
+
+        if ($customer) {
+            $this->selectedCustomer = $customer->toArray();
+            $this->customerSearch = '';
+            $this->customerSearchResults = [];
+
+            $name = $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName);
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Cliente seleccionado: ' . $name
+            ]);
+        }
+    }
+
+    /**
+     * Cancelar búsqueda de cliente
+     */
+    public function cancelClientSearch()
+    {
+        $this->customerSearch = '';
+        $this->customerSearchResults = [];
     }
 
 }

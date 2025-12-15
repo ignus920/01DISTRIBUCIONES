@@ -1224,139 +1224,22 @@ class VntCompanyForm extends Component
             'email' => $this->billingEmail
         ]);
 
-        // Intentar copiar productos - si falla, no afecta la creación del usuario
+        // Lanzar Job para copiar productos en segundo plano
         try {
-            $this->copyProductsToClient($company->id);
+            $tenantId = session('tenant_id');
+            \App\Jobs\CopyProductsToClientJob::dispatch($company->id, $tenantId);
+            
+            // Mensaje informativo sobre el proceso en segundo plano
+            session()->flash('success', 'Usuario creado. Los productos se están copiando en segundo plano y aparecerán pronto.');
+            
         } catch (\Exception $e) {
-            // Log del error pero no lanzar excepción
-            Log::warning('Usuario creado pero falló la copia de productos', [
+            Log::error('Error lanzando Job de copia de productos', [
                 'user_id' => $newUser->id,
-                'company_id' => $company->id,
                 'error' => $e->getMessage()
             ]);
-            
-            // Agregar mensaje informativo sin fallar
-            session()->flash('warning', 'Usuario creado exitosamente, pero hubo un problema al copiar los productos. Puede hacerlo manualmente más tarde.');
         }
 
         return $newUser;
-    }
-
-    /**
-     * Copiar productos de la distribuidora (inv_items) a la tabla del cliente (tat_items)
-     */
-    private function copyProductsToClient($companyId)
-    {
-        try {
-            // Obtener todos los productos activos de la distribuidora
-            $distributorProducts = DB::table('inv_items')
-                ->leftJoin('inv_categories', 'inv_items.categoryId', '=', 'inv_categories.id')
-                ->where('inv_items.status', 1) // Solo productos activos
-                ->whereNull('inv_items.deleted_at') // No eliminados
-                ->select(
-                    'inv_items.id as item_father_id',
-                    'inv_items.sku',
-                    'inv_items.name',
-                    'inv_items.taxId',
-                    'inv_items.categoryId',
-                    'inv_categories.name as category_name'
-                )
-                ->get();
-
-            foreach ($distributorProducts as $product) {
-                // Log del producto que se está procesando
-                Log::info('Procesando producto para cliente', [
-                    'product_id' => $product->item_father_id,
-                    'product_name' => $product->name,
-                    'company_id' => $companyId
-                ]);
-
-                // Obtener el precio más reciente del producto (cualquier tipo de precio)
-                $latestPrice = DB::table('inv_values')
-                    ->where('itemId', $product->item_father_id)
-                    ->where('type', 'precio')
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-
-                // Obtener el costo más reciente del producto
-                $latestCost = DB::table('inv_values')
-                    ->where('itemId', $product->item_father_id)
-                    ->where('type', 'costo')
-                    ->whereIn('label', ['Costo Inicial', 'Costo'])
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-
-                // Log de precios encontrados
-                Log::info('Precios encontrados', [
-                    'product_id' => $product->item_father_id,
-                    'latest_price' => $latestPrice ? $latestPrice->values : 'no encontrado',
-                    'latest_cost' => $latestCost ? $latestCost->values : 'no encontrado'
-                ]);
-
-                // Preparar datos para insertar en tat_items
-                $tatItemData = [
-                    'item_father_id' => $product->item_father_id,
-                    'company_id' => $companyId,
-                    'sku' => $product->sku,
-                    'name' => $product->name,
-                    'taxId' => $product->taxId,
-                    'categoryId' => $product->categoryId,
-                    'stock' => 0, // Stock inicial en 0 para el cliente
-                    'cost' => $latestCost ? (int) $latestCost->values : 0,
-                    'price' => $latestPrice ? (int) $latestPrice->values : 0,
-                    'status' => 1, // Activo
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'deleted_at' => now(), // Campo requerido NOT NULL - usando fecha actual como placeholder
-                ];
-
-                // Verificar si ya existe el producto para este cliente
-                $existingProduct = DB::table('tat_items')
-                    ->where('item_father_id', $product->item_father_id)
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                if (!$existingProduct) {
-                    try {
-                        // Insertar el producto en tat_items
-                        DB::table('tat_items')->insert($tatItemData);
-                        Log::info('Producto insertado exitosamente', [
-                            'product_id' => $product->item_father_id,
-                            'company_id' => $companyId
-                        ]);
-                    } catch (\Exception $e) {
-                        Log::error('Error insertando producto individual', [
-                            'product_id' => $product->item_father_id,
-                            'product_name' => $product->name,
-                            'company_id' => $companyId,
-                            'error' => $e->getMessage(),
-                            'data' => $tatItemData
-                        ]);
-                        // Continuar con el siguiente producto en lugar de fallar completamente
-                        continue;
-                    }
-                } else {
-                    Log::info('Producto ya existe, saltando', [
-                        'product_id' => $product->item_father_id,
-                        'company_id' => $companyId
-                    ]);
-                }
-            }
-
-            Log::info('Productos copiados exitosamente al cliente', [
-                'company_id' => $companyId,
-                'products_count' => $distributorProducts->count()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error al copiar productos al cliente', [
-                'company_id' => $companyId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            throw new \Exception('Error al configurar productos para el cliente: ' . $e->getMessage());
-        }
     }
 
     private function getFormData(): array

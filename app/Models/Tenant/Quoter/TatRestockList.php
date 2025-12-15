@@ -4,7 +4,7 @@ namespace App\Models\Tenant\Quoter;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Tenant\Items\Items;
+use App\Models\TAT\Items\TatItems;
 
 class TatRestockList extends Model
 {
@@ -27,9 +27,9 @@ class TatRestockList extends Model
     // El SQL dice created_at y updated_at existen, así que esto está bien.
     public $timestamps = true;
 
-    // Relación con el Item (Producto del tenant)
+    // Relación con el Item TAT (Producto específico de tienda TAT)
     public function item()
     {
-        return $this->belongsTo(Items::class, 'itemId');
+        return $this->belongsTo(TatItems::class, 'itemId');
     }
 }

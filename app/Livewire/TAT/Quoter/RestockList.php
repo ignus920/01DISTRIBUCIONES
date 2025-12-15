@@ -49,16 +49,20 @@ class RestockList extends Component
     // ====================================================
     // 1. Confirmados agrupados por order_number
     // ====================================================
+    // ====================================================
+    // 1. Confirmados y Recibidos agrupados por order_number
+    // ====================================================
     $confirmed = TatRestockList::where('company_id', $this->companyId)
-        ->where('status', 'Confirmado')
+        ->whereIn('status', ['Confirmado', 'Recibido'])
         ->whereNotNull('order_number')
         ->select(
             'order_number',
-            DB::raw('MAX(status) as status'),
+            DB::raw('MAX(status) as status'), // Esto podría necesitar ajuste si mezclan estados, pero por ahora MAX funciona si Recibido > Confirmado alfabéticamente? R > C, sí.
             DB::raw('MAX(created_at) as created_at'),
             DB::raw('COUNT(*) as total_items')
         )
-        ->groupBy('order_number');
+        ->groupBy('order_number')
+        ->having('total_items', '>', 0);
 
     // ====================================================
     // 2. Preliminares agrupados COMO UNA SOLA ORDEN
@@ -71,7 +75,8 @@ class RestockList extends Component
             DB::raw("'Registrado' as status"),
             DB::raw('MAX(created_at) as created_at'),
             DB::raw('COUNT(*) as total_items')
-        );
+        )
+        ->having('total_items', '>', 0); // Filtrar si no hay productos preliminares
 
     // ====================================================
     // 3. Unimos confirmados + preliminar
@@ -104,10 +109,30 @@ class RestockList extends Component
     }
 
     public function editPreliminaryRestock()
-{
-    return $this->redirect(
-        route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
-    );
-}
+    {
+        return $this->redirect(
+            route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
+        );
+    }
 
+    public function createNewRestock()
+    {
+        // Verificar si ya existe una lista preliminar para esta empresa
+        $existingPreliminary = TatRestockList::where('company_id', $this->companyId)
+            ->where('status', 'Registrado')
+            ->whereNull('order_number')
+            ->exists();
+
+        if ($existingPreliminary) {
+            // Si ya existe lista preliminar, redirigir a editarla
+            return $this->redirect(
+                route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
+            );
+        } else {
+            // Si no existe lista preliminar, crear nueva
+            return $this->redirect(
+                route('tenant.quoter.products.desktop')
+            );
+        }
+    }
 }

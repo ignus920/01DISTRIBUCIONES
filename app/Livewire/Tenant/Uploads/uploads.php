@@ -33,6 +33,11 @@ class Uploads extends Component
     public $showScares = false;
     public $scarceUnits = [];
 
+
+    // impresion de carges 
+    public $showCharge = "pedidos";  
+
+
     public function updatedSelectedDate($value)
     {
         // Solo hacer la consulta si hay fecha válida

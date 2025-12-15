@@ -18,8 +18,10 @@
                         <input
                             wire:model.live.debounce.300ms="customerSearch"
                             type="text"
-                            placeholder="Buscar por nombre o cédula..."
+                            placeholder="Buscar por nombre o cédula... (↑↓ navegar, Enter seleccionar)"
                             class="flex-1 text-sm px-2 py-1 border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                            onkeydown="handleCustomerSearchKeydown(event)"
+                            id="customerSearchInput"
                             autofocus
                         >
                         <button
@@ -33,11 +35,13 @@
 
                     <!-- Resultados de búsqueda -->
                     @if(count($customerSearchResults) > 0)
-                        <div class="max-h-32 overflow-y-auto border border-green-300 rounded bg-white">
-                            @foreach($customerSearchResults as $customer)
+                        <div id="customerSearchResults" class="max-h-32 overflow-y-auto border border-green-300 rounded bg-white">
+                            @foreach($customerSearchResults as $index => $customer)
                                 <div
                                     wire:click="selectCustomer({{ $customer['id'] }})"
-                                    class="p-2 text-xs hover:bg-green-50 cursor-pointer border-b last:border-b-0"
+                                    data-customer-id="{{ $customer['id'] }}"
+                                    data-index="{{ $index }}"
+                                    class="customer-result p-2 text-xs hover:bg-green-50 cursor-pointer border-b last:border-b-0 transition-colors duration-150"
                                 >
                                     <div class="font-mono font-bold">{{ $customer['identification'] }}</div>
                                     <div class="text-gray-600">{{ $customer['display_name'] }}</div>
@@ -451,6 +455,72 @@
                 }
             });
         }
+    });
+
+    // Variables para navegación por teclado en búsqueda de clientes
+    let selectedCustomerIndex = -1;
+    let customerResults = [];
+
+    // Función para manejar navegación por teclado en búsqueda de clientes
+    function handleCustomerSearchKeydown(event) {
+        const resultsContainer = document.getElementById('customerSearchResults');
+
+        if (!resultsContainer) return;
+
+        customerResults = Array.from(resultsContainer.querySelectorAll('.customer-result'));
+
+        if (customerResults.length === 0) return;
+
+        switch(event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                selectedCustomerIndex = Math.min(selectedCustomerIndex + 1, customerResults.length - 1);
+                updateCustomerSelection();
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                selectedCustomerIndex = Math.max(selectedCustomerIndex - 1, -1);
+                updateCustomerSelection();
+                break;
+
+            case 'Enter':
+                event.preventDefault();
+                if (selectedCustomerIndex >= 0 && customerResults[selectedCustomerIndex]) {
+                    const customerId = customerResults[selectedCustomerIndex].dataset.customerId;
+                    // Disparar el evento de Livewire para seleccionar cliente
+                    Livewire.find('{{ $this->getId() }}').call('selectCustomer', customerId);
+                }
+                break;
+
+            case 'Escape':
+                event.preventDefault();
+                selectedCustomerIndex = -1;
+                updateCustomerSelection();
+                break;
+        }
+    }
+
+    // Función para actualizar la selección visual
+    function updateCustomerSelection() {
+        customerResults.forEach((result, index) => {
+            result.classList.remove('bg-green-100', 'border-green-500');
+
+            if (index === selectedCustomerIndex) {
+                result.classList.add('bg-green-100', 'border-green-500');
+                // Scroll hacia el elemento seleccionado si está fuera de vista
+                result.scrollIntoView({
+                    block: 'nearest',
+                    behavior: 'smooth'
+                });
+            }
+        });
+    }
+
+    // Reset de selección cuando cambian los resultados
+    document.addEventListener('livewire:updated', () => {
+        selectedCustomerIndex = -1;
+        customerResults = [];
     });
 </script>
 @endpush

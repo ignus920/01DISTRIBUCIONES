@@ -13,14 +13,41 @@
                     <!-- Ajustado tamaño texto -->
                     <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de cargue de pedidos</p>
                 </div>
+
+                <div>
+                    <button wire:click="$set('showCharge', 'pedidos')"
+                        class="inline-flex items-center px-4 py-2 {{ $showCharge === 'pedidos' ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600' : 'bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500' }} border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                        <!-- Icono de lista/clipboard para Pedidos -->
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Pedidos
+                    </button>
+                    <button wire:click="$set('showCharge', 'cargues')"
+                        class="inline-flex items-center px-4 py-2 {{ $showCharge === 'cargues' ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600' : 'bg-gray-400 hover:bg-gray-500 dark:bg-gray-600 dark:hover:bg-gray-500' }} border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Cargues
+                    </button>
+
+                </div>
+
             </div>
         </div>
 
         <div class="w-full">
-            <!--CARD IZQUIERDO-->
+
+
+
             <div class="w-full mx-auto">
                 <!-- Ajustado para ocupar todo el ancho disponible -->
                 <!-- Mensajes -->
+
+                @if($showCharge == "pedidos")
+                <!--CARD IZQUIERDO-->
                 @if (session()->has('message'))
                 <div
                     class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg mb-6">
@@ -47,6 +74,7 @@
                 </div>
                 @endif
                 <!-- DataTable Card -->
+
                 <div
                     class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
                     <!-- Toolbar -->
@@ -224,14 +252,19 @@
                         </table>
                     </div> --}}
                 </div>
+                @else
+                <div>
+                    <livewire:tenant.uploads.components.print-uploads-charges />
+                </div>
+                @endif
+
             </div>
         </div>
     </div>
 
     <!-- Mensaje cuando hay faltantes -->
     @if($showScares)
-    <div
-        class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50"
+    <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50"
         x-data="{ show: true }" x-show="show" x-transition:enter="ease-out duration-300"
         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
         x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100"
@@ -256,28 +289,46 @@
                     <div class="mb-3">
                         <p class="px-3 pt-3">No hay productos suficientes</p>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 px-6 pt-3">
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 px-6 pt-3">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Item</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categoria</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad perdida</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock Actual</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Item</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Categoria</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Cantidad perdida</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Stock Actual</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 @forelse($scarceUnits as $su)
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $su->nombre_item }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $su->categoria }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $su->cantidad_pedida }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ $su->stock_actual }}</td>
-                                    </tr>
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ $su->nombre_item }}</td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ $su->categoria }}</td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ $su->cantidad_pedida }}</td>
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ $su->stock_actual }}</td>
+                                </tr>
                                 @empty
-                                    <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
-                                        <p class="text-gray-500 dark:text-gray-400">No hay valores registrados para este item</p>
-                                    </div>
+                                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-center">
+                                    <p class="text-gray-500 dark:text-gray-400">No hay valores registrados para este
+                                        item</p>
+                                </div>
                                 @endforelse
                             </tbody>
                         </table>
@@ -310,14 +361,14 @@
             // const today = new Date().toISOString().split('T')[0];
             // dateInput.value = today;
         }
-        
+
         // Cerrar modal con ESC
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 @this.set('showModal', false);
             }
         });
-        
+
         // Cerrar modal haciendo clic fuera
         const modalBackdrop = document.querySelector('[wire\\:key="modal-backdrop"]');
         if (modalBackdrop) {
@@ -328,13 +379,23 @@
             });
         }
     });
-    
+
     // Debug: Verificar que Livewire responde
-    Livewire.hook('request', ({ uri, options, payload }) => {
-        console.log('Livewire request:', { uri, payload });
+    Livewire.hook('request', ({
+        uri,
+        options,
+        payload
+    }) => {
+        console.log('Livewire request:', {
+            uri,
+            payload
+        });
     });
-    
-    Livewire.hook('response', ({ status, component }) => {
+
+    Livewire.hook('response', ({
+        status,
+        component
+    }) => {
         console.log('Livewire response:', status, component);
     });
 </script>
