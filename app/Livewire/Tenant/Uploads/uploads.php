@@ -12,6 +12,7 @@ use App\Models\TAT\Routes;
 use App\Models\TAT\Routes\TatRoutes;
 use App\Models\Tenant\Remissions\InvRemissions;
 use App\Models\Tenant\DeliveriesList\DisDeliveriesList;
+use App\Models\Tenant\Deliveries\DisDeliveries;
 //Services
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -24,9 +25,13 @@ class Uploads extends Component
     public $sortField = 'consecutive';
     public $sortDirection = 'desc';
     public $perPage = 10;
+
+
     public $selectedDate = '';
     public $remissions = [];
     public $selectedRoute = '';
+    public $showScares = false;
+    public $scarceUnits = [];
 
     public function updatedSelectedDate($value)
     {
@@ -88,12 +93,12 @@ class Uploads extends Component
             ->whereDate('q.created_at', $date);
 
             // Agregar esto para depurar
-    Log::info('Consulta SQL:', [
-        'sql' => $query->toSql(),
-        'bindings' => $query->getBindings(),
-        'date' => $date,
-        'routeId' => $routeId
-    ]);
+        // Log::info('Consulta SQL:', [
+        //     'sql' => $query->toSql(),
+        //     'bindings' => $query->getBindings(),
+        //     'date' => $date,
+        //     'routeId' => $routeId
+        // ]);
 
         return $query->groupBy('u.id', 'u.name', DB::raw('DATE(q.created_at)'),'rt.name')->get();
     }
@@ -133,7 +138,7 @@ class Uploads extends Component
             ];
             DisDeliveriesList::create($uploadData);
 
-             $this->remissions = $this->getRemissions($this->selectedDate, $this->selectedRoute);
+            $this->remissions = $this->getRemissions($this->selectedDate, $this->selectedRoute);
             
             session()->flash('message', "Cargando datos para el usuario ID: $userId - Fecha: {$this->selectedDate}");
 
@@ -198,12 +203,58 @@ class Uploads extends Component
         $hayFaltantes = $this->validateScarce();
 
         if ($hayFaltantes === 'SI') {
-            dd('hay faltantes');
+            $this->showScares = true;
+            $this->scarceUnits = $this->getscarceUnits();
             return;
+        }else{
+            try{
+                $infoDisDeliveriesList=DisDeliveriesList::query()->get();
+                $dataDeliveries=[
+                    'salesman_id' => $infoDisDeliveriesList->salesman_id,
+                    'user_id' => Auth::id(),
+                    'sale_date' => $infoDisDeliveriesList->sale_date,
+                    'created_at' => Carbon::now()
+                ];
+                DisDeliveries::create($dataDeliveries);
+                // Si no hay faltantes, proceder con la lógica de confirmación
+                session()->flash('message', 'Cargue confirmado exitosamente.');
+            }catch(\Exception $e){
+                // Para debug, muestra un mensaje
+                session()->flash('error', "Error al registrar el cargue".$e->getMessage()); 
+            }
         }
+    }
 
-        // Si no hay faltantes, proceder con la lógica de confirmación
-        session()->flash('message', 'Cargue confirmado exitosamente.');
+    public function getscarceUnits(){
+        $results = DB::table('dis_deliveries_list as dl')
+            ->join('vnt_quotes as q', function ($join) {
+                $join->on('dl.salesman_id', '=', 'q.userId')
+                     ->on(DB::raw('DATE(q.created_at)'), '=', 'dl.sale_date');
+            })
+            ->join('vnt_detail_quotes as dt', 'dt.quoteId', '=', 'q.id')
+            ->join('inv_items as i', 'i.id', '=', 'dt.itemId')
+            ->join('inv_categories as c', 'i.categoryId', '=', 'c.id')
+            ->leftJoin('inv_items_store as its', 'i.id', '=', 'its.itemId')
+            ->select(
+                'i.name as nombre_item',
+                'c.name as categoria',
+                DB::raw('SUM(dt.quantity) as cantidad_pedida'),
+                DB::raw('COALESCE(its.stock_items_store, 0) as stock_actual'),
+                DB::raw('COALESCE(its.stock_items_store, 0) - SUM(dt.quantity) as diferencia'),
+                DB::raw("CASE
+                    WHEN its.stock_items_store IS NULL THEN 'SI - No existe en inventario'
+                    WHEN SUM(dt.quantity) > its.stock_items_store THEN 'SI'
+                    ELSE 'NO'
+                    END as tiene_faltante")
+            )
+            ->groupBy('i.id', 'i.name', 'c.name', 'its.stock_items_store')
+            ->havingRaw('its.stock_items_store IS NULL OR SUM(dt.quantity) > its.stock_items_store')
+            ->get();
+        return $results;
+    }
+
+    public function closeAlertScares(){
+        $this->showScares = false;
     }
 
     public function render()
@@ -212,6 +263,7 @@ class Uploads extends Component
         return view('livewire.tenant.uploads.uploads', [
             'users' => $users,
             'remissions' => $this->remissions,
+            'scarceUnits' => $this->scarceUnits,
         ]);
     }
 }
