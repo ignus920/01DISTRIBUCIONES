@@ -34,6 +34,8 @@ class Uploads extends Component
     public $scarceUnits = [];
     public $showformMovements = false;
     public $showConfirmModal = false;
+    public $showFooter = true;
+    public $showClearOptions = false;
 
 
     // impresion de carges 
@@ -205,18 +207,18 @@ class Uploads extends Component
         return $result->hay_faltantes;        
     }
 
-    public function showConfirmUploadModal()
-    {
+    public function showConfirmUploadModal(){
         $this->showConfirmModal = true;
     }
 
-    public function cancelConfirmUpload()
-    {
-        $this->showConfirmModal = false;
+    public function cancelConfirmUpload(){
+        //$this->showConfirmModal = false;
+        $this->showFooter = false;
+        $this->showClearOptions = true;
     }
 
-    public function confirmUpload()
-    {
+
+    public function confirmUpload(){
         $this->showConfirmModal = false;
         
         $hayFaltantes = $this->validateScarce();
@@ -287,10 +289,29 @@ class Uploads extends Component
         $this->showScares = false;
     }
 
-    public function openMovementsForm()
-    {
+    public function openMovementForm(){
+        $this->dispatch("openMovementForm");
         $this->showModal = true;
         $this->showScares = false;
+    }
+
+    public function closeModal(){
+        $this->showConfirmModal = false;
+    }
+
+    public function clearListUpload(){
+        try {
+            $deleted = DisDeliveriesList::where('user_id', Auth::id())
+                ->delete();
+            if ($deleted) {
+                session()->flash('message', "La lista de cargue de vació exitosamente");
+            } else {
+                session()->flash('error', "No se encontró el registro para eliminar");
+            }
+            $this->showConfirmModal = false;
+        }catch(\Exception $e) {
+            session()->flash('error', "Error al eliminar el registro: " . $e->getMessage());
+        }
     }
 
     public function render()

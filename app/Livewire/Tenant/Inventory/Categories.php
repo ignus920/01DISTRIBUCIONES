@@ -25,7 +25,13 @@ class Categories extends Component
     public $perPage = 10;
 
     protected $rules =[
-        'name' => 'required|min:3',
+        'name' => 'required|min:3|regex:/^\pL+(\s+\pL+)*$/u',
+    ];
+
+    protected $messages = [
+        'name.required' => 'El nombre de la categoría es obligatorio',
+        'name.min' => 'El nombre de la categoría debe tener al menos 3 caracteres',
+        'name.regex' => 'El nombre de la categoría solo debe contener letras y espacios',
     ];
 
     public function resetForm()

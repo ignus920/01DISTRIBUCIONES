@@ -281,9 +281,13 @@
                 <!-- Header -->
                 <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <div class="flex items-center">
-                        <div class="flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
-                            <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 4v2M6.3 6.3a9 9 0 1112.4 12.4M6.3 6.3L4.9 4.9m12.4 12.4l1.4 1.4"></path>
+                        <div
+                            class="flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+                            <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4v2m0 4v2M6.3 6.3a9 9 0 1112.4 12.4M6.3 6.3L4.9 4.9m12.4 12.4l1.4 1.4">
+                                </path>
                             </svg>
                         </div>
                         <h3 class="ml-4 text-lg font-semibold text-gray-900 dark:text-white">
@@ -294,13 +298,24 @@
 
                 <!-- Body -->
                 <div class="px-6 py-4">
+                    @if($showFooter)
                     <p class="text-gray-600 dark:text-gray-300">
-                        ¿Está seguro de que desea confirmar el cargue? <strong>Esta acción es irreversible</strong> y no podrá deshacerla.
+                        ¿Está seguro de que desea confirmar el cargue? <strong>Esta acción es irreversible</strong> y no
+                        podrá deshacerla.
                     </p>
+                    @endif
+
+                    @if($showClearOptions)
+                    <p class="text-gray-600 dark:text-gray-300">
+                        ¿Desea limpiar la lista de cargue?
+                    </p>
+                    @endif
                 </div>
 
                 <!-- Footer -->
-                <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 px-6 pb-4 border-t border-gray-200 dark:border-gray-700">
+                @if($showFooter)
+                <div
+                    class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 px-6 pb-4 border-t border-gray-200 dark:border-gray-700">
                     <button type="button" wire:click="cancelConfirmUpload"
                         class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium text-sm transition-colors">
                         Cancelar
@@ -310,6 +325,21 @@
                         Confirmar
                     </button>
                 </div>
+                @endif
+
+                @if($showClearOptions)
+                <div
+                    class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 px-6 pb-4 border-t border-gray-200 dark:border-gray-700">
+                    <button type="button" wire:click="closeModal"
+                        class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium text-sm transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="button" wire:click="clearListUpload"
+                        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors">
+                        Si
+                    </button>
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -395,7 +425,7 @@
                             class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium text-sm transition-colors order-2 sm:order-1">
                             No
                         </button>
-                        <button type="button" wire:click="openMovementsForm"
+                        <button type="button" wire:click="openMovementForm"
                             class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors order-1 sm:order-2">
                             Si
                         </button>
@@ -459,5 +489,22 @@
         component
     }) => {
         console.log('Livewire response:', status, component);
+    });
+
+    window.addEventListener('open-movement-form', (e) => {
+        // If you dispatch the event with the child component id: dispatchBrowserEvent('open-movement-form', { componentId: 'xyz' })
+        if (e?.detail?.componentId) {
+            try { Livewire.find(e.detail.componentId).call('create'); return; } catch (err) {}
+        }
+
+        // Option A — recommended: wrap the movement form in <div id="movementFormLivewire"> @livewire('tenant.movements.movement-form') </div>
+        const wrapper = document.getElementById('movementFormLivewire');
+        if (wrapper) {
+            const lwEl = wrapper.querySelector('[wire\\:id]');
+            if (lwEl) {
+                const id = lwEl.getAttribute('wire:id');
+                try { Livewire.find(id).call('create'); return; } catch (err) {}
+            }
+        }
     });
 </script>
