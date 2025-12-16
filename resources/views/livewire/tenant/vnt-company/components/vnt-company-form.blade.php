@@ -318,10 +318,18 @@
                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                     <!-- Header -->
-                    <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                        <div>
+                          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                             {{ $editingId ? 'Editar' : 'Crear' }} Cliente
-                        </h3>
+                          </h3>
+                        </div>
+                        <button wire:click="cancelForm" 
+                          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                           </svg>
+                        </button>
                     </div>
                     <!-- Alert de Errores de Validación -->
                     @if (session()->has('error'))
@@ -701,20 +709,19 @@
                             @error('warehouseAddress') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
-                        <!-- Crear Usuario Checkbox (solo para nuevos clientes) -->
-                        @if(!$editingId)
+                        <!-- Crear Usuario Checkbox -->
                         <div class="md:col-span-2">
                             <div class="flex items-center gap-3 p-4 rounded-lg
-                                {{ empty($billingEmail) || $emailExists ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
+                                {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
                                 <input
                                     wire:model="createUser"
                                     type="checkbox"
                                     id="createUser"
-                                    {{ empty($billingEmail) || $emailExists ? 'disabled' : '' }}
-                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists ? 'opacity-50 cursor-not-allowed' : '' }}">
-                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
-                                    <span class="font-semibold">Convertir en Usuario</span>
-                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
+                                    {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'disabled' : '' }}
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
+                                    <span class="font-semibold">{{ $editingId ? 'Crear Usuario para este Cliente' : 'Convertir en Usuario' }}</span>
+                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
                                         @if(empty($billingEmail))
                                         Ingrese un email de facturación válido para habilitar esta opción
                                         @elseif($emailExists)
@@ -724,13 +731,11 @@
                                         @endif
                                     </p>
                                 </label>
-                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
+                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
                                     Perfil: Tienda
                                 </div>
                             </div>
                         </div>
-                        @endif
-
                         <!-- Actions -->
                         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button type="button"
@@ -803,10 +808,18 @@
                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                     <!-- Header -->
-                    <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                   <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                        <div>
+                          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                             {{ $editingId ? 'Editar' : 'Crear' }} Cliente
-                        </h3>
+                          </h3>
+                        </div>
+                        <button wire:click="cancelForm" 
+                          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                           </svg>
+                        </button>
                     </div>
                     <!-- Alert de Errores de Validación -->
                     @if (session()->has('error'))
@@ -1162,20 +1175,19 @@
                             @error('warehouseAddress') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
-                        <!-- Crear Usuario Checkbox (solo para nuevos clientes) -->
-                        @if(!$editingId)
+                        <!-- Crear Usuario Checkbox -->
                         <div class="md:col-span-2">
                             <div class="flex items-center gap-3 p-4 rounded-lg
-                                {{ empty($billingEmail) || $emailExists ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
+                                {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
                                 <input
                                     wire:model="createUser"
                                     type="checkbox"
                                     id="createUser"
-                                    {{ empty($billingEmail) || $emailExists ? 'disabled' : '' }}
-                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists ? 'opacity-50 cursor-not-allowed' : '' }}">
-                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
-                                    <span class="font-semibold">Convertir en Usuario</span>
-                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
+                                    {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'disabled' : '' }}
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
+                                    <span class="font-semibold">{{ $editingId ? 'Crear Usuario para este Cliente' : 'Convertir en Usuario' }}</span>
+                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
                                         @if(empty($billingEmail))
                                         Ingrese un email de facturación válido para habilitar esta opción
                                         @elseif($emailExists)
@@ -1185,13 +1197,11 @@
                                         @endif
                                     </p>
                                 </label>
-                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
+                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
                                     Perfil: Tienda
                                 </div>
                             </div>
                         </div>
-                        @endif
-
                         <!-- Actions -->
                         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button type="button"
