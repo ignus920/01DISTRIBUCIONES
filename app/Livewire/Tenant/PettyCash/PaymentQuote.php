@@ -349,40 +349,65 @@ class PaymentQuote extends Component
             return;
         }
 
-        if ($this->remainingBalance < 0) {
-            $this->dispatch('showAlert', 'Error: El total pagado excede el valor de la cotización.');
-            return;
-        }
-
         if ($this->remainingBalance > 0.01) {
             $this->dispatch('showAlert', 'Advertencia: Queda un saldo pendiente de $' . number_format($this->remainingBalance, 0, ',', '.'));
             return;
         }
 
-        // Crear resumen del pago
-        $metodosUsados = [];
-        foreach ($this->paymentMethods as $key => $method) {
-            if (((float) ($method['value'] ?? 0)) > 0) {
-                $metodosUsados[] = $method['name'] . ': $' . number_format($method['value'], 0, ',', '.');
+        // Mapeo de IDs de formas de pago
+        $methodMap = [
+            'efectivo' => 1,
+            'nequi' => 11,
+            'daviplata' => 12,
+            'tarjeta' => 4, // Asumiendo Tarjeta de Crédito por defecto
+        ];
+
+        try {
+            $this->ensureTenantConnection();
+            
+            // Verificar caja activa nuevamente por seguridad
+            if (!$this->checkActivePettyCash()) {
+                 return;
             }
+
+            $currentDate = \Carbon\Carbon::now();
+            $recordsCreated = 0;
+
+            foreach ($this->paymentMethods as $key => $method) {
+                $value = (float) ($method['value'] ?? 0);
+                
+                if ($value > 0) {
+                    $methodId = $methodMap[$key] ?? 1; // Default a efectivo si no se encuentra
+                    
+                    \App\Models\Tenant\PettyCash\VntDetailPettyCash::create([
+                        'status' => 1,
+                        'value' => $value,
+                        'created_at' => $currentDate,
+                        'updated_at' => $currentDate,
+                        'pettyCashId' => $this->activePettyCash['id'],
+                        'reasonPettyCashId' => 1, // ID 1 = Ventas
+                        'methodPaymentId' => $methodId,
+                        'invoiceId' => $this->quoteId,
+                        'observations' => "Pago cotización {$this->quoteNumber}. " . $this->observations
+                    ]);
+                    
+                    $recordsCreated++;
+                }
+            }
+
+            Log::info('Pago procesado:', [
+                'quote_id' => $this->quoteId,
+                'petty_cash_id' => $this->activePettyCash['id'],
+                'records' => $recordsCreated
+            ]);
+            
+            session()->flash('message', 'Pago registrado correctamente. Redirigiendo a nueva venta...');
+            return redirect()->route('tenant.tat.quoter.index');
+             
+        } catch (\Exception $e) {
+            Log::error('Error guardando pago: ' . $e->getMessage());
+            $this->dispatch('showAlert', 'Error: ' . $e->getMessage());
         }
-
-        $resumen = "PAGO CONFIRMADO\n\n";
-        $resumen .= "Total: $" . number_format($this->quoteTotal, 0, ',', '.') . "\n";
-        $resumen .= "Métodos de pago:\n" . implode("\n", $metodosUsados);
-        $resumen .= "\n\n¡Transacción exitosa!";
-
-        // Mostrar alert de confirmación
-        $this->dispatch('showAlert', $resumen);
-
-        // Log de la transacción simulada
-        Log::info('Pago simulado procesado:', [
-            'quote_id' => $this->quoteId,
-            'total_paid' => $this->totalPaid,
-            'payment_methods' => $this->paymentMethods,
-            'remaining_balance' => $this->remainingBalance,
-            'petty_cash_id' => $this->activePettyCash['id'] ?? null
-        ]);
     }
 
     public function resetPayment()
