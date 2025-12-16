@@ -81,7 +81,7 @@
                         class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center justify-center"
                         title="Cambiar cliente"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                         </svg>
                     </button>
@@ -168,12 +168,13 @@
     <!-- Contenido principal -->
     <div class="p-3">
         <!-- Headers de la tabla -->
-        <div class="hidden lg:grid lg:grid-cols-5 gap-2 mb-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
-            <div>Producto</div>
+        <div class="hidden lg:grid lg:grid-cols-7 gap-2 mb-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <div class="col-span-2">Producto</div>
+            <div class="text-center">IVA</div>
             <div class="text-center">Precio Unit.</div>
             <div class="text-center">Cant.</div>
             <div class="text-right">Subtotal</div>
-            <div class="text-center">Acción</div>
+            <div class="text-center">Eliminar</div>
         </div>
         
 
@@ -181,11 +182,16 @@
         <div class="space-y-2 mb-3">
             @foreach($cartItems as $index => $item)
                 <!-- Vista Desktop -->
-                <div class="hidden lg:grid lg:grid-cols-5 gap-2 items-center text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                <div wire:key="cart-item-desktop-{{ $item['id'] }}" class="hidden lg:grid lg:grid-cols-7 gap-2 items-center text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
                     <!-- Nombre del producto -->
-                    <div class="text-xs font-medium text-gray-800 dark:text-gray-200">
+                    <div class="col-span-2 text-xs font-medium text-gray-800 dark:text-gray-200">
                         {{ $item['name'] }}
                         <div class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ $item['sku'] ?? 'N/A' }}</div>
+                    </div>
+
+                    <!-- IVA -->
+                    <div class="text-center text-xs text-gray-600 dark:text-gray-400">
+                        {{ $item['tax_name'] ?? 'N/A' }}
                     </div>
 
                     <!-- Precio Unitario Editable -->
@@ -201,10 +207,11 @@
                     <!-- Cantidad -->
                     <div class="text-center">
                         <input type="number"
-                               value="{{ $item['quantity'] }}"
-                               wire:change="updateQuantity({{ $item['id'] }}, $event.target.value)"
+                               wire:model.live.debounce.500ms="cartItems.{{ $index }}.quantity"
                                class="w-20 text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600"
-                               min="0">
+                               min="1"
+                               step="1"
+                               pattern="\d*">
                     </div>
 
                     <!-- Subtotal -->
@@ -216,13 +223,15 @@
                     <div class="text-center">
                         <button wire:click="removeFromCart({{ $item['id'] }})"
                                 class="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded px-3 py-1 text-xs transition-colors duration-150">
-                                Eliminar
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
                         </button>
                     </div>
                 </div>
                 
                 <!-- Vista Móvil - Nombre completo arriba, controles abajo -->
-                <div class="lg:hidden">
+                <div wire:key="cart-item-mobile-{{ $item['id'] }}" class="lg:hidden">
                     <div class="bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700 space-y-2">
                         <!-- Fila 1: Nombre del producto con SKU y Stock (ocupa todo el ancho) -->
                         <div class="w-full">
@@ -234,6 +243,7 @@
                                 @if(isset($item['stock']))
                                     <span class="ml-2">| Stock: {{ number_format($item['stock'], 0) }}</span>
                                 @endif
+                                <span class="ml-2 font-semibold text-blue-600 dark:text-blue-400">| IVA: {{ $item['tax_name'] ?? 'N/A' }}</span>
                             </div>
                         </div>
 
@@ -254,10 +264,11 @@
                             <div class="flex-[0.2]">
                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Cant.</div>
                                 <input type="number"
-                                       value="{{ $item['quantity'] }}"
-                                       wire:change="updateQuantity({{ $item['id'] }}, $event.target.value)"
+                                       wire:model.live.debounce.500ms="cartItems.{{ $index }}.quantity"
                                        class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm font-semibold"
-                                       min="0">
+                                       min="1"
+                                       step="1"
+                                       pattern="\d*">
                             </div>
 
                             <!-- Subtotal (30% del espacio) -->
@@ -313,7 +324,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                     </svg>
-                    Limpiar
+                    Limpiar todo
                 </button>
             </div>
 
@@ -410,6 +421,31 @@
 <script>
     // Mejorar la funcionalidad del input de búsqueda
     document.addEventListener('livewire:init', () => {
+        // Listener para alertas de SweetAlert2
+        Livewire.on('swal:warning', (data) => {
+            // data es un array con los argumentos pasados desde el componente
+            const alertData = Array.isArray(data) ? data[0] : data;
+            
+            if (typeof Swal !== 'undefined') {
+                const isMobile = window.innerWidth < 768; // Detectar móvil
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: alertData.title || 'Advertencia',
+                    text: alertData.text || '',
+                    // Configuración condicional
+                    toast: !isMobile,
+                    position: isMobile ? 'center' : 'top-end',
+                    showConfirmButton: isMobile, // En móvil mostrar botón para cerrar
+                    timer: isMobile ? null : 3000, // En móvil esperar confirmación, en PC timer
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'Entendido'
+                });
+            } else {
+                alert(alertData.text);
+            }
+        });
+
         const searchInput = document.getElementById('product-search-input');
 
         if (searchInput) {
