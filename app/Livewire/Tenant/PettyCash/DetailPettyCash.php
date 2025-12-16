@@ -332,6 +332,7 @@ class DetailPettyCash extends Component
             }
 
         }catch(\Exception $e){
+            Log::error($e);
             session()->flash('error', 'Error no se realizó correctamente: ' . $e->getMessage());
             $this->resetForm();
         }
