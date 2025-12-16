@@ -625,7 +625,7 @@
                         'placeholder' => 'Seleccione una ruta (opcional)',
                         'routeId' => $routeId ?? ''
                         ])
-
+                            
                         <!-- district -->
                         <div>
                             <label for="district" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Barrio</label>

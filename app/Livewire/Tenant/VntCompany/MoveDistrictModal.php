@@ -26,7 +26,8 @@ class MoveDistrictModal extends Component
 
     protected $listeners = [
         'source-route-changed' => 'updateSourceRoute',
-        'target-route-changed' => 'updateTargetRoute'
+        'target-route-changed' => 'updateTargetRoute',
+        'district-changed' => 'updateDistrict'
     ];
 
     protected function rules()
@@ -298,6 +299,12 @@ class MoveDistrictModal extends Component
     {
         $this->targetRouteId = $routeId;
         // Solo actualizar el valor para que aparezca el botón de intercambio
+    }
+
+    public function updateDistrict($value)
+    {
+        $this->district = $value;
+        // El método updatedDistrict() se ejecutará automáticamente
     }
 
     private function resetForm()

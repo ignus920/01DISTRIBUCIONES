@@ -133,6 +133,7 @@ class WarehouseManagementModal extends Component
                     'cityId' => $this->warehouseForm['cityId'],
                     'postcode' => $this->warehouseForm['postcode'],
                     'branch_type' => $this->warehouseForm['branch_type'],
+                    'district' => '',
                     'main' => 0,
                     'status' => 1
                 ]);
@@ -154,6 +155,7 @@ class WarehouseManagementModal extends Component
                     'cityId' => $this->warehouseForm['cityId'],
                     'postcode' => $this->warehouseForm['postcode'],
                     'branch_type' => $this->warehouseForm['branch_type'],
+                    'district' => '',
                     'main' => 0
                 ]);
                 

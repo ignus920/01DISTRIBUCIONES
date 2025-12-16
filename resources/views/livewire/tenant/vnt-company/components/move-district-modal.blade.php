@@ -13,7 +13,7 @@
         x-transition:leave="ease-in duration-200"
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0">
-        <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div class="relative min-h-screen flex items-start justify-center p-4 pt-12">
             <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
                 x-transition:enter="ease-out duration-300"
                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
@@ -62,22 +62,28 @@
                     <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-4">
                         Seleccionar Barrio
                     </h4>
-                    <div class="grid grid-cols-1 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <!-- Barrio -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Barrio <span class="text-red-500">*</span>
-                            </label>
-                            <select wire:model.live="district"
-                                class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-500">
-                                <option value="">Seleccione un barrio</option>
-                                @foreach($availableDistricts as $availableDistrict)
-                                    <option value="{{ $availableDistrict }}">{{ $availableDistrict }}</option>
-                                @endforeach
-                            </select>
-                            @error('district')
-                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
+                        <div class="md:col-span-1">
+                            @php
+                            $districtItems = collect($availableDistricts)->map(function($district) {
+                            return ['id' => $district, 'name' => $district];
+                            })->toArray();
+                            @endphp
+
+                            @livewire('selects.generic-select', [
+                            'selectedValue' => $district,
+                            'items' => $districtItems,
+                            'name' => 'district',
+                            'label' => 'Barrio',
+                            'placeholder' => 'Seleccione un barrio',
+                            'displayField' => 'name',
+                            'valueField' => 'id',
+                            'searchFields' => ['name'],
+                            'eventName' => 'district-changed',
+                            'required' => true,
+                            'showLabel' => true
+                            ], key('district-select'))
                         </div>
                     </div>
                 </div>
@@ -206,10 +212,10 @@
                                 Ruta de Origen
                             </label>
                             @livewire('selects.route-select', [
-                                'selectedValue' => $sourceRouteId,
-                                'eventName' => 'source-route-changed',
-                                'placeholder' => 'Seleccionar ruta de origen',
-                                'district' => $district
+                            'selectedValue' => $sourceRouteId,
+                            'eventName' => 'source-route-changed',
+                            'placeholder' => 'Seleccionar ruta de origen',
+                            'district' => $district
                             ], key('source-route-select-' . $district))
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 Seleccione la ruta de origen para intercambiar
@@ -222,9 +228,9 @@
                                 Ruta de Destino @if(count($selectedCompanies) > 0)<span class="text-red-500">*</span>@endif
                             </label>
                             @livewire('selects.route-select', [
-                                'selectedValue' => $targetRouteId,
-                                'eventName' => 'target-route-changed',
-                                'placeholder' => 'Todas las rutas'
+                            'selectedValue' => $targetRouteId,
+                            'eventName' => 'target-route-changed',
+                            'placeholder' => 'Todas las rutas'
                             ])
                             @error('targetRouteId')
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -263,33 +269,43 @@
                     </div>
                     @endif
                 </div>
+                @else
+                <!-- Empty state -->
+                <div class="py-12 text-center">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                    </svg>
+                    <p class="text-lg font-medium text-gray-500 dark:text-gray-400">
+                        Selecciona un barrio para comenzar
+                    </p>
+                </div>
                 @endif
             </div>
         </div>
     </div>
     @endif
- <!-- Modal de Confirmación: Intercambiar Rutas -->
-    <div x-show="showSwapConfirm" 
-         x-cloak
-         class="fixed inset-0 z-[60] overflow-y-auto"
-         x-transition:enter="ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0">
+    <!-- Modal de Confirmación: Intercambiar Rutas -->
+    <div x-show="showSwapConfirm"
+        x-cloak
+        class="fixed inset-0 z-[60] overflow-y-auto"
+        x-transition:enter="ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75" 
-                 @click="showSwapConfirm = false"></div>
+            <div class="fixed inset-0 transition-opacity bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75"
+                @click="showSwapConfirm = false"></div>
 
             <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-                 x-transition:enter="ease-out duration-300"
-                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave="ease-in duration-200"
-                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-                
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
                 <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
                         <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 sm:mx-0 sm:h-10 sm:w-10">
@@ -310,14 +326,14 @@
                     </div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                    <button type="button" 
-                            @click="showSwapConfirm = false; $wire.call('swapRoutes')"
-                            class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                    <button type="button"
+                        @click="showSwapConfirm = false; $wire.call('swapRoutes')"
+                        class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
                         Sí, intercambiar
                     </button>
-                    <button type="button" 
-                            @click="showSwapConfirm = false"
-                            class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors">
+                    <button type="button"
+                        @click="showSwapConfirm = false"
+                        class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors">
                         Cancelar
                     </button>
                 </div>
@@ -326,27 +342,27 @@
     </div>
 
     <!-- Modal de Confirmación: Mover Clientes -->
-    <div x-show="showMoveConfirm" 
-         x-cloak
-         class="fixed inset-0 z-[60] overflow-y-auto"
-         x-transition:enter="ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0">
+    <div x-show="showMoveConfirm"
+        x-cloak
+        class="fixed inset-0 z-[60] overflow-y-auto"
+        x-transition:enter="ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 transition-opacity bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75" 
-                 @click="showMoveConfirm = false"></div>
+            <div class="fixed inset-0 transition-opacity bg-gray-500 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-75"
+                @click="showMoveConfirm = false"></div>
 
             <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-                 x-transition:enter="ease-out duration-300"
-                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave="ease-in duration-200"
-                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-                
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
                 <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                     <div class="sm:flex sm:items-start">
                         <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 sm:mx-0 sm:h-10 sm:w-10">
@@ -367,14 +383,14 @@
                     </div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                    <button type="button" 
-                            @click="showMoveConfirm = false; $wire.call('moveCompanies')"
-                            class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                    <button type="button"
+                        @click="showMoveConfirm = false; $wire.call('moveCompanies')"
+                        class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
                         Sí, mover
                     </button>
-                    <button type="button" 
-                            @click="showMoveConfirm = false"
-                            class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors">
+                    <button type="button"
+                        @click="showMoveConfirm = false"
+                        class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-700 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 sm:mt-0 sm:w-auto sm:text-sm transition-colors">
                         Cancelar
                     </button>
                 </div>
@@ -384,5 +400,3 @@
 </div>
 
 </div>
-
-   
