@@ -33,6 +33,7 @@ class Uploads extends Component
     public $showScares = false;
     public $scarceUnits = [];
     public $showformMovements = false;
+    public $showConfirmModal = false;
 
 
     // impresion de carges 
@@ -204,8 +205,20 @@ class Uploads extends Component
         return $result->hay_faltantes;        
     }
 
+    public function showConfirmUploadModal()
+    {
+        $this->showConfirmModal = true;
+    }
+
+    public function cancelConfirmUpload()
+    {
+        $this->showConfirmModal = false;
+    }
+
     public function confirmUpload()
     {
+        $this->showConfirmModal = false;
+        
         $hayFaltantes = $this->validateScarce();
 
         if ($hayFaltantes === 'SI') {

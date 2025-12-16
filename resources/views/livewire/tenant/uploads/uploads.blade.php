@@ -134,7 +134,7 @@
                             </ul>
                         </div> --}}
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full pt-3">
-                            <button wire:click="confirmUpload"
+                            <button wire:click="showConfirmUploadModal"
                                 class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -261,6 +261,59 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de Confirmación de Cargue -->
+    @if($showConfirmModal)
+    <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50"
+        x-data="{ show: true }" x-show="show" x-transition:enter="ease-out duration-300"
+        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full"
+                x-transition:enter="ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave="ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                <!-- Header -->
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                    <div class="flex items-center">
+                        <div class="flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30">
+                            <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4v2m0 4v2M6.3 6.3a9 9 0 1112.4 12.4M6.3 6.3L4.9 4.9m12.4 12.4l1.4 1.4"></path>
+                            </svg>
+                        </div>
+                        <h3 class="ml-4 text-lg font-semibold text-gray-900 dark:text-white">
+                            Confirmar Cargue
+                        </h3>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="px-6 py-4">
+                    <p class="text-gray-600 dark:text-gray-300">
+                        ¿Está seguro de que desea confirmar el cargue? <strong>Esta acción es irreversible</strong> y no podrá deshacerla.
+                    </p>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 px-6 pb-4 border-t border-gray-200 dark:border-gray-700">
+                    <button type="button" wire:click="cancelConfirmUpload"
+                        class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium text-sm transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="button" wire:click="confirmUpload"
+                        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Mensaje cuando hay faltantes -->
     @if($showScares)
