@@ -207,7 +207,7 @@ class CompanyService
             $preparedData['lastName'] = $data['lastName'] ?? null;
             $preparedData['secondLastName'] = $data['secondLastName'] ?? null;
             $preparedData['checkDigit'] = null;
-            $preparedData['code_ciiu'] = '0';
+            $preparedData['code_ciiu'] = $data['code_ciiu'] ?? null;
             $preparedData['regimeId'] = 2;
             $preparedData['fiscalResponsabilityId'] = 1;
         }
@@ -220,7 +220,7 @@ class CompanyService
             $preparedData['lastName'] = $data['lastName'] ?? null;
             $preparedData['secondLastName'] = $data['secondLastName'] ?? null;
             $preparedData['checkDigit'] = $data['checkDigit'] ?? null;
-            $preparedData['code_ciiu'] = '0';
+            $preparedData['code_ciiu'] = $data['code_ciiu'] ?? null;
             $preparedData['regimeId'] = 2;
             $preparedData['fiscalResponsabilityId'] = 1;
         }

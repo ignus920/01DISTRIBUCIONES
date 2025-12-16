@@ -117,6 +117,10 @@ class VntCompanyForm extends Component
 
     // Propiedad para crear usuario
     public $createUser = false;
+    // Propiedad para verificar si el cliente ya tiene usuario
+    public $hasExistingUser = false;
+    // Email del usuario existente (si existe)
+    public $existingUserEmail = '';
     // Propiedad para el vendedor asignado
     public $vntUserId = '';
     // Propiedad para la ruta asignada
@@ -338,13 +342,18 @@ class VntCompanyForm extends Component
             $this->evaluateWarehousePermissions();
         }
         
+        // Verificar si el cliente ya tiene un usuario asignado
+        $this->checkExistingUser();
+        
         // Log final antes de mostrar el modal para verificar el estado
         Log::info('Final state before showing modal', [
             'company_id' => $id,
             'typePerson' => $this->typePerson,
             'typeIdentificationId' => $this->typeIdentificationId,
             'showNaturalPersonFields' => $this->showNaturalPersonFields,
-            'verification_digit' => $this->verification_digit
+            'verification_digit' => $this->verification_digit,
+            'hasExistingUser' => $this->hasExistingUser,
+            'existingUserEmail' => $this->existingUserEmail
         ]);
         
         $this->showModal = true;
@@ -679,6 +688,10 @@ class VntCompanyForm extends Component
 
         // Reset create user checkbox
         $this->createUser = false;
+        
+        // Reset existing user check
+        $this->hasExistingUser = false;
+        $this->existingUserEmail = '';
 
         // Reset vendedor y ruta
         $this->vntUserId = '';
@@ -698,6 +711,51 @@ class VntCompanyForm extends Component
 
         // Emitir evento para notificar al componente padre que se canceló
         $this->dispatch('customer-form-cancelled');
+    }
+
+    /**
+     * Verificar si el cliente ya tiene un usuario asignado
+     * Se llama al cargar un cliente para edición y cuando cambia el email
+     */
+    public function checkExistingUser(): void
+    {
+        // Si no hay email, no puede haber usuario
+        if (empty($this->billingEmail)) {
+            $this->hasExistingUser = false;
+            $this->existingUserEmail = '';
+            // NO deshabilitamos el checkbox aquí, solo limpiamos las banderas
+            return;
+        }
+
+        try {
+            // Buscar si existe un usuario con este email
+            $existingUser = User::where('email', $this->billingEmail)->first();
+            
+            if ($existingUser) {
+                $this->hasExistingUser = true;
+                $this->existingUserEmail = $existingUser->email;
+                $this->createUser = false; // Deshabilitar el checkbox solo si existe usuario
+                
+                Log::info('Usuario existente encontrado para cliente', [
+                    'company_id' => $this->editingId,
+                    'email' => $this->billingEmail,
+                    'user_id' => $existingUser->id
+                ]);
+            } else {
+                $this->hasExistingUser = false;
+                $this->existingUserEmail = '';
+                // No modificamos createUser, dejamos que el usuario decida
+            }
+        } catch (\Exception $e) {
+            Log::error('Error verificando usuario existente', [
+                'error' => $e->getMessage(),
+                'email' => $this->billingEmail
+            ]);
+            
+            // En caso de error, asumir que no hay usuario
+            $this->hasExistingUser = false;
+            $this->existingUserEmail = '';
+        }
     }
 
     public function updateTypeIdentification($typeIdentificationId)
@@ -815,6 +873,11 @@ class VntCompanyForm extends Component
      */
     public function updated($propertyName)
     {
+        // Limpiar espacios en blanco de campos de texto
+        if (in_array($propertyName, ['firstName', 'lastName', 'secondName', 'secondLastName', 'businessName', 'district'])) {
+            $this->$propertyName = trim($this->$propertyName);
+        }
+        
         // Validar solo el campo que cambió
         $this->validateOnly($propertyName);
         
@@ -829,12 +892,39 @@ class VntCompanyForm extends Component
         // Validar unicidad de email si cambió
         if ($propertyName === 'billingEmail' && !empty($this->billingEmail)) {
             $this->validateEmailUniqueness();
+            // También verificar si ya existe un usuario con este email
+            $this->checkExistingUser();
         }
 
         // Validar checkbox createUser si se cambia cuando ya hay email duplicado
-        if ($propertyName === 'createUser' && $this->createUser && $this->emailExists) {
+        if ($propertyName === 'createUser' && $this->createUser && ($this->emailExists || $this->hasExistingUser)) {
             $this->createUser = false;
             session()->flash('error', 'No se puede crear un usuario con un email que ya existe.');
+        }
+        
+        // Validar formato de teléfonos en tiempo real
+        if (in_array($propertyName, ['business_phone', 'personal_phone'])) {
+            $this->validatePhoneFormat($propertyName);
+        }
+    }
+    
+    /**
+     * Validar formato de teléfono
+     */
+    private function validatePhoneFormat($propertyName): void
+    {
+        $phone = $this->$propertyName;
+        
+        if (empty($phone)) {
+            return;
+        }
+        
+        // Remover espacios, guiones y paréntesis para validar solo números
+        $cleanPhone = preg_replace('/[\s\-\(\)]/', '', $phone);
+        
+        // Validar que tenga al menos 7 dígitos
+        if (strlen($cleanPhone) < 7) {
+            $this->addError($propertyName, 'El teléfono debe tener al menos 7 dígitos.');
         }
     }
 
@@ -1224,19 +1314,28 @@ class VntCompanyForm extends Component
             'email' => $this->billingEmail
         ]);
 
-        // Lanzar Job para copiar productos en segundo plano
+        // Despachar job para copiar productos en segundo plano
+        // Esto evita el timeout y permite que el usuario continúe inmediatamente
         try {
-            $tenantId = session('tenant_id');
-            \App\Jobs\CopyProductsToClientJob::dispatch($company->id, $tenantId);
+            \App\Jobs\CopyProductsToClientJob::dispatch($company->id);
             
-            // Mensaje informativo sobre el proceso en segundo plano
-            session()->flash('success', 'Usuario creado. Los productos se están copiando en segundo plano y aparecerán pronto.');
+            Log::info('Job de copia de productos despachado', [
+                'user_id' => $newUser->id,
+                'company_id' => $company->id
+            ]);
+            
+            // Mensaje informativo para el usuario
+            session()->flash('info', 'Usuario creado exitosamente. Los productos se están copiando en segundo plano y estarán disponibles en unos minutos.');
             
         } catch (\Exception $e) {
-            Log::error('Error lanzando Job de copia de productos', [
+            // Log del error pero no lanzar excepción
+            Log::error('Error despachando job de copia de productos', [
                 'user_id' => $newUser->id,
                 'error' => $e->getMessage()
             ]);
+            
+            // Agregar mensaje informativo sin fallar
+            session()->flash('warning', 'Usuario creado exitosamente, pero hubo un problema al iniciar la copia de productos. Contacte al administrador.');
         }
 
         return $newUser;
