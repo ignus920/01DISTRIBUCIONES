@@ -161,20 +161,20 @@ class PaymentQuote extends Component
             $totalTaxes += $lineTax;
         }
 
-        $this->quoteSubtotal = $subtotal;
-        $this->quoteTaxes = $totalTaxes;
-        $this->quoteTotal = $subtotal + $totalTaxes;
+        $this->quoteSubtotal = round($subtotal, 0);
+        $this->quoteTaxes = round($totalTaxes, 0);
+        $this->quoteTotal = round($subtotal + $totalTaxes, 0);
     }
 
-    private function setDefaultQuoteData()
-    {
-        // Datos por defecto si no se puede cargar la cotización
-        $this->quoteCustumer = 'CLIENTE DE PRUEBA';
-        $this->quoteNumber = 'COT-000001';
-        $this->quoteSubtotal = 100000;
-        $this->quoteTaxes = 19000;
-        $this->quoteTotal = 119000;
-    }
+    // private function setDefaultQuoteData()
+    // {
+    //     // Datos por defecto si no se puede cargar la cotización
+    //     $this->quoteCustumer = 'CLIENTE DE PRUEBA';
+    //     $this->quoteNumber = 'COT-000001';
+    //     $this->quoteSubtotal = 100000;
+    //     $this->quoteTaxes = 19000;
+    //     $this->quoteTotal = 119000;
+    // }
 
     private function checkActivePettyCash()
     {
@@ -217,8 +217,8 @@ class PaymentQuote extends Component
         foreach ($this->paymentMethods as $method) {
             $totalFromMethods += (float) ($method['value'] ?? 0);
         }
-        $this->totalPaid = $this->totalAdvances + $totalFromMethods;
-        $this->remainingBalance = $this->quoteTotal - $this->totalPaid;
+        $this->totalPaid = round($this->totalAdvances + $totalFromMethods, 2);
+        $this->remainingBalance = round($this->quoteTotal - $this->totalPaid, 2);
 
         // Determinar si puede proceder al pago
         $this->canProceedToPayment = $this->totalPaid > 0;
@@ -354,7 +354,7 @@ class PaymentQuote extends Component
             return;
         }
 
-        if ($this->remainingBalance > 0) {
+        if ($this->remainingBalance > 0.01) {
             $this->dispatch('showAlert', 'Advertencia: Queda un saldo pendiente de $' . number_format($this->remainingBalance, 0, ',', '.'));
             return;
         }
