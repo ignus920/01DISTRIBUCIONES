@@ -38,6 +38,12 @@ class DetailPettyCash extends Component
     public $sortDirection = 'desc';
     public $perPage = 6;
 
+    public function boot()
+    {
+        $this->ensureTenantConnection();
+        $this->initializeCompanyConfiguration();
+    }
+
     protected $rules =[
         'typeMovement' => 'required',
         'reasonMovement' => 'required|integer',
@@ -107,7 +113,11 @@ class DetailPettyCash extends Component
 
     public function canDoMovement(): bool
     {
-        $this->initializeCompanyConfiguration();
+        // Si hay una empresa TAT seleccionada, permitir
+        if ($this->currentCompanyId) {
+            return true;
+        }
+
         $result = $this->isOptionEnabled(18);
         $value = $this->getOptionValue(18);
 
@@ -124,7 +134,11 @@ class DetailPettyCash extends Component
 
     public function canDoIncome(): bool
     {
-        $this->initializeCompanyConfiguration();
+        // Si hay una empresa TAT seleccionada, permitir
+        if ($this->currentCompanyId) {
+            return true;
+        }
+
         $result = $this->isOptionEnabled(15);
         $value = $this->getOptionValue(15); 
         Log::info('🔍 canDoIncome() verificación', [
@@ -140,7 +154,11 @@ class DetailPettyCash extends Component
 
     public function canDoEgress(): bool
     {
-        $this->initializeCompanyConfiguration();
+        // Si hay una empresa TAT seleccionada, permitir
+        if ($this->currentCompanyId) {
+            return true;
+        }
+
         $result = $this->isOptionEnabled(16);
         $value = $this->getOptionValue(16);
         Log::info('🔍 canDoEgress() verificación', [

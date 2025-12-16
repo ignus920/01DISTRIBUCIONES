@@ -10,6 +10,7 @@ use App\Models\Tenant\PettyCash\PettyCash as PettyCashModel;
 use App\Models\Tenant\PettyCash\VntDetailPettyCash;
 use App\Models\Tenant\PettyCash\VntReconciliations;
 use App\Models\Tenant\PettyCash\VntDetailReconciliations;
+use App\Models\TAT\PettyCash\TatCompanyPettyCash; // Importar Modelo CORRECTAMENTE
 
 //Servicios
 use Illuminate\Support\Facades\Auth;
@@ -57,20 +58,15 @@ class PettyCash extends Component
         'perPage' => ['except' => 10],
     ];
 
-    public function mount(){
+    public function boot()
+    {
         $this->ensureTenantConnection();
-        // Inicializar configuración de empresa
         $this->initializeCompanyConfiguration();
+    }
 
-        // DEBUG: Limpiar caché para testing
-        $this->clearConfigurationCache();
-
-        // DEBUG: Log para verificar inicialización
-        Log::info('🔍 PettyCash mount() ejecutado', [
-            'currentCompanyId' => $this->currentCompanyId,
-            'currentPlainId' => $this->currentPlainId,
-            'configService_exists' => $this->configService ? 'YES' : 'NO'
-        ]);
+    public function mount(){
+        // boot() ya se encarga de inicializar
+        $this->clearConfigurationCache(); // Mantener limpieza de caché si es necesario
     }
 
     public function sortBy($field)
@@ -92,7 +88,9 @@ class PettyCash extends Component
 
     public function save(){
         try{
-            $this->ensureTenantConnection();
+            // La conexión y configuración ya están inicializadas por boot()
+    
+            $exists=$this->PettyCashExits($this->getwarehouse());
     
             $exists=$this->PettyCashExits($this->getwarehouse());
     
@@ -119,6 +117,16 @@ class PettyCash extends Component
             
                 $newPettyCashId=PettyCashModel::create($pettyCashData);
                 $pettyCash_id=$newPettyCashId->id;
+                
+                // Lógica para TAT: Guardar relación si existe company_id
+                if ($this->currentCompanyId) {
+                     TatCompanyPettyCash::create([
+                        'company_id' => $this->currentCompanyId,
+                        'petty_cash_id' => $pettyCash_id,
+                        'created_at' => Carbon::now(),
+                    ]);
+                }
+
                 $this->saveDetailPettyCash($pettyCash_id);
                 session()->flash('message', 'Registro realizado exitosamente.');
             
@@ -339,6 +347,11 @@ class PettyCash extends Component
     $petty_cashes = PettyCashModel::query()
         ->select('vnt_petty_cash.*', 'u.name')
         ->join('users as u', 'u.id', '=', 'vnt_petty_cash.userIdOpen')
+        ->when($this->currentCompanyId, function ($query) {
+            // Contexto TAT: Filtrar solo cajas asociadas a la empresa actual
+            $query->join('tat_company_petty_cash', 'tat_company_petty_cash.petty_cash_id', '=', 'vnt_petty_cash.id')
+                  ->where('tat_company_petty_cash.company_id', $this->currentCompanyId);
+        })
         ->when($this->search, function ($query) {
             $query->where('vnt_petty_cash.consecutive', 'like', '%' . $this->search . '%')
                   ->orWhere('u.name', 'like', '%' . $this->search . '%');
@@ -352,6 +365,11 @@ class PettyCash extends Component
 }
 
     public function canOpenPettyCash(): bool{
+        // Si hay una empresa TAT seleccionada (contexto TAT), permitir siempre la apertura
+        if ($this->currentCompanyId) {
+            return true;
+        }
+
         $result = $this->isOptionEnabled(17);
         $value = $this->getOptionValue(17);
 
@@ -419,10 +437,10 @@ class PettyCash extends Component
         $centralDbName = config('database.connections.central.database');
 
         $data=DB::table("{$centralDbName}.users", 'u')
-                    ->select('w.id')
                     ->join("{$centralDbName}.vnt_contacts as c", 'u.contact_id', '=', 'c.id')
                     ->join("{$centralDbName}.vnt_warehouses as w", 'c.warehouseId', '=', 'w.id')
-                    ->where('u.id', Auth::id());
+                    ->where('u.id', Auth::id())
+                    ->value('w.id'); // Ejecutar la consulta y obtener el valor
         return $data;
     }
 

@@ -14,7 +14,7 @@
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
-                    Crear Nuevo
+                    Crear Nueva caja
                 </button>
                 @endif
             </div>
@@ -23,7 +23,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!--CARD IZQUIERDO-->
-            <div class="lg:col-span-5 xl:col-span-4">
+            <div class="lg:col-span-5 xl:col-span-5">
                 <!-- Mensajes -->
                 @if (session()->has('message'))
                 <div
@@ -79,7 +79,7 @@
                     </div>
 
                     <!-- Tabla -->
-                    <div class="overflow-x-auto">
+                    <div class="">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
                                 <tr>
@@ -221,7 +221,7 @@
             </div>
 
             <!--CARD DERECHO-->
-            <div class="lg:col-span-7 xl:col-span-8">
+            <div class="lg:col-span-7 xl:col-span-7">
                 @if($showDetail)
                 @livewire('tenant.petty-cash.detail-petty-cash',['pettyCash_id'=>$pettyCash_id], key($pettyCash_id))
                 @else
