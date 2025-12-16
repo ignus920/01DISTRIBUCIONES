@@ -176,10 +176,36 @@ class PaymentQuote extends Component
     //     $this->quoteTotal = 119000;
     // }
 
+    public function getPettyCashModel()
+    {
+        $distribuidoraId = '06bbc9a5-3fd0-4bb6-95c2-891904bec837';
+        $currentTenantId = session('tenant_id');
+
+        if ($currentTenantId === $distribuidoraId) {
+            return new \App\Models\Tenant\PettyCash\PriPettyCash();
+        }
+
+        // Return standard model class name or instance
+        return new \App\Models\Tenant\PettyCash\PettyCash();
+    }
+
+    public function getDetailPettyCashModel()
+    {
+        $distribuidoraId = '06bbc9a5-3fd0-4bb6-95c2-891904bec837';
+        $currentTenantId = session('tenant_id');
+
+        if ($currentTenantId === $distribuidoraId) {
+            return new \App\Models\Tenant\PettyCash\PriDetailPettyCash();
+        }
+
+        return new \App\Models\Tenant\PettyCash\VntDetailPettyCash();
+    }
+
     private function checkActivePettyCash()
     {
         try {
-            $pettyCash = PettyCash::where('status', 1)->first();
+            $model = $this->getPettyCashModel();
+            $pettyCash = $model->where('status', 1)->first();
 
             if (!$pettyCash) {
                 session()->flash('error', 'No hay una caja abierta. Debe abrir una caja antes de procesar pagos.');
@@ -373,13 +399,16 @@ class PaymentQuote extends Component
             $currentDate = \Carbon\Carbon::now();
             $recordsCreated = 0;
 
+            // Instanciar modelo dinámico
+            $detailModel = $this->getDetailPettyCashModel();
+
             foreach ($this->paymentMethods as $key => $method) {
                 $value = (float) ($method['value'] ?? 0);
                 
                 if ($value > 0) {
                     $methodId = $methodMap[$key] ?? 1; // Default a efectivo si no se encuentra
                     
-                    \App\Models\Tenant\PettyCash\VntDetailPettyCash::create([
+                    $detailModel->create([
                         'status' => 1,
                         'value' => $value,
                         'created_at' => $currentDate,
@@ -395,6 +424,7 @@ class PaymentQuote extends Component
                 }
             }
 
+            // Log de la transacción
             Log::info('Pago procesado:', [
                 'quote_id' => $this->quoteId,
                 'petty_cash_id' => $this->activePettyCash['id'],
