@@ -72,7 +72,8 @@ class DetailPettyCash extends Component
 
     public function getValuesDetail()
     {
-        return VntDetailPettyCash::where('pettyCashId', $this->pettyCash_id)->where('status', 1)
+        return $this->getDetailPettyCashModel()
+            ->where('pettyCashId', $this->pettyCash_id)->where('status', 1)
             ->with('methodPayments','reasonsPettyCash')
             ->whereNotIn('reasonPettyCashId', [5])
             ->when($this->search, function($query){
@@ -113,8 +114,8 @@ class DetailPettyCash extends Component
 
     public function canDoMovement(): bool
     {
-        // Si hay una empresa TAT seleccionada, permitir
-        if ($this->currentCompanyId) {
+        // Si es usuario TAT, permitir
+        if (auth()->user()->profile_id == 17) {
             return true;
         }
 
@@ -134,8 +135,8 @@ class DetailPettyCash extends Component
 
     public function canDoIncome(): bool
     {
-        // Si hay una empresa TAT seleccionada, permitir
-        if ($this->currentCompanyId) {
+        // Si es usuario TAT, permitir
+        if (auth()->user()->profile_id == 17) {
             return true;
         }
 
@@ -154,8 +155,8 @@ class DetailPettyCash extends Component
 
     public function canDoEgress(): bool
     {
-        // Si hay una empresa TAT seleccionada, permitir
-        if ($this->currentCompanyId) {
+        // Si es usuario TAT, permitir
+        if (auth()->user()->profile_id == 17) {
             return true;
         }
 
@@ -216,7 +217,7 @@ class DetailPettyCash extends Component
     public function incomes(){
         $this->ensureTenantConnection();
 
-        return VntDetailPettyCash::selectRaw('SUM(value) AS sumIncomes')->
+        return $this->getDetailPettyCashModel()->selectRaw('SUM(value) AS sumIncomes')->
                                             where('pettyCashId', $this->pettyCash_id)
                                             ->where('status',1)
                                             ->whereIn('reasonPettyCashId', [1,2,6])
@@ -226,7 +227,7 @@ class DetailPettyCash extends Component
     public function egrees(){
         $this->ensureTenantConnection();
 
-        return VntDetailPettyCash::selectRaw('SUM(value) AS sumEgress')
+        return $this->getDetailPettyCashModel()->selectRaw('SUM(value) AS sumEgress')
                                             ->where('pettyCashId', $this->pettyCash_id)
                                             ->where('status',1)
                                             ->whereIn('reasonPettyCashId', [3,4])
@@ -236,7 +237,7 @@ class DetailPettyCash extends Component
     public function basePettyCash(){
         $this->ensureTenantConnection();
 
-        return VntDetailPettyCash::selectRaw('SUM(value) AS sumBase')->
+        return $this->getDetailPettyCashModel()->selectRaw('SUM(value) AS sumBase')->
                                             where('pettyCashId', $this->pettyCash_id)
                                             ->where('status',1)
                                             ->where('reasonPettyCashId', 5)
@@ -276,7 +277,7 @@ class DetailPettyCash extends Component
 
     public function loadDetailsData(){
         $this->ensureTenantConnection();
-        $values = VntDetailPettyCash::where('pettyCashId', $this->pettyCash_id)->first();
+        $values = $this->getDetailPettyCashModel()->where('pettyCashId', $this->pettyCash_id)->first();
     }
 
     public function save(){
@@ -284,7 +285,9 @@ class DetailPettyCash extends Component
             $this->ensureTenantConnection();
             $this->validate();
 
-            $detailPettyCashService = app(DetailPettyCashServices::class);
+            // $detailPettyCashService = app(DetailPettyCashServices::class);
+            $detailModel = $this->getDetailPettyCashModel();
+
             if($this->typeMovement=='e'){
                 if($this->canUseBase()){
                     //Base
@@ -296,7 +299,7 @@ class DetailPettyCash extends Component
                     $disponible = $resumBase + $sumIncomes;
 
                     if($disponible>=$this->valueDetail){
-                        $detailPettyCashService->createMovement([
+                        $detailModel->create([
                             'status' => 1,
                             'value' => $this->valueDetail,
                             'created_at' => Carbon::now(),
@@ -313,7 +316,7 @@ class DetailPettyCash extends Component
                     //Ingresos
                     $sumIncomes = $this->incomes();
                     if($sumIncomes>=$this->valueDetail){
-                        $detailPettyCashService->createMovement([
+                        $detailModel->create([
                             'status' => 1,
                             'value' => $this->valueDetail,
                             'created_at' => Carbon::now(),
@@ -328,7 +331,7 @@ class DetailPettyCash extends Component
                     }
                 }
             }else{
-                $detailPettyCashService->createMovement([
+                $detailModel->create([
                     'status' => 1,
                     'value' => $this->valueDetail,
                     'created_at' => Carbon::now(),
@@ -358,8 +361,14 @@ class DetailPettyCash extends Component
 
     public function deleteMovement($detailMovement){
         $this->ensureTenantConnection();
-        $typeMovement=VntDetailPettyCash::find($detailMovement)->reasonsPettyCash;
-        $movement=VntDetailPettyCash::findOrFail($detailMovement);
+        $detailModel = $this->getDetailPettyCashModel();
+        
+        $movement = $detailModel->findOrFail($detailMovement);
+        $typeMovement = $movement->reasonsPettyCash; // Acceder relacion desde instancia
+        // Nota: Si reasonsPettyCash es null, esto fallará. Asumimos integridad.
+        // Si no funciona relationship access en dynamic model, usar ->load('reasonsPettyCash') o similar.
+        // TatDetailPettyCash tiene defined relationship reasonsPettyCash.
+        
         try{
             if($typeMovement->type == "i"){
                 //Ingresos
@@ -397,6 +406,14 @@ class DetailPettyCash extends Component
         return Excel::download(new PettyCashDetailExport($this->pettyCash_id, $this->search), $fileName);
     }
 
+    public function getDetailPettyCashModel()
+    {
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatDetailPettyCash();
+        }
+
+        return new VntDetailPettyCash();
+    }
     private function ensureTenantConnection(): void
     {
         $tenantId = session('tenant_id');

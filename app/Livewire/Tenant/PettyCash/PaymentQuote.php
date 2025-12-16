@@ -8,6 +8,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Session;
 use App\Models\Tenant\MethodPayments\VntMethodPayMents;
 use App\Models\Tenant\PettyCash\PettyCash;
+use App\Traits\HasCompanyConfiguration; // Adding trait
 use Illuminate\Support\Facades\Log;
 use App\Models\Auth\Tenant;
 use App\Services\Tenant\TenantManager;
@@ -15,6 +16,8 @@ use App\Models\Tenant\Quoter\VntQuote;
 
 class PaymentQuote extends Component
 {
+    use HasCompanyConfiguration;
+
     // Datos de la cotización
     public $quoteId;
     public $quoteCustumer;
@@ -73,6 +76,26 @@ class PaymentQuote extends Component
     {
         // Asegurar conexión tenant en cada request de Livewire
         $this->ensureTenantConnection();
+        $this->initializeCompanyConfiguration();
+    }
+
+    public function getPettyCashModel()
+    {
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatPettyCash();
+        }
+
+        // Si no (Distribuidora), usar modelo estandar (vnt_)
+        return new PettyCash(); 
+    }
+
+    public function getDetailPettyCashModel()
+    {
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatDetailPettyCash();
+        }
+
+        return new \App\Models\Tenant\PettyCash\VntDetailPettyCash();
     }
 
     public function mount($quoteId = null)
@@ -179,7 +202,8 @@ class PaymentQuote extends Component
     private function checkActivePettyCash()
     {
         try {
-            $pettyCash = PettyCash::where('status', 1)->first();
+            $model = $this->getPettyCashModel();
+            $pettyCash = $model->where('status', 1)->first();
 
             if (!$pettyCash) {
                 session()->flash('error', 'No hay una caja abierta. Debe abrir una caja antes de procesar pagos.');
@@ -373,13 +397,16 @@ class PaymentQuote extends Component
             $currentDate = \Carbon\Carbon::now();
             $recordsCreated = 0;
 
+            // Instanciar modelo dinámico
+            $detailModel = $this->getDetailPettyCashModel();
+
             foreach ($this->paymentMethods as $key => $method) {
                 $value = (float) ($method['value'] ?? 0);
                 
                 if ($value > 0) {
                     $methodId = $methodMap[$key] ?? 1; // Default a efectivo si no se encuentra
                     
-                    \App\Models\Tenant\PettyCash\VntDetailPettyCash::create([
+                    $detailModel->create([
                         'status' => 1,
                         'value' => $value,
                         'created_at' => $currentDate,

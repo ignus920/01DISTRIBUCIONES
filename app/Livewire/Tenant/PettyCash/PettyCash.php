@@ -58,6 +58,53 @@ class PettyCash extends Component
         'perPage' => ['except' => 10],
     ];
 
+    public function getPettyCashModel()
+    {
+        // Si el usuario es perfil TAT (17)
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatPettyCash();
+        }
+
+        // Si no (Distribuidora), usar modelo estandar (vnt_)
+        return new PettyCashModel();
+    }
+
+    public function getDetailPettyCashModel()
+    {
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatDetailPettyCash();
+        }
+
+        // Si no (Distribuidora), usar modelo estandar (vnt_)
+        return new VntDetailPettyCash();
+    }
+
+    public function render()
+    {   
+        $this->ensureTenantConnection();
+
+        // Determinar qué modelo usar para la consulta
+        $model = $this->getPettyCashModel();
+        
+        $petty_cashes = $model->query()
+            ->select($model->getTable() . '.*', 'u.name')
+            ->join('users as u', 'u.id', '=', $model->getTable() . '.userIdOpen')
+            ->when(auth()->user()->profile_id == 17 && $this->currentCompanyId, function ($query) use ($model) {
+                 // Si es perfil TAT y tiene empresa seleccionada
+                 $query->join('tat_company_petty_cash', 'tat_company_petty_cash.petty_cash_id', '=', $model->getTable() . '.id')
+                      ->where('tat_company_petty_cash.company_id', $this->currentCompanyId);
+            })
+            ->when($this->search, function ($query) use ($model) {
+                $query->where($model->getTable() . '.consecutive', 'like', '%' . $this->search . '%')
+                      ->orWhere('u.name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->paginate($this->perPage);
+
+        return view('livewire.tenant.petty-cash.petty-cash', [
+            'boxes' => $petty_cashes
+        ]);
+    }    
     public function boot()
     {
         $this->ensureTenantConnection();
@@ -100,26 +147,28 @@ class PettyCash extends Component
                 $this->resetErrorBag('base');
                 $this->validate();
             
-                // Determine the next consecutive number for the given warehouse
-                $lastConsecutive = PettyCashModel::where('warehouseId', $this->getwarehouse())->where('userIdOpen')->max('consecutive');
+                // Determine the next consecutive number using dynamic model
+                $model = $this->getPettyCashModel();
+                $lastConsecutive = $model->where('warehouseId', $this->getwarehouse())->where('userIdOpen')->max('consecutive');
             
                 $newConsecutive = $lastConsecutive ? $lastConsecutive + 1 : 1;
             
                 $pettyCashData = [
                     'base' => $this->base,
-                    'consecutive' => $newConsecutive, // Use the calculated consecutive
+                    'consecutive' => $newConsecutive,
                     'status' => 1,
                     'created_at' => Carbon::now(),
                     'userIdOpen' => Auth::id(),
-                    'warehouseId' => $this->getwarehouse(),//$this->warehouseId, // Use the dynamic warehouseId
+                    'warehouseId' => $this->getwarehouse(),
                     'cashier' => Auth::id(),
                 ];
             
-                $newPettyCashId=PettyCashModel::create($pettyCashData);
-                $pettyCash_id=$newPettyCashId->id;
+                $newPettyCash = $model->create($pettyCashData);
+                $pettyCash_id = $newPettyCash->id;
                 
-                // Lógica para TAT: Guardar relación si existe company_id
-                if ($this->currentCompanyId) {
+                // Lógica para TAT: Siempre guardar relación si existe company_id y es usuario TAT
+                // independientemente de la tabla de caja usada.
+                if (auth()->user()->profile_id == 17 && $this->currentCompanyId) {
                      TatCompanyPettyCash::create([
                         'company_id' => $this->currentCompanyId,
                         'petty_cash_id' => $pettyCash_id,
@@ -143,8 +192,9 @@ class PettyCash extends Component
 
     public function PettyCashExits($warehouseId){
         $this->ensureTenantConnection();
+        $model = $this->getPettyCashModel();
 
-        return PettyCashModel::where('status', 1)->where('warehouseId', $warehouseId)->exists();
+        return $model->where('status', 1)->where('warehouseId', $warehouseId)->exists();
     }
 
     public function saveDetailPettyCash($pettyCash_id){
@@ -340,29 +390,7 @@ class PettyCash extends Component
     }
 
 
-    public function render()
-{   
-    $this->ensureTenantConnection();
 
-    $petty_cashes = PettyCashModel::query()
-        ->select('vnt_petty_cash.*', 'u.name')
-        ->join('users as u', 'u.id', '=', 'vnt_petty_cash.userIdOpen')
-        ->when($this->currentCompanyId, function ($query) {
-            // Contexto TAT: Filtrar solo cajas asociadas a la empresa actual
-            $query->join('tat_company_petty_cash', 'tat_company_petty_cash.petty_cash_id', '=', 'vnt_petty_cash.id')
-                  ->where('tat_company_petty_cash.company_id', $this->currentCompanyId);
-        })
-        ->when($this->search, function ($query) {
-            $query->where('vnt_petty_cash.consecutive', 'like', '%' . $this->search . '%')
-                  ->orWhere('u.name', 'like', '%' . $this->search . '%');
-        })
-        ->orderBy($this->sortField, $this->sortDirection)
-        ->paginate($this->perPage);
-
-    return view('livewire.tenant.petty-cash.petty-cash', [
-        'boxes' => $petty_cashes
-    ]);
-}
 
     public function canOpenPettyCash(): bool{
         // Si hay una empresa TAT seleccionada (contexto TAT), permitir siempre la apertura
