@@ -3,8 +3,8 @@
 namespace App\Livewire\Tenant\Parameters;
 
 use Livewire\Component;
-use App\Models\Tat\Routes\TatRoutes;
-use App\Models\Tat\Zones\TatZones;
+use App\Models\TAT\Routes\TatRoutes;
+use App\Models\TAT\Zones\TatZones;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
