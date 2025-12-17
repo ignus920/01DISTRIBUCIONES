@@ -428,7 +428,7 @@
                     </button>
                 </div>
 
-                <!-- Content -->
+                <!-- Content --> 
                 <div class="p-6">
                     <!-- Messages -->
                     @if($successMessage)
