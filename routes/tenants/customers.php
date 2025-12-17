@@ -10,6 +10,10 @@ Route::get('/customers', function () {
     return view('livewire.tenant.vnt-company.customers');
 })->name('customers.customers');
 
+Route::get('/vnt-customers', \App\Livewire\Tenant\Customers\VntCustomers::class)
+    ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
+    ->name('tenant.vnt-customers');
+
 
 // Routes to Api
 
