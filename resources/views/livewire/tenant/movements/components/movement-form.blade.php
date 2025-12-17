@@ -376,7 +376,18 @@
             </div>
 
             <!-- Footer -->
-            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end">
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-between items-center">
+                <div>
+                    @if($movementDetails['status'] === 1)
+                        <button @click="$dispatch('confirm-annul-from-details', { movementId: {{ $movementDetails['id'] }}, consecutive: '{{ $movementDetails['consecutive'] }}' })"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            Anular Movimiento
+                        </button>
+                    @endif
+                </div>
                 <button wire:click="closeDetailsModal"
                     class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm font-medium">
                     Cerrar
@@ -934,7 +945,18 @@
             </div>
 
             <!-- Footer -->
-            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-end">
+            <div class="bg-gray-50 dark:bg-gray-700 px-6 py-4 flex justify-between items-center">
+                <div>
+                    @if($movementDetails['status'] === 1)
+                        <button @click="$dispatch('confirm-annul-from-details', { movementId: {{ $movementDetails['id'] }}, consecutive: '{{ $movementDetails['consecutive'] }}' })"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                            Anular Movimiento
+                        </button>
+                    @endif
+                </div>
                 <button wire:click="closeDetailsModal"
                     class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm font-medium">
                     Cerrar
@@ -945,4 +967,66 @@
     @endif
   @endif  
   @endif
+
+  <!-- Modal de Confirmación para Anular (Global) -->
+  <div x-data="{ 
+      showConfirm: false, 
+      movementId: null, 
+      consecutive: '' 
+  }"
+      @confirm-annul-from-details.window="showConfirm = true; movementId = $event.detail.movementId; consecutive = $event.detail.consecutive"
+      x-show="showConfirm"
+      x-cloak
+      class="fixed inset-0 z-[60] overflow-y-auto"
+      style="display: none;">
+      
+      <!-- Overlay -->
+      <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" @click="showConfirm = false"></div>
+      
+      <!-- Modal -->
+      <div class="flex items-center justify-center min-h-screen p-4">
+          <div @click.away="showConfirm = false"
+              x-transition:enter="transition ease-out duration-300"
+              x-transition:enter-start="opacity-0 transform scale-90"
+              x-transition:enter-end="opacity-100 transform scale-100"
+              x-transition:leave="transition ease-in duration-200"
+              x-transition:leave-start="opacity-100 transform scale-100"
+              x-transition:leave-end="opacity-0 transform scale-90"
+              class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+              
+              <!-- Icon -->
+              <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full">
+                  <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                  </svg>
+              </div>
+              
+              <!-- Content -->
+              <div class="text-center">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Anular Movimiento
+                  </h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      ¿Está seguro de que desea anular el movimiento 
+                      <span class="font-semibold text-gray-900 dark:text-white" x-text="'#' + consecutive"></span>?
+                  </p>
+                  <p class="text-sm text-red-600 dark:text-red-400 font-medium">
+                      Esta acción no se puede deshacer.
+                  </p>
+              </div>
+              
+              <!-- Actions -->
+              <div class="flex gap-3 mt-6">
+                  <button @click="showConfirm = false"
+                      class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+                      Cancelar
+                  </button>
+                  <button @click="$wire.annulMovement(movementId); showConfirm = false"
+                      class="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                      Sí, Anular
+                  </button>
+              </div>
+          </div>
+      </div>
+  </div>
 </div>
