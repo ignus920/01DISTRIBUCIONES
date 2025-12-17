@@ -174,6 +174,8 @@ require __DIR__.'/auth.php';
 require __DIR__.'/tenants/parameters.php';
 // Incluir rutas del módulo de pagos de cotizacion
 require __DIR__.'/tenants/payments.php';
+
+
 // Incluir rutas del módulo TAT Items
 require __DIR__.'/TAT/tatItems.php';
 // Incluir rutas del módulo TAT Categories
@@ -182,5 +184,6 @@ require __DIR__.'/TAT/tatCategories.php';
 require __DIR__.'/TAT/tatCustomers.php';
 // Incluir rutas del módulo TAT Quoter
 require __DIR__.'/TAT/quoter.php';
+
 // Incluir rutas de módulo cargue
 require __DIR__.'/tenants/uploads.php';
