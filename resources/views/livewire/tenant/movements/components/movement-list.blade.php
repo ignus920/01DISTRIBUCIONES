@@ -146,61 +146,15 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                           <!-- Menú de tres puntos con Alpine.js -->
-                                <div x-data="{ open: false }" @click.outside="open = false" class="relative inline-block text-left">
-                                    <button @click="open = !open"
-                                        class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
-                                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                        </svg>
-                                    </button>
-
-                                    <!-- Menú desplegable -->
-                                    <div x-show="open"
-                                        x-transition:enter="transition ease-out duration-100"
-                                        x-transition:enter-start="transform opacity-0 scale-95"
-                                        x-transition:enter-end="transform opacity-100 scale-100"
-                                        x-transition:leave="transition ease-in duration-75"
-                                        x-transition:leave-start="transform opacity-100 scale-100"
-                                        x-transition:leave-end="transform opacity-0 scale-95"
-                                        @click="open = false"
-                                        class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
-                                        style="display: none;">
-                                        <div class="py-1" role="menu" aria-orientation="vertical">
-                                            <!-- Ver Detalles -->
-                                            <button wire:click="openDetailsModal({{ $movement->id }})"
-                                                class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
-                                                role="menuitem">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                                </svg>
-                                                Ver Detalles
-                                            </button>
-
-                                            <!-- Anular Movimiento -->
-                                            @if($movement->status === 1)
-                                                <button @click="$dispatch('confirm-annul', { movementId: {{ $movement->id }}, consecutive: '{{ $movement->formatted_consecutive }}' })"
-                                                    class="w-full text-left px-4 py-2 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
-                                                    role="menuitem">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                    </svg>
-                                                    Anular Movimiento
-                                                </button>
-                                            @else
-                                                <button disabled
-                                                    class="w-full text-left px-4 py-2 text-sm text-gray-400 dark:text-gray-600 cursor-not-allowed flex items-center gap-2"
-                                                    role="menuitem">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                    </svg>
-                                                    Anular Movimiento
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
+                            <!-- Ver Detalles Button -->
+                            <button wire:click="openDetailsModal({{ $movement->id }})"
+                                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                Ver Detalles
+                            </button>
                         </td>
                     </tr>
                 @empty
@@ -228,65 +182,4 @@
         </div>
     @endif
 
-    <!-- Modal de Confirmación para Anular -->
-    <div x-data="{ 
-        showConfirm: false, 
-        movementId: null, 
-        consecutive: '' 
-    }"
-        @confirm-annul.window="showConfirm = true; movementId = $event.detail.movementId; consecutive = $event.detail.consecutive"
-        x-show="showConfirm"
-        x-cloak
-        class="fixed inset-0 z-50 overflow-y-auto"
-        style="display: none;">
-        
-        <!-- Overlay -->
-        <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" @click="showConfirm = false"></div>
-        
-        <!-- Modal -->
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div @click.away="showConfirm = false"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-90"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-90"
-                class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-                
-                <!-- Icon -->
-                <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full">
-                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                    </svg>
-                </div>
-                
-                <!-- Content -->
-                <div class="text-center">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                        Anular Movimiento
-                    </h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        ¿Está seguro de que desea anular el movimiento 
-                        <span class="font-semibold text-gray-900 dark:text-white" x-text="'#' + consecutive"></span>?
-                    </p>
-                    <p class="text-sm text-red-600 dark:text-red-400 font-medium">
-                        Esta acción no se puede deshacer.
-                    </p>
-                </div>
-                
-                <!-- Actions -->
-                <div class="flex gap-3 mt-6">
-                    <button @click="showConfirm = false"
-                        class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
-                        Cancelar
-                    </button>
-                    <button @click="$wire.annulMovement(movementId); showConfirm = false"
-                        class="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                        Sí, Anular
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
