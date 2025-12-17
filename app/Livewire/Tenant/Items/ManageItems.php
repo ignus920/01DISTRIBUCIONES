@@ -327,7 +327,6 @@ class ManageItems extends Component
             'taxId' => $this->tax,
             'handles_serial' => $this->handles_serial ?? 0,
         ];
-
         
         try{
             if ($this->item_id) { // Existing item

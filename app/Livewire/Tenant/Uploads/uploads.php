@@ -12,7 +12,7 @@ use App\Models\TAT\Routes;
 use App\Models\TAT\Routes\TatRoutes;
 use App\Models\Tenant\Remissions\InvRemissions;
 use App\Models\Tenant\DeliveriesList\DisDeliveriesList;
-use App\Models\Tenant\Deliveries\DisDeliveries;
+use App\Models\Tenant\DeliveriesList\DisDeliveries;
 //Services
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;

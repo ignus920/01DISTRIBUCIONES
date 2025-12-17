@@ -25,10 +25,27 @@ class ItemImageUpload extends Component
     public $itemId;
 
     // Imagen principal temporal
-    #[Validate('nullable|image|mimes:jpeg,png,jpg,webp|max:2048')] // 2MB max
+    #[Validate([
+        'nullable',
+        'image',
+        'mimes:jpeg,png,jpg,webp',
+        'max:2048'
+    ],message: [
+        'image' => 'El archivo principal debe ser una imagen válida.',
+        'mimes' => 'La imagen debe ser en formato JPEG, PNG, JPG o WebP.',
+        'max' => 'La imagen principal no debe superar 2MB.',
+    ])] // 2MB max
     public $principalImage;
 
     // Imágenes de galería temporales (múltiples)
+    #[Validate([
+        'nullable',
+        'array',
+        'max:' . self::MAX_GALLERY_IMAGES
+    ], message: [
+        'array' => 'Las imágenes deben ser un conjunto válido.',
+        'max' => 'No puedes subir más de ' . self::MAX_GALLERY_IMAGES . ' imágenes a la vez.',
+    ])]
     public $galleryImages = [];
 
     // Límite de imágenes en galería
@@ -40,9 +57,47 @@ class ItemImageUpload extends Component
     protected function rules()
     {
         return [
-            'principalImage' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'galleryImages' => 'nullable|array',
-            'galleryImages.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'principalImage' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,png,jpg,webp',
+                'max:2048'
+            ],
+            'galleryImages' => [
+                'nullable',
+                'array',
+                'max:' . self::MAX_GALLERY_IMAGES
+            ],
+            'galleryImages.*' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,png,jpg,webp',
+                'max:2048'
+            ],
+        ];
+    }
+
+    /**
+     * Mensajes de validación personalizados
+     */
+    protected function messages()
+    {
+        return [
+            // Mensajes para imagen principal
+            'principalImage.image' => 'El archivo principal debe ser una imagen válida.',
+            'principalImage.mimes' => 'La imagen principal debe ser en formato JPEG, PNG, JPG o WebP.',
+            'principalImage.max' => 'La imagen principal no debe superar 2MB.',
+            'principalImage.max.file' => 'La imagen principal no debe superar 2MB.', // Específico para error de tamaño de archivo
+            
+            // Mensajes para el array de galería
+            'galleryImages.array' => 'Las imágenes deben ser un conjunto válido.',
+            'galleryImages.max' => 'No puedes subir más de ' . self::MAX_GALLERY_IMAGES . ' imágenes a la vez.',
+            
+            // Mensajes para cada imagen en el array
+            'galleryImages.*.image' => 'Todos los archivos deben ser imágenes válidas.',
+            'galleryImages.*.mimes' => 'Las imágenes deben ser en formato JPEG, PNG, JPG o WebP.',
+            'galleryImages.*.max' => 'Cada imagen de la galería no debe superar 2MB.',
+            'galleryImages.*.max.file' => 'Cada imagen de la galería no debe superar 2MB.', // Específico para error de tamaño de archivo
         ];
     }
 
@@ -128,7 +183,16 @@ class ItemImageUpload extends Component
     public function uploadPrincipalImage()
     {
         $this->ensureTenantConnection();
-        $this->validateOnly('principalImage');
+
+
+        $this->validate([
+            'principalImage' => [
+                'required',
+                'image',
+                'mimes:jpeg,png,jpg,webp',
+                'max:2048'
+            ]
+        ], $this->messages());
 
         if (!$this->principalImage) {
             session()->flash('image-error', 'Por favor selecciona una imagen principal.');
@@ -176,9 +240,18 @@ class ItemImageUpload extends Component
 
         // Validar arrays de archivos
         $this->validate([
-            'galleryImages' => 'nullable|array',
-            'galleryImages.*' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-        ]);
+            'galleryImages' => [
+                'required',
+                'array',
+                'max:' . self::MAX_GALLERY_IMAGES
+            ],
+            'galleryImages.*' => [
+                'required',
+                'image',
+                'mimes:jpeg,png,jpg,webp',
+                'max:2048'
+            ]
+        ], $this->messages());
 
         if (!$this->galleryImages || count($this->galleryImages) === 0) {
             session()->flash('image-error', 'Por favor selecciona al menos una imagen para la galería.');

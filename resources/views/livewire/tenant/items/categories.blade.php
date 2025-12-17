@@ -11,7 +11,7 @@
             focusAfter && focusAfter.focus() 
         } 
     }" x-on:keydown.escape.prevent.stop="close($refs.button)"
-    x-on:focusin.window="! $refs.panel.contains($event.target) && close()" x-id="['dropdown-button']" class="mb-3">
+    x-on:focusin.window="! $refs.panel.contains($event.target) && close()" x-id="['dropdown-button']" class="relative">
     <div class="flex items-end space-x-2">
         <div class="flex-1">
             @if($showLabel)
@@ -21,12 +21,14 @@
             </label>
             @endif
 
+            <input type="hidden" name="{{ $name }}" wire:model="categoryId">
+
             <button x-ref="button" x-on:click="toggle()" :aria-expanded="open" :aria-controls="$id('dropdown-button')"
                 type="button"
                 class="{{ $class }} flex items-center justify-between bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
                 id="category_{{ $name }}">
                 <span class="block truncate">
-                    {{ $this->selectedCityName ?? $placeholder }}
+                    {{ $this->selectedCategoryName ?? $placeholder }}
                 </span>
             </button>
             <div x-ref="panel" x-show="open" x-transition.origin.top.left x-on:click.outside="close($refs.button)"
@@ -44,10 +46,46 @@
                     <li class="text-gray-900 dark:text-gray-100 relative cursor-default select-none py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500"
                         role="option" x-on:click="$wire.selectCity(''); close($refs.button)">
                         <span class="font-normal block truncate">{{ $placeholder }}</span>
-                        @foreach($this->categories as $category)
-                        @endforeach
                     </li>
+                    @forelse($this->categories as $category)
+                    <li wire:key="category-{{ $category->id }}"
+                        class="text-gray-900 dark:text-gray-100 relative cursor-default select-none py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 group"
+                        role="option" x-on:click="$wire.selectCategory({{ $category->id }}); close($refs.button)">
+
+                        <span
+                            class="font-normal block truncate {{ $categoryId == $category->id ? 'font-semibold' : '' }}">
+                            {{ $category->name }}
+                        </span>
+
+                        <!-- Checkmark si está seleccionado -->
+                        @if($categoryId == $category->id)
+                        <span
+                            class="text-indigo-600 dark:text-indigo-400 absolute inset-y-0 right-0 flex items-center pr-4 group-hover:text-white">
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                        @endif
+                    </li>
+                    @empty
+                    <li class="text-gray-500 dark:text-gray-400 relative cursor-default select-none py-2 pl-3 pr-9">
+                        No se encontraron resultados.
+                    </li>
+                    @endforelse
                 </ul>
+                <!-- Loading indicator dentro del dropdown -->
+                <div wire:loading.flex wire:target="search" class="absolute bottom-0 right-0 p-2">
+                    <svg class="animate-spin h-4 w-4 text-indigo-500 dark:text-indigo-400"
+                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                </div>
             </div>
 
             {{-- <select wire:model.live=" categoryId" name="{{ $name }}" id="category_{{ $name }}" @if($required)
