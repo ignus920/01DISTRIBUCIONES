@@ -103,11 +103,11 @@
                                     @endif
                                 </div>
                             </div>
-                            <!-- Rutas -->
+                            <!-- Transportador -->
                             <div class="flex-1 flex items-center gap-3">
                                 <label
                                     class="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">Transportador:</label>
-                                <select wire:model.live="selectedRoute"
+                                <select wire:model.live="selectedDeliveryMan"
                                     class="w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="">-- Seleccione --</option>
                                     @foreach ($users as $rt)
@@ -362,10 +362,16 @@
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                 <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        Unidades faltantes
-                    </h3>
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Unidades faltantes
+                        </h3>
+                    </div>
+                    <button wire:click="closeAlertScares"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <x-heroicon-o-x-mark class="w-6 h-6" />
+                    </button>
                 </div>
 
                 <div class="space-y-6">

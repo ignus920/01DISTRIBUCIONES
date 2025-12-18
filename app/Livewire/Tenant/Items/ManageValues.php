@@ -12,17 +12,21 @@ use App\Services\Tenant\TenantManager;
 class ManageValues extends Component
 {
     public $invValuesId;
-    public $values;
     public $type = '';
     public $ItemId;
     public $itemName;
-    public $warehouseId = 1;
+    public $warehouseId = 0;
     public $label;
     public $created_at;
+    public $successMessage = null;
+    public $warningMessage = null;
 
     protected $listeners = ['refreshValues' => '$refresh'];
 
     public function getValuesItems(){
+        if (!$this->ItemId) {
+            return collect();
+        }
         return InvValues::where('itemId', $this->ItemId)->get();
     }
 
@@ -39,7 +43,9 @@ class ManageValues extends Component
     {
         $this->ensureTenantConnection();
         $values = $this->getValuesItems();
-        return view('livewire.tenant.items.manage-values');
+        return view('livewire.tenant.items.manage-values', [
+            'values' => $values
+        ]);
     }
 
     public function loadValuesData()
@@ -50,9 +56,44 @@ class ManageValues extends Component
         if ($values) {
             $this->type = $values->type;
         }
-        $item = Items::where('id', $this->ItemId);
-        $this->itemName = $item->name;
+        $item = Items::find($this->ItemId);
+        $this->itemName = $item ? $item->name : '';
     }
+
+    public function deleteValue($valueId)
+    {
+        $this->ensureTenantConnection();
+        $value = InvValues::find($valueId);
+        
+        if ($value && $value->itemId == $this->ItemId) {
+            $value->delete();
+            $this->warningMessage = "Valor eliminado exitosamente";
+        }
+    }
+
+    public function updateValue($valueId, $newValue)
+    {
+        $this->ensureTenantConnection();
+        $this->successMessage = null;
+        
+        // Validar que el valor sea numérico y mayor o igual a 0
+        if (!is_numeric($newValue) || $newValue < 0) {
+            $this->addError('value', 'El valor debe ser un número mayor o igual a 0');
+            return;
+        }
+
+        $value = InvValues::find($valueId);
+        
+        if ($value && $value->itemId == $this->ItemId) {
+            $oldValue = $value->values;
+            $value->update(['values' => $newValue]);
+            
+            $this->successMessage = "Valor actualizado exitosamente de $" . number_format($oldValue, 2) . " a $" . number_format($newValue, 2);
+        } else {
+            $this->addError('value', 'No se pudo actualizar el valor. Verifique que el registro sea válido.');
+        }
+    }
+
 
     private function ensureTenantConnection(): void
     {

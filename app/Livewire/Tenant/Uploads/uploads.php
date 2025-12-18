@@ -29,7 +29,7 @@ class Uploads extends Component
 
     public $selectedDate = '';
     public $remissions = [];
-    public $selectedRoute = '';
+    public $selectedDeliveryMan = '';
     public $showScares = false;
     public $scarceUnits = [];
     public $showformMovements = false;
@@ -60,11 +60,11 @@ class Uploads extends Component
     public function updatedSelectedRoute($value)
     {
         if ($value && $this->selectedDate) {
-            $this->remissions = $this->getRemissions($this->selectedDate, $value);
+            $this->remissions = $this->getRemissions($this->selectedDate);
         }
     }
 
-    public function getRemissions($date, $routeId = null){
+    public function getRemissions($date){
         // Usamos una subconsulta para calcular el campo "existe"
         $subquery = DB::table('vnt_quotes as q')
             ->select(
@@ -136,18 +136,23 @@ class Uploads extends Component
             session()->flash('error', 'Por favor selecciona una fecha primero');
             return;
         }
-    
+        
+        if(!$this->selectedDeliveryMan){
+            session()->flash('error', 'Por favor selecciona un transportador primero');
+            return;
+        }
         // Tu lógica de carga aquí
         try{
             $uploadData=[
                 'sale_date' => $this->selectedDate,
                 'salesman_id' => $userId,
+                'deliveryman_id' => $this->selectedDeliveryMan,
                 'user_id' => Auth::id(),
                 'created_at' => Carbon::now()
             ];
             DisDeliveriesList::create($uploadData);
 
-            $this->remissions = $this->getRemissions($this->selectedDate, $this->selectedRoute);
+            $this->remissions = $this->getRemissions($this->selectedDate);
             
             session()->flash('message', "Cargando datos para el usuario ID: $userId - Fecha: {$this->selectedDate}");
 
@@ -173,7 +178,7 @@ class Uploads extends Component
 
             if ($deleted) {
                 // Recargar los datos de la tabla
-                $this->remissions = $this->getRemissions($this->selectedDate, $this->selectedRoute);
+                $this->remissions = $this->getRemissions($this->selectedDate);
 
                 session()->flash('message', "Registro eliminado exitosamente");
             } else {

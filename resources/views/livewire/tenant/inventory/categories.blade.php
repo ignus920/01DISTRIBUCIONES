@@ -243,10 +243,16 @@
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                 <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        {{ $category_id ? 'Editar Categoria' : 'Crear Categoría' }}
-                    </h3>
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $category_id ? 'Editar Categoria' : 'Crear Categoría' }}
+                        </h3>
+                    </div>
+                    <button wire:click="cancel"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <x-heroicon-o-x-mark class="w-6 h-6" />
+                    </button>
                 </div>
 
                 <!-- Form -->
