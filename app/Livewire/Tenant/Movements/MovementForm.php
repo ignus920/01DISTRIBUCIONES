@@ -108,6 +108,85 @@ class MovementForm extends Component
         $this->showDetailsModal = false;
         $this->movementDetails = [];
     }
+
+    /**
+     * Annul a movement and revert inventory
+     */
+    public function annulMovement($movementId)
+    {
+        try {
+            $this->ensureTenantConnection();
+            
+            DB::connection('tenant')->beginTransaction();
+            
+            $movement = InvInventoryAdjustment::with('details')->find($movementId);
+            
+            if (!$movement) {
+                $this->errorMessage = 'Movimiento no encontrado';
+                return;
+            }
+
+            if ($movement->status === 0) {
+                $this->errorMessage = 'Este movimiento ya está anulado';
+                return;
+            }
+
+            // Revertir el inventario según el tipo de movimiento
+            foreach ($movement->details as $detail) {
+                $itemStore = InvItemsStore::where('itemId', $detail->itemId)
+                    ->where('storeId', $movement->storeId)
+                    ->first();
+                
+                if (!$itemStore) {
+                    DB::connection('tenant')->rollBack();
+                    $this->errorMessage = 'No se encontró el registro de inventario para el item';
+                    return;
+                }
+
+                // Obtener la unidad de medida para calcular la cantidad en unidad de consumo
+                $unitMeasurement = UnitMeasurements::find($detail->unitMeasurementId);
+                $quantityInConsumptionUnit = $detail->quantity * ($unitMeasurement ? $unitMeasurement->quantity : 1);
+
+                // Si es ENTRADA, al anular debemos RESTAR del inventario
+                // Si es SALIDA, al anular debemos SUMAR al inventario
+                if ($movement->type === 'entrada') {
+                    // Verificar que hay suficiente stock para restar
+                    if ($itemStore->stock_items_store < $quantityInConsumptionUnit) {
+                        DB::connection('tenant')->rollBack();
+                        $this->errorMessage = 'No hay suficiente stock para anular este movimiento de entrada';
+                        return;
+                    }
+                    
+                    // Restar del inventario (revertir la entrada)
+                    $itemStore->stock_items_store -= $quantityInConsumptionUnit;
+                } else {
+                    // Sumar al inventario (revertir la salida)
+                    $itemStore->stock_items_store += $quantityInConsumptionUnit;
+                }
+                
+                $itemStore->save();
+            }
+
+            // Marcar el movimiento como anulado
+            $movement->update(['status' => 0]);
+            
+            DB::connection('tenant')->commit();
+            
+            $this->successMessage = 'Movimiento anulado correctamente y el inventario ha sido actualizado';
+            
+            // Close details modal and refresh list
+            $this->closeDetailsModal();
+            $this->dispatch('refreshMovements', type: $this->movementType);
+            
+        } catch (\Exception $e) {
+            DB::connection('tenant')->rollBack();
+            Log::error('Error al anular movimiento', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $this->errorMessage = 'Error al anular el movimiento: ' . $e->getMessage();
+        }
+    }
     
     public function render()
     {

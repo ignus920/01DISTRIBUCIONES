@@ -74,6 +74,45 @@ class QuoterView extends Component
     }
 
     /**
+     * Hook para detectar actualizaciones en cartItems (wire:model)
+     */
+    public function updatedCartItems($value, $key)
+    {
+        // El key viene en formato "0.quantity" o "0.price"
+        $parts = explode('.', $key);
+        
+        if (count($parts) === 2 && $parts[1] === 'quantity') {
+            $index = $parts[0];
+            $quantity = $value;
+            
+            // 1. Forzar entero
+            $quantity = (int)$quantity;
+            $quantity = max(1, $quantity); // Mínimo 1
+
+            // 2. Validar Stock
+            $item = $this->cartItems[$index];
+            $stock = $item['stock'];
+
+            if ($quantity > $stock) {
+                $quantity = $stock;
+                
+                // Emitir alerta
+                $this->dispatch('swal:warning', [
+                    'title' => 'Stock Insuficiente',
+                    'text' => "No puedes agregar más de {$stock} unidades (lo sentimos).",
+                ]);
+            }
+
+            // 3. Aplicar valor corregido
+            $this->cartItems[$index]['quantity'] = $quantity;
+            $this->cartItems[$index]['subtotal'] = $quantity * $this->cartItems[$index]['price'];
+            
+            $this->calculateTotal();
+            $this->saveCartToSession();
+        }
+    }
+
+    /**
      * Obtener el company_id del usuario autenticado
      */
     protected function getUserCompanyId($user)
@@ -282,7 +321,14 @@ class QuoterView extends Component
      */
     public function addToCart($productId)
     {
-        $product = TatItems::find($productId);
+        $product = TatItems::with('tax')->find($productId);
+        
+        Log::info('Adding to cart', [
+            'product_id' => $productId,
+            'tax_id' => $product ? $product->taxId : null,
+            'tax_relation' => $product ? $product->tax : null,
+            'connection' => $product ? $product->getConnectionName() : 'unknown'
+        ]);
 
         if (!$product || !$product->hasStock()) {
             session()->flash('error', 'Producto no disponible o sin stock.');
@@ -295,7 +341,17 @@ class QuoterView extends Component
 
         if ($existingItemIndex !== false) {
             // Si ya existe, incrementar cantidad
-            $this->cartItems[$existingItemIndex]['quantity']++;
+            // Verificamos stock antes de incrementar
+            $newQuantity = $this->cartItems[$existingItemIndex]['quantity'] + 1;
+             if ($newQuantity > $product->stock) {
+                 $this->dispatch('swal:warning', [
+                    'title' => 'Stock Insuficiente',
+                    'text' => "No puedes agregar más de {$product->stock} unidades.",
+                ]);
+                return;
+             }
+
+            $this->cartItems[$existingItemIndex]['quantity'] = $newQuantity;
             $this->cartItems[$existingItemIndex]['subtotal'] =
                 $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
         } else {
@@ -307,7 +363,9 @@ class QuoterView extends Component
                 'price' => $product->price,
                 'quantity' => 1,
                 'subtotal' => $product->price,
-                'stock' => $product->stock
+                'stock' => $product->stock,
+                'tax_name' => $product->tax ? $product->tax->name : 'N/A',
+                'tax_percentage' => $product->tax ? $product->tax->percentage : 0
             ];
         }
 
@@ -329,21 +387,23 @@ class QuoterView extends Component
         });
 
         if ($itemIndex !== false) {
-            if ($quantity == 0) {
-                // Remover item si cantidad es 0
-                unset($this->cartItems[$itemIndex]);
-                $this->cartItems = array_values($this->cartItems);
-            } else {
-                // Verificar stock disponible
-                if ($quantity > $this->cartItems[$itemIndex]['stock']) {
-                    session()->flash('error', 'Cantidad excede el stock disponible.');
-                    return;
-                }
+            $stock = $this->cartItems[$itemIndex]['stock'];
 
-                $this->cartItems[$itemIndex]['quantity'] = $quantity;
-                $this->cartItems[$itemIndex]['subtotal'] =
-                    $quantity * $this->cartItems[$itemIndex]['price'];
+            // Verificar si la cantidad excede el stock disponible
+            if ($quantity > $stock) {
+                // Ajustar al máximo disponible
+                $quantity = $stock;
+                
+                // Emitir alerta al frontend
+                $this->dispatch('swal:warning', [
+                    'title' => 'Stock Insuficiente',
+                    'text' => "Solo hay {$stock} unidades disponibles de este producto.",
+                ]);
             }
+
+            // Actualizar cantidad y subtotal
+            $this->cartItems[$itemIndex]['quantity'] = $quantity;
+            $this->cartItems[$itemIndex]['subtotal'] = $quantity * $this->cartItems[$itemIndex]['price'];
 
             $this->calculateTotal();
             $this->saveCartToSession();
@@ -485,7 +545,7 @@ class QuoterView extends Component
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
                     'quantity' => $item['quantity'],
-                    'tax_percentage' => 19, // IVA del 19%
+                    'tax_percentage' => $item['tax_percentage'] ?? 0, // Usar el porcentaje real del producto
                     'price' => $item['price'],
                     'descripcion' => $item['name'],
                 ]);
@@ -501,7 +561,6 @@ class QuoterView extends Component
 
             $this->clearCart();
             $this->loadDefaultCustomer(); // Resetear al cliente por defecto
-            session()->flash('success', "¡Venta #{$consecutive} registrada exitosamente! Cliente: {$customerInfo}");
 
             // Log de la venta
             Log::info('Venta registrada', [
@@ -513,6 +572,9 @@ class QuoterView extends Component
                 'company_id' => $this->companyId,
                 'user_id' => Auth::id()
             ]);
+
+            // Redirigir a la vista de pagos
+            return redirect()->route('tenant.payment.quote', ['quoteId' => $quote->id]);
 
         } catch (\Exception $e) {
             DB::rollBack();

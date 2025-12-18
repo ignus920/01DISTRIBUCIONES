@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class VntQuote extends Model
 {
     protected $connection = 'tenant';
-    protected $table = 'vnt_quotes';
+    protected $table = 'tat_quotes';
 
     protected $fillable = [
         'consecutive',
@@ -39,7 +39,7 @@ class VntQuote extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(VntCompany::class, 'customerId');
+        return $this->belongsTo(\App\Models\TAT\Customer\Customer::class, 'customerId');
     }
 
     public function warehouse(): BelongsTo
@@ -66,10 +66,9 @@ class VntQuote extends Model
             return 'Cliente no encontrado';
         }
 
-        // Si es persona jurídica, usar businessName; si es persona natural, usar nombres
-        return $this->customer->businessName ?:
-               trim($this->customer->firstName . ' ' . $this->customer->secondName . ' ' .
-                    $this->customer->lastName . ' ' . $this->customer->secondLastName);
+        // Usar lógica compatible con TAT Listener
+        return $this->customer->businessName ?: 
+               trim($this->customer->firstName . ' ' . $this->customer->lastName);
     }
 
     public function getWarehouseNameAttribute()

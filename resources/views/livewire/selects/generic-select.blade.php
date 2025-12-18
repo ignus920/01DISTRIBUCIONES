@@ -18,7 +18,7 @@
     class="relative"
 >
     @if($showLabel)
-        <label for="route_{{ $name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label for="select_{{ $name }}" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ $label }}
             @if($required) <span class="text-red-500">*</span> @endif
         </label>
@@ -35,10 +35,10 @@
         :aria-controls="$id('dropdown-button')" 
         type="button" 
         class="{{ $class }} flex items-center justify-between bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
-        id="route_{{ $name }}"
+        id="select_{{ $name }}"
     >
         <span class="block truncate">
-            {{ $this->selectedRouteName ?? $placeholder }}
+            {{ $this->selectedItemName ?? $placeholder }}
         </span>
 
         <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -62,7 +62,7 @@
                 wire:model.live.debounce.300ms="search" 
                 type="text" 
                 class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-indigo-400 dark:focus:ring-indigo-400" 
-                placeholder="Buscar ruta..."
+                placeholder="Buscar..."
                 x-trap="open" 
             >
         </div>
@@ -73,30 +73,28 @@
             <li 
                 class="text-gray-900 dark:text-gray-100 relative cursor-default select-none py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500"
                 role="option" 
-                x-on:click="$wire.selectRoute(''); close($refs.button)"
+                x-on:click="$wire.selectItem(''); close($refs.button)"
             >
                 <span class="font-normal block truncate">{{ $placeholder }}</span>
             </li>
 
-            @forelse($this->routes as $route)
+            @forelse($this->filteredItems as $item)
+                @php
+                    $itemValue = is_array($item) ? $item[$valueField] : $item->{$valueField};
+                    $itemDisplay = is_array($item) ? $item[$displayField] : $item->{$displayField};
+                @endphp
                 <li 
-                    wire:key="route-{{ $route->id }}"
+                    wire:key="item-{{ $itemValue }}"
                     class="text-gray-900 dark:text-gray-100 relative cursor-default select-none py-2 pl-3 pr-9 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 group"
                     role="option" 
-                    x-on:click="$wire.selectRoute({{ $route->id }}); close($refs.button)"
+                    x-on:click="$wire.selectItem('{{ $itemValue }}'); close($refs.button)"
                 >
-                    <div class="font-normal block truncate {{ $selectedValue == $route->id ? 'font-semibold' : '' }}">
-                        <div>{{ $route->name }}</div>
-                        @if($route->salesman || $route->sale_day)
-                            <div class="text-xs text-gray-500 dark:text-gray-400 group-hover:text-gray-200">
-                                @if($route->salesman) {{ $route->salesman->name }} @endif
-                                @if($route->sale_day) - {{ ucfirst($route->sale_day) }} @endif
-                            </div>
-                        @endif
-                    </div>
+                    <span class="font-normal block truncate {{ $selectedValue == $itemValue ? 'font-semibold' : '' }}">
+                        {{ $itemDisplay }}
+                    </span>
 
                     <!-- Checkmark si está seleccionado -->
-                    @if($selectedValue == $route->id)
+                    @if($selectedValue == $itemValue)
                         <span class="text-indigo-600 dark:text-indigo-400 absolute inset-y-0 right-0 flex items-center pr-4 group-hover:text-white">
                             <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -106,7 +104,7 @@
                 </li>
             @empty
                 <li class="text-gray-500 dark:text-gray-400 relative cursor-default select-none py-2 pl-3 pr-9">
-                    No se encontraron rutas.
+                    No se encontraron resultados.
                 </li>
             @endforelse
         </ul>

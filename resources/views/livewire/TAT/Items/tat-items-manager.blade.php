@@ -287,9 +287,9 @@
     <!-- Modal para crear/editar -->
     @if($showModal)
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">
                         {{ $editMode ? 'Editar Item' : 'Crear Nuevo Item' }}
                     </h3>
                 </div>
@@ -298,14 +298,14 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- SKU -->
                         <div>
-                            <label for="sku" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="sku" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 SKU *
                             </label>
                             <input
                                 wire:model="sku"
                                 type="text"
                                 id="sku"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('sku') border-red-500 @enderror"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('sku') border-red-500 @enderror"
                             >
                             @error('sku')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -314,14 +314,14 @@
 
                         <!-- Nombre -->
                         <div>
-                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Nombre *
                             </label>
                             <input
                                 wire:model="name"
                                 type="text"
                                 id="name"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('name') border-red-500 @enderror"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('name') border-red-500 @enderror"
                             >
                             @error('name')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -330,13 +330,13 @@
 
                         <!-- Categoría -->
                         <div>
-                            <label for="categoryId" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="categoryId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Categoría *
                             </label>
                             <select
                                 wire:model="categoryId"
                                 id="categoryId"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('categoryId') border-red-500 @enderror"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('categoryId') border-red-500 @enderror"
                             >
                                 <option value="">Seleccionar categoría</option>
                                 @foreach($categories as $category)
@@ -350,13 +350,13 @@
 
                         <!-- Impuesto -->
                         <div>
-                            <label for="taxId" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="taxId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Impuesto
                             </label>
                             <select
                                 wire:model="taxId"
                                 id="taxId"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">Sin impuesto</option>
                                 @foreach($taxes as $tax)
@@ -367,7 +367,7 @@
 
                         <!-- Stock -->
                         <div>
-                            <label for="stock" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="stock" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Stock *
                             </label>
                             <input
@@ -375,7 +375,7 @@
                                 type="number"
                                 step="0.01"
                                 id="stock"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('stock') border-red-500 @enderror"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('stock') border-red-500 @enderror"
                             >
                             @error('stock')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -384,7 +384,7 @@
 
                         <!-- Costo -->
                         <div>
-                            <label for="cost" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="cost" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Costo *
                             </label>
                             <input
@@ -392,7 +392,7 @@
                                 type="number"
                                 step="0.01"
                                 id="cost"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('cost') border-red-500 @enderror"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('cost') border-red-500 @enderror"
                             >
                             @error('cost')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
@@ -401,7 +401,7 @@
 
                         <!-- Precio -->
                         <div>
-                            <label for="price" class="block text-sm font-medium text-gray-700 mb-1">
+                            <label for="price" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Precio *
                             </label>
                             <input
@@ -409,41 +409,27 @@
                                 type="number"
                                 step="0.01"
                                 id="price"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 @error('price') border-red-500 @enderror"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('price') border-red-500 @enderror"
                             >
                             @error('price')
                                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        <!-- Estado -->
-                        <div>
-                            <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
-                                Estado
-                            </label>
-                            <select
-                                wire:model="status"
-                                id="status"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="1">Activo</option>
-                                <option value="0">Inactivo</option>
-                            </select>
-                        </div>
                     </div>
 
                     <!-- Botones -->
-                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <button
                             type="button"
                             wire:click="closeModal"
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 rounded-md"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
-                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-md"
                         >
                             {{ $editMode ? 'Actualizar' : 'Crear' }}
                         </button>

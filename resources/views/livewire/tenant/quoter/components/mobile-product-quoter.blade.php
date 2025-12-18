@@ -702,7 +702,7 @@ $header = 'Seleccionar productos';
     </div>
     @endif
     @endif
-    @endif
+  
 </div>
 
 @push('scripts')

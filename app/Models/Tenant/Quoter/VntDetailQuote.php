@@ -9,21 +9,22 @@ use App\Models\Tenant\Items\Items;
 class VntDetailQuote extends Model
 {
     protected $connection = 'tenant';
-    protected $table = 'vnt_detail_quotes';
+    protected $table = 'tat_detail_quotes';
 
     protected $fillable = [
         'quantity',
-        'tax',
-        'value',
+        'tax_percentage',
+        'price',
         'quoteId',
         'itemId',
-        'description',
-        'priceList'
+        'descripcion',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'price' => 'float',
+        'tax_percentage' => 'float'
     ];
 
     public function cotizacion(): BelongsTo
@@ -34,5 +35,21 @@ class VntDetailQuote extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Items::class, 'itemId');
+    }
+
+    // Accessors para mantener compatibilidad con PaymentQuote
+    public function getValueAttribute()
+    {
+        return $this->price;
+    }
+
+    public function getTaxAttribute()
+    {
+        return $this->tax_percentage;
+    }
+
+    public function getDescriptionAttribute()
+    {
+        return $this->descripcion;
     }
 }

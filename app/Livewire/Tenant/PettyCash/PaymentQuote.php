@@ -8,6 +8,7 @@ use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Session;
 use App\Models\Tenant\MethodPayments\VntMethodPayMents;
 use App\Models\Tenant\PettyCash\PettyCash;
+use App\Traits\HasCompanyConfiguration; // Adding trait
 use Illuminate\Support\Facades\Log;
 use App\Models\Auth\Tenant;
 use App\Services\Tenant\TenantManager;
@@ -15,6 +16,8 @@ use App\Models\Tenant\Quoter\VntQuote;
 
 class PaymentQuote extends Component
 {
+    use HasCompanyConfiguration;
+
     // Datos de la cotización
     public $quoteId;
     public $quoteCustumer;
@@ -73,6 +76,26 @@ class PaymentQuote extends Component
     {
         // Asegurar conexión tenant en cada request de Livewire
         $this->ensureTenantConnection();
+        $this->initializeCompanyConfiguration();
+    }
+
+    public function getPettyCashModel()
+    {
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatPettyCash();
+        }
+
+        // Si no (Distribuidora), usar modelo estandar (vnt_)
+        return new PettyCash(); 
+    }
+
+    public function getDetailPettyCashModel()
+    {
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatDetailPettyCash();
+        }
+
+        return new \App\Models\Tenant\PettyCash\VntDetailPettyCash();
     }
 
     public function mount($quoteId = null)
@@ -161,25 +184,26 @@ class PaymentQuote extends Component
             $totalTaxes += $lineTax;
         }
 
-        $this->quoteSubtotal = $subtotal;
-        $this->quoteTaxes = $totalTaxes;
-        $this->quoteTotal = $subtotal + $totalTaxes;
+        $this->quoteSubtotal = round($subtotal, 0);
+        $this->quoteTaxes = round($totalTaxes, 0);
+        $this->quoteTotal = round($subtotal + $totalTaxes, 0);
     }
 
-    private function setDefaultQuoteData()
-    {
-        // Datos por defecto si no se puede cargar la cotización
-        $this->quoteCustumer = 'CLIENTE DE PRUEBA';
-        $this->quoteNumber = 'COT-000001';
-        $this->quoteSubtotal = 100000;
-        $this->quoteTaxes = 19000;
-        $this->quoteTotal = 119000;
-    }
+    // private function setDefaultQuoteData()
+    // {
+    //     // Datos por defecto si no se puede cargar la cotización
+    //     $this->quoteCustumer = 'CLIENTE DE PRUEBA';
+    //     $this->quoteNumber = 'COT-000001';
+    //     $this->quoteSubtotal = 100000;
+    //     $this->quoteTaxes = 19000;
+    //     $this->quoteTotal = 119000;
+    // }
 
     private function checkActivePettyCash()
     {
         try {
-            $pettyCash = PettyCash::where('status', 1)->first();
+            $model = $this->getPettyCashModel();
+            $pettyCash = $model->where('status', 1)->first();
 
             if (!$pettyCash) {
                 session()->flash('error', 'No hay una caja abierta. Debe abrir una caja antes de procesar pagos.');
@@ -217,8 +241,8 @@ class PaymentQuote extends Component
         foreach ($this->paymentMethods as $method) {
             $totalFromMethods += (float) ($method['value'] ?? 0);
         }
-        $this->totalPaid = $this->totalAdvances + $totalFromMethods;
-        $this->remainingBalance = $this->quoteTotal - $this->totalPaid;
+        $this->totalPaid = round($this->totalAdvances + $totalFromMethods, 2);
+        $this->remainingBalance = round($this->quoteTotal - $this->totalPaid, 2);
 
         // Determinar si puede proceder al pago
         $this->canProceedToPayment = $this->totalPaid > 0;
@@ -349,40 +373,68 @@ class PaymentQuote extends Component
             return;
         }
 
-        if ($this->remainingBalance < 0) {
-            $this->dispatch('showAlert', 'Error: El total pagado excede el valor de la cotización.');
-            return;
-        }
-
-        if ($this->remainingBalance > 0) {
+        if ($this->remainingBalance > 0.01) {
             $this->dispatch('showAlert', 'Advertencia: Queda un saldo pendiente de $' . number_format($this->remainingBalance, 0, ',', '.'));
             return;
         }
 
-        // Crear resumen del pago
-        $metodosUsados = [];
-        foreach ($this->paymentMethods as $key => $method) {
-            if (((float) ($method['value'] ?? 0)) > 0) {
-                $metodosUsados[] = $method['name'] . ': $' . number_format($method['value'], 0, ',', '.');
+        // Mapeo de IDs de formas de pago
+        $methodMap = [
+            'efectivo' => 1,
+            'nequi' => 11,
+            'daviplata' => 12,
+            'tarjeta' => 4, // Asumiendo Tarjeta de Crédito por defecto
+        ];
+
+        try {
+            $this->ensureTenantConnection();
+            
+            // Verificar caja activa nuevamente por seguridad
+            if (!$this->checkActivePettyCash()) {
+                 return;
             }
+
+            $currentDate = \Carbon\Carbon::now();
+            $recordsCreated = 0;
+
+            // Instanciar modelo dinámico
+            $detailModel = $this->getDetailPettyCashModel();
+
+            foreach ($this->paymentMethods as $key => $method) {
+                $value = (float) ($method['value'] ?? 0);
+                
+                if ($value > 0) {
+                    $methodId = $methodMap[$key] ?? 1; // Default a efectivo si no se encuentra
+                    
+                    $detailModel->create([
+                        'status' => 1,
+                        'value' => $value,
+                        'created_at' => $currentDate,
+                        'updated_at' => $currentDate,
+                        'pettyCashId' => $this->activePettyCash['id'],
+                        'reasonPettyCashId' => 1, // ID 1 = Ventas
+                        'methodPaymentId' => $methodId,
+                        'invoiceId' => $this->quoteId,
+                        'observations' => "Pago cotización {$this->quoteNumber}. " . $this->observations
+                    ]);
+                    
+                    $recordsCreated++;
+                }
+            }
+
+            Log::info('Pago procesado:', [
+                'quote_id' => $this->quoteId,
+                'petty_cash_id' => $this->activePettyCash['id'],
+                'records' => $recordsCreated
+            ]);
+            
+            session()->flash('message', 'Pago registrado correctamente. Redirigiendo a nueva venta...');
+            return redirect()->route('tenant.tat.quoter.index');
+             
+        } catch (\Exception $e) {
+            Log::error('Error guardando pago: ' . $e->getMessage());
+            $this->dispatch('showAlert', 'Error: ' . $e->getMessage());
         }
-
-        $resumen = "PAGO CONFIRMADO\n\n";
-        $resumen .= "Total: $" . number_format($this->quoteTotal, 0, ',', '.') . "\n";
-        $resumen .= "Métodos de pago:\n" . implode("\n", $metodosUsados);
-        $resumen .= "\n\n¡Transacción exitosa!";
-
-        // Mostrar alert de confirmación
-        $this->dispatch('showAlert', $resumen);
-
-        // Log de la transacción simulada
-        Log::info('Pago simulado procesado:', [
-            'quote_id' => $this->quoteId,
-            'total_paid' => $this->totalPaid,
-            'payment_methods' => $this->paymentMethods,
-            'remaining_balance' => $this->remainingBalance,
-            'petty_cash_id' => $this->activePettyCash['id'] ?? null
-        ]);
     }
 
     public function resetPayment()

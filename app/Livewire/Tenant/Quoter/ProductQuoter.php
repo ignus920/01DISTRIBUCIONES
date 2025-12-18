@@ -510,6 +510,19 @@ public function validateQuantity($index)
         }
     }
 
+    public function openCustomerModal()
+    {
+        $this->showCreateCustomerForm = true;
+        $this->showCreateCustomerButton = false;
+        // $this->isEditingCustomer = false; 
+    }
+
+    public function closeCustomerModal()
+    {
+        $this->showCreateCustomerForm = false;
+        $this->showCreateCustomerButton = true;
+    }
+
     public function showCreateCustomerForm()
     {
         $this->showCreateCustomerForm = true;
