@@ -39,7 +39,7 @@ class PrintDeliveryDetailController extends Controller
                 DB::raw('SUM(dt.quantity) as quantity'),
                 DB::raw('SUM(dt.quantity) * dt.value as subtotal')
             )
-            ->groupBy('c.id', 'i.id', 'dt.value')
+            ->groupBy('c.id', 'c.name', 'i.id', 'i.name', 'dt.value')
             ->orderBy('c.name')
             ->orderBy('i.name')
             ->get();
