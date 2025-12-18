@@ -54,12 +54,69 @@ class MovementForm extends Component
     public $successMessage = '';
     public $errorMessage = '';
     
-    protected $listeners = ['showMovementDetails'];
+    // Processing state
+    public $isProcessing = false;
+    
+    protected $listeners = [
+        'showMovementDetails',
+        'storeSelected',
+        'reasonSelected',
+        'itemSelected',
+        'unitMeasurementSelected'
+    ];
 
     public function mount()
     {
         $this->warehouseForm['movementType'] = '';
         $this->movementForm['date'] = now()->format('Y-m-d');
+        $this->setDefaultUnitMeasurement();
+    }
+    
+    /**
+     * Set default unit measurement to "Unidad"
+     */
+    private function setDefaultUnitMeasurement()
+    {
+        $this->ensureTenantConnection();
+        $defaultUnit = UnitMeasurements::where('description', 'Unidad')
+            ->where('status', 1)
+            ->first();
+        
+        if ($defaultUnit) {
+            $this->detailForm['unitMeasurementId'] = $defaultUnit->id;
+        }
+    }
+    
+    /**
+     * Handle store selection from GenericSelect
+     */
+    public function storeSelected($value)
+    {
+        $this->selectedStoreId = $value;
+    }
+    
+    /**
+     * Handle reason selection from GenericSelect
+     */
+    public function reasonSelected($value)
+    {
+        $this->movementForm['reasonId'] = $value;
+    }
+    
+    /**
+     * Handle item selection from GenericSelect
+     */
+    public function itemSelected($value)
+    {
+        $this->detailForm['itemId'] = $value;
+    }
+    
+    /**
+     * Handle unit measurement selection from GenericSelect
+     */
+    public function unitMeasurementSelected($value)
+    {
+        $this->detailForm['unitMeasurementId'] = $value;
     }
 
     /**
@@ -302,29 +359,53 @@ class MovementForm extends Component
      */
     public function addDetail()
     {
+        // Prevenir múltiples clicks
+        if ($this->isProcessing) {
+            return;
+        }
+        
+        $this->isProcessing = true;
+        
         try {
             // Validate detail form
             $this->ensureTenantConnection();
-             // Hay un error en la validacion
-            //  dd($this->detailForm['itemId']);
-            // $this->validate([
-            //     'detailForm.itemId' => 'required|exists:tenant.items,id',
-            //     'detailForm.quantity' => 'required|numeric|min:0.01',
-            //     'detailForm.unitMeasurementId' => 'required|exists:tenant.unit_measurements,id',
-            // ], [
-            //     'detailForm.itemId.required' => 'Debe seleccionar un item',
-            //     'detailForm.itemId.exists' => 'El item seleccionado no es válido',
-            //     'detailForm.quantity.required' => 'La cantidad es obligatoria',
-            //     'detailForm.quantity.numeric' => 'La cantidad debe ser un número',
-            //     'detailForm.quantity.min' => 'La cantidad debe ser mayor a 0',
-            //     'detailForm.unitMeasurementId.required' => 'Debe seleccionar una unidad de medida',
-            //     'detailForm.unitMeasurementId.exists' => 'La unidad de medida seleccionada no es válida',
-            // ]);
+            
+            // Validación básica para evitar errores con clicks múltiples
+            if (empty($this->detailForm['itemId'])) {
+                $this->errorMessage = 'Debe seleccionar un item';
+                $this->isProcessing = false;
+                return;
+            }
+            
+            if (empty($this->detailForm['quantity']) || $this->detailForm['quantity'] <= 0) {
+                $this->errorMessage = 'La cantidad debe ser mayor a 0';
+                $this->isProcessing = false;
+                return;
+            }
+            
+            if (empty($this->detailForm['unitMeasurementId'])) {
+                $this->errorMessage = 'Debe seleccionar una unidad de medida';
+                $this->isProcessing = false;
+                return;
+            }
             
             // Get item and unit measurement info with all relationships
             $item = Items::with(['invValues', 'purchasingUnit', 'consumptionUnit'])
-                ->findOrFail($this->detailForm['itemId']);
+                ->find($this->detailForm['itemId']);
+            
+            if (!$item) {
+                $this->errorMessage = 'El item seleccionado no existe';
+                $this->isProcessing = false;
+                return;
+            }
+            
             $unitMeasurement = UnitMeasurements::find($this->detailForm['unitMeasurementId']);
+            
+            if (!$unitMeasurement) {
+                $this->errorMessage = 'La unidad de medida seleccionada no existe';
+                $this->isProcessing = false;
+                return;
+            }
             
             // Get price from inv_values
             $price = $item->invValues->first()->values ?? 0;
@@ -367,6 +448,7 @@ class MovementForm extends Component
                  // for exit             
                 if($adjustedQuantity < 0){
                     $this->errorMessage = 'La bodega no tiene stock suficiente para realizar el movimiento';
+                    $this->isProcessing = false;
                     return;
                 }
 
@@ -396,6 +478,7 @@ class MovementForm extends Component
             $this->clearMessages();
             
         } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->isProcessing = false;
             throw $e;
         } catch (\Exception $e) {
             $this->errorMessage = 'Error al agregar el item: ' . $e->getMessage();
@@ -403,6 +486,8 @@ class MovementForm extends Component
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+        } finally {
+            $this->isProcessing = false;
         }
     }
     
@@ -523,20 +608,29 @@ class MovementForm extends Component
                 
                 DB::connection('tenant')->commit();
                 
-                $this->successMessage = 'Movimiento creado exitosamente';
-                
                 Log::info('Movement created successfully', [
                     'movementId' => $movement->id,
                     'type' => $this->warehouseForm['movementType'],
                     'detailsCount' => count($this->details)
                 ]);
                 
-                // Reset form and close modal
-                $this->resetForm();
+                // Close modal first
                 $this->showModal = false;
+                
+                // Reset form
+                $this->resetForm();
+                
+                // Cambiar automáticamente a la vista del tipo de movimiento creado
+                $this->movementType = $selectedType;
                 
                 // Refresh the movement list with the movement type
                 $this->dispatch('refreshMovements', type: $selectedType);
+                
+                // Dispatch success event with browser alert (después de cerrar el modal)
+                $this->dispatch('movementCreated', [
+                    'type' => $selectedType,
+                    'message' => 'Movimiento de ' . ($selectedType === 'entrada' ? 'entrada' : 'salida') . ' creado exitosamente'
+                ]);
                 
             } catch (\Exception $e) {
                 DB::connection('tenant')->rollBack();
@@ -594,6 +688,7 @@ class MovementForm extends Component
             'quantity' => '',
             'unitMeasurementId' => '',
         ];
+        $this->setDefaultUnitMeasurement();
     }
     
     /**
