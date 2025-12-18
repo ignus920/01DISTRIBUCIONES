@@ -117,8 +117,9 @@ class UserRapForm extends Component
     private function loadProfiles(): void
     {
         $this->profiles = UsrProfile::where('status', 1)
-            ->orderBy('name')
-            ->get();
+           ->where('name', '!=', 'Tienda')
+           ->orderBy('name')
+           ->get();
     }
 
     /**
