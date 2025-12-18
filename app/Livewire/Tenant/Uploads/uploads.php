@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Tenant\Uploads;
+namespace App\Livewire\Tenant\uploads;
 
 use App\Models\TAT\Categories\TatCategories;
 use Livewire\Component;
