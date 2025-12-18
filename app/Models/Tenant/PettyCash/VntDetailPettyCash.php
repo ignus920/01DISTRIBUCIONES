@@ -4,7 +4,7 @@ namespace App\Models\Tenant\PettyCash;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\ModelS\Tenant\MethodPayments\VntMethodPayMents;
+use App\Models\Tenant\MethodPayments\VntMethodPayMents;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class VntDetailPettyCash extends Model

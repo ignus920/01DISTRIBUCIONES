@@ -212,9 +212,9 @@ class Uploads extends Component
     }
 
     public function cancelConfirmUpload(){
-        //$this->showConfirmModal = false;
-        $this->showFooter = false;
-        $this->showClearOptions = true;
+        $this->showConfirmModal = false;
+        $this->showFooter = true;
+        $this->showClearOptions = false;
     }
 
 
@@ -297,6 +297,8 @@ class Uploads extends Component
 
     public function closeModal(){
         $this->showConfirmModal = false;
+        $this->showFooter = true;
+        $this->showClearOptions = false;
     }
 
     public function clearListUpload(){
@@ -304,11 +306,13 @@ class Uploads extends Component
             $deleted = DisDeliveriesList::where('user_id', Auth::id())
                 ->delete();
             if ($deleted) {
-                session()->flash('message', "La lista de cargue de vació exitosamente");
+                session()->flash('message', "La lista de cargue se vació exitosamente");
             } else {
                 session()->flash('error', "No se encontró el registro para eliminar");
             }
             $this->showConfirmModal = false;
+            $this->showFooter = true;
+            $this->showClearOptions = false;
         }catch(\Exception $e) {
             session()->flash('error', "Error al eliminar el registro: " . $e->getMessage());
         }
