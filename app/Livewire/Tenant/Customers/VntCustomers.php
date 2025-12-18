@@ -46,6 +46,15 @@ class VntCustomers extends Component
     public $validatingIdentification = false;
     public $identificationExists = false;
     public $emailExists = false;
+    
+    public $showCredentialsAlert = false;
+    public $userCredentials = [
+        'email' => '',
+        'password' => ''
+    ];
+    
+    public $hasAssignedUser = false;
+    public $assignedUserEmail = '';
 
     protected function rules()
     {
@@ -163,7 +172,31 @@ class VntCustomers extends Component
         $this->address = $customer->address ?? '';
         $this->business_phone = $customer->business_phone ?? '';
 
+        // Verificar si el cliente tiene un usuario asignado
+        $this->checkIfCustomerHasUser($id);
+
         $this->showModal = true;
+    }
+
+    private function checkIfCustomerHasUser($customerId)
+    {
+        $this->hasAssignedUser = false;
+        $this->assignedUserEmail = '';
+
+        // Buscar en la base de datos central si existe un usuario donde AMBOS coincidan:
+        // contact_id = customerId Y email = billingEmail
+        tenancy()->central(function () use ($customerId) {
+            if (!empty($this->billingEmail)) {
+                $user = \App\Models\Auth\User::where('contact_id', $customerId)
+                    ->where('email', $this->billingEmail)
+                    ->first();
+                
+                if ($user) {
+                    $this->hasAssignedUser = true;
+                    $this->assignedUserEmail = $user->email;
+                }
+            }
+        });
     }
 
     public function save()
@@ -195,16 +228,99 @@ class VntCustomers extends Component
             'lastName' => $this->lastName ?: null,
             'address' => $this->address ?: null,
             'business_phone' => $this->business_phone ?: null,
+            'status' => true, // Por defecto activo al crear
         ];
 
         if ($this->editingId) {
-            VntCustomer::findOrFail($this->editingId)->update($data);
+            $customer = VntCustomer::findOrFail($this->editingId);
+            $customer->update($data);
+            
+            // Lógica para convertir en usuario al editar (solo si no tiene usuario asignado)
+            if ($this->convertToUser && !empty($this->billingEmail) && !$this->hasAssignedUser) {
+                // Verificar una última vez si ya existe un usuario con AMBOS datos coincidentes
+                $userExists = false;
+                tenancy()->central(function () use (&$userExists, $customer) {
+                    $userExists = \App\Models\Auth\User::where('contact_id', $customer->id)
+                        ->where('email', $this->billingEmail)
+                        ->exists();
+                });
+
+                if ($userExists) {
+                    session()->flash('error', 'Este cliente ya tiene un usuario asignado con este email.');
+                    $this->showModal = false;
+                    return;
+                }
+
+                $tenantId = session('tenant_id');
+                $email = $this->billingEmail;
+                $password = '12345678';
+                $name = $customer->display_name;
+                $contactId = $customer->id;
+
+                \Illuminate\Support\Facades\Log::info('🆕 Iniciando creación de usuario TAT (desde edición)', [
+                    'email' => $email,
+                    'tenant_id' => $tenantId,
+                    'contact_id' => $contactId,
+                    'password_preview' => substr($password, 0, 3) . '...'
+                ]);
+
+                tenancy()->central(function () use ($name, $email, $password, $tenantId, $contactId) {
+                    // Verificar si el usuario ya existe
+                    $existingUser = \App\Models\Auth\User::where('email', $email)->first();
+
+                    if ($existingUser) {
+                        \Illuminate\Support\Facades\Log::warning('⚠️ El usuario ya existe en la base central', ['email' => $email]);
+                        $user = $existingUser;
+                    } else {
+                        $user = \App\Models\Auth\User::create([
+                            'name' => $name,
+                            'email' => $email,
+                            'password' => \Illuminate\Support\Facades\Hash::make($password),
+                            'profile_id' => 17, 
+                            'contact_id' => $contactId,
+                        ]);
+                        \Illuminate\Support\Facades\Log::info('👤 Usuario creado en central', ['user_id' => $user->id]);
+                    }
+
+                    // Asegurar asociación con el tenant
+                    $membership = \App\Models\Auth\UserTenant::firstOrCreate(
+                        ['user_id' => $user->id, 'tenant_id' => $tenantId],
+                        ['role' => 17, 'is_active' => 1]
+                    );
+
+                    \Illuminate\Support\Facades\Log::info('🏢 Asociación con tenant verificada/creada', [
+                        'user_id' => $user->id,
+                        'tenant_id' => $tenantId,
+                        'was_active' => $membership->is_active
+                    ]);
+                });
+                
+                // Guardar credenciales para mostrar en la alerta
+                $this->userCredentials = [
+                    'email' => $email,
+                    'password' => $password
+                ];
+                $this->showCredentialsAlert = true;
+            }
+            
             session()->flash('message', 'Cliente actualizado correctamente.');
         } else {
             $customer = VntCustomer::create($data);
             
             // Lógica para convertir en usuario
             if ($this->convertToUser && !empty($this->billingEmail)) {
+                // Verificar si el email ya tiene usuario asignado
+                $emailHasUser = false;
+                tenancy()->central(function () use (&$emailHasUser) {
+                    $emailHasUser = \App\Models\Auth\User::where('email', $this->billingEmail)->exists();
+                });
+
+                if ($emailHasUser) {
+                    session()->flash('error', 'El email ya tiene un usuario asignado en el sistema.');
+                    $this->showModal = false;
+                    return;
+                }
+
                 $tenantId = session('tenant_id');
                 $email = $this->billingEmail;
                 $password = '12345678';
@@ -248,6 +364,13 @@ class VntCustomers extends Component
                         'was_active' => $membership->is_active
                     ]);
                 });
+                
+                // Guardar credenciales para mostrar en la alerta
+                $this->userCredentials = [
+                    'email' => $email,
+                    'password' => $password
+                ];
+                $this->showCredentialsAlert = true;
             }
 
             session()->flash('message', 'Cliente creado correctamente.');
@@ -258,16 +381,86 @@ class VntCustomers extends Component
             $this->closeModal();
         } else {
             $this->showModal = false;
-            $this->resetForm();
-            return redirect()->route('tenant.vnt-customers');
+            // Solo resetear el formulario si NO se creó un usuario
+            if (!$this->showCredentialsAlert) {
+                $this->resetForm();
+            } else {
+                // Limpiar solo los campos del formulario pero mantener las credenciales
+                $this->typePerson = '';
+                $this->typeIdentificationId = null;
+                $this->identification = '';
+                $this->regimeId = null;
+                $this->cityId = null;
+                $this->businessName = '';
+                $this->billingEmail = '';
+                $this->firstName = '';
+                $this->lastName = '';
+                $this->address = '';
+                $this->business_phone = '';
+                $this->validatingIdentification = false;
+                $this->identificationExists = false;
+                $this->emailExists = false;
+                $this->convertToUser = false;
+                $this->resetValidation();
+            }
         }
     }
 
     public function closeModal()
     {
         $this->showModal = false;
-        $this->resetForm();
+        // Solo resetear si no hay credenciales pendientes de mostrar
+        if (!$this->showCredentialsAlert) {
+            $this->resetForm();
+        } else {
+            // Limpiar solo los campos del formulario pero mantener las credenciales
+            $this->typePerson = '';
+            $this->typeIdentificationId = null;
+            $this->identification = '';
+            $this->regimeId = null;
+            $this->cityId = null;
+            $this->businessName = '';
+            $this->billingEmail = '';
+            $this->firstName = '';
+            $this->lastName = '';
+            $this->address = '';
+            $this->business_phone = '';
+            $this->validatingIdentification = false;
+            $this->identificationExists = false;
+            $this->emailExists = false;
+            $this->convertToUser = false;
+            $this->resetValidation();
+        }
         if ($this->isModalMode) $this->dispatch('customer-modal-closed');
+    }
+    
+    public function closeCredentialsAlert()
+    {
+        $this->showCredentialsAlert = false;
+        $this->userCredentials = ['email' => '', 'password' => ''];
+    }
+
+    public function toggleStatus($customerId)
+    {
+        $this->ensureTenantConnection();
+        
+        try {
+            $customer = VntCustomer::findOrFail($customerId);
+            
+            // Cambiar el estado (toggle)
+            $customer->status = !$customer->status;
+            $customer->save();
+            
+            $statusText = $customer->status ? 'activado' : 'desactivado';
+            session()->flash('message', "Cliente {$statusText} correctamente.");
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error al cambiar el estado del cliente.');
+            \Illuminate\Support\Facades\Log::error('Error al cambiar estado de cliente', [
+                'customer_id' => $customerId,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     private function resetForm()
@@ -287,6 +480,10 @@ class VntCustomers extends Component
         $this->identificationExists = false;
         $this->emailExists = false;
         $this->convertToUser = false;
+        $this->showCredentialsAlert = false;
+        $this->userCredentials = ['email' => '', 'password' => ''];
+        $this->hasAssignedUser = false;
+        $this->assignedUserEmail = '';
         $this->resetValidation();
     }
 
@@ -347,7 +544,37 @@ class VntCustomers extends Component
     {
         if (filter_var($this->billingEmail, FILTER_VALIDATE_EMAIL)) {
             $this->checkEmailExists();
+            
+            // Si estamos editando, verificar si el email tiene un usuario asignado
+            if ($this->editingId) {
+                $this->checkIfEmailHasUser();
+            }
         }
+    }
+    
+    private function checkIfEmailHasUser()
+    {
+        if (empty($this->billingEmail) || !$this->editingId) {
+            return;
+        }
+
+        // Buscar en la base de datos central si existe un usuario donde AMBOS coincidan:
+        // contact_id = editingId Y email = billingEmail
+        tenancy()->central(function () {
+            $user = \App\Models\Auth\User::where('contact_id', $this->editingId)
+                ->where('email', $this->billingEmail)
+                ->first();
+            
+            if ($user) {
+                // El usuario existe con ambos datos coincidentes
+                $this->hasAssignedUser = true;
+                $this->assignedUserEmail = $user->email;
+            } else {
+                // No hay usuario con ambos datos coincidentes, permitir crear
+                $this->hasAssignedUser = false;
+                $this->assignedUserEmail = '';
+            }
+        });
     }
 
     private function checkIdentificationExists()

@@ -26,6 +26,7 @@ class VntCustomer extends Model
         'lastName',
         'address',
         'business_phone',
+        'status',
     ];
 
     protected function casts(): array
@@ -36,6 +37,7 @@ class VntCustomer extends Model
             'typeIdentificationId' => 'integer',
             'regimeId' => 'integer',
             'cityId' => 'integer',
+            'status' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
@@ -92,5 +94,15 @@ class VntCustomer extends Model
     public function hasPhone()
     {
         return !empty($this->business_phone);
+    }
+
+    public function isActive()
+    {
+        return $this->status === true;
+    }
+
+    public function isInactive()
+    {
+        return $this->status === false;
     }
 }
