@@ -47,6 +47,7 @@
                 <!-- Mensajes -->
 
                 @if($showCharge == "pedidos")
+                <div wire:key="uploads-pedidos-container">
                 <!--CARD IZQUIERDO-->
                 @if (session()->has('message'))
                 <div
@@ -253,8 +254,8 @@
                     </div> --}}
                 </div>
                 @else
-                <div>
-                    <livewire:tenant.uploads.components.print-uploads-charges />
+                <div wire:key="uploads-cargues-container">
+                    <livewire:tenant.uploads.components.print-uploads-charges wire:key="print-uploads-charges-component" />
                 </div>
                 @endif
 
@@ -444,7 +445,6 @@
 </div>
 
 @script
-<script>
     // Solo JavaScript simple para mejorar la UX
     document.addEventListener('DOMContentLoaded', function() {
         // Formatear fecha para input type="date"
@@ -507,7 +507,7 @@
             }
         }
 
-        // Option A — recommended: wrap the movement form in <div id="movementFormLivewire"> @livewire('tenant.movements.movement-form') </div>
+        // Option A — recommended: wrap the movement form in <div id="movementFormLivewire"> livewire('tenant.movements.movement-form') </div>
         const wrapper = document.getElementById('movementFormLivewire');
         if (wrapper) {
             const lwEl = wrapper.querySelector('[wire\\:id]');
@@ -524,5 +524,4 @@
             }
         }
     });
-</script>
 @endscript
