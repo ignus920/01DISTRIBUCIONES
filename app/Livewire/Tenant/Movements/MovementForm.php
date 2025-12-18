@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Movements;
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use App\Models\Tenant\Movements\InvInventoryAdjustment;
 use App\Models\Tenant\Movements\InvDetailInventoryAdjustment;
 use App\Models\Tenant\Movements\InvReason;
@@ -228,6 +229,7 @@ class MovementForm extends Component
     /**
      * Open modal to create new movement
      */
+    #[On('openMovementForm')]
     public function create()
     {
         $this->showModal = true;

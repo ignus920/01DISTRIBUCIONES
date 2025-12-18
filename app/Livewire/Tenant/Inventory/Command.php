@@ -26,8 +26,14 @@ class Command extends Component
     public $perPage = 10;
 
     protected $rules =[
-        'name' => 'required|min:3',
+        'name' => 'required|min:3|regex:/^\pL+(\s+\pL+)*$/u',
         'print_path' => 'required|min:3',
+    ];
+
+    protected $messages = [
+        'name.required' => 'El nombre de la marca es obligatorio',
+        'name.min' => 'El nombre de la marca debe tener al menos 3 caracteres',
+        'name.regex' => 'El nombre de la casa solo debe contener letras y espacios',
     ];
 
     public function resetForm()
