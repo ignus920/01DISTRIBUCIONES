@@ -39,7 +39,7 @@ class Uploads extends Component
 
 
     // impresion de carges 
-    public $showCharge = "pedidos";  
+    public $showCharge = "pedidos";
 
 
     public function updatedSelectedDate($value)
@@ -57,14 +57,15 @@ class Uploads extends Component
         }
     }
 
-    public function updatedSelectedRoute($value)
+    public function updatedSelectedDeliveryMan($value)
     {
-        if ($value && $this->selectedDate) {
+        if ($value && $this->selectedDeliveryMan) {
             $this->remissions = $this->getRemissions($this->selectedDate);
         }
     }
 
-    public function getRemissions($date){
+    public function getRemissions($date)
+    {
         // Usamos una subconsulta para calcular el campo "existe"
         $subquery = DB::table('vnt_quotes as q')
             ->select(
@@ -79,11 +80,11 @@ class Uploads extends Component
                     AND d.sale_date = DATE(q.created_at)
                 ) THEN 'SI' ELSE 'NO' END as existe")
             );
-        
+
         // if ($routeId) {
         //     $subquery->where('r.routeId', $routeId);
         // }
-    
+
         // Consulta principal
         $query = DB::table(DB::raw("({$subquery->toSql()}) as q"))
             ->mergeBindings($subquery)
@@ -99,9 +100,10 @@ class Uploads extends Component
                 DB::raw('COUNT(*) as total_registros'),
                 DB::raw('MAX(q.existe) as existe')
             )
-            ->whereDate('q.created_at', $date);
+            ->whereDate('q.created_at', $date)
+            ->where('r.status', 'REGISTRADO');
 
-            // Agregar esto para depurar
+        // Agregar esto para depurar
         // Log::info('Consulta SQL:', [
         //     'sql' => $query->toSql(),
         //     'bindings' => $query->getBindings(),
@@ -109,7 +111,7 @@ class Uploads extends Component
         //     'routeId' => $routeId
         // ]);
 
-        return $query->groupBy('u.id', 'u.name', DB::raw('DATE(q.created_at)'),'rt.name')->get();
+        return $query->groupBy('u.id', 'u.name', DB::raw('DATE(q.created_at)'), 'rt.name')->get();
     }
 
     public function sortBy($field)
@@ -136,14 +138,14 @@ class Uploads extends Component
             session()->flash('error', 'Por favor selecciona una fecha primero');
             return;
         }
-        
-        if(!$this->selectedDeliveryMan){
+
+        if (!$this->selectedDeliveryMan) {
             session()->flash('error', 'Por favor selecciona un transportador primero');
             return;
         }
-        // Tu lógica de carga aquí
-        try{
-            $uploadData=[
+
+        try {
+            $uploadData = [
                 'sale_date' => $this->selectedDate,
                 'salesman_id' => $userId,
                 'deliveryman_id' => $this->selectedDeliveryMan,
@@ -153,18 +155,16 @@ class Uploads extends Component
             DisDeliveriesList::create($uploadData);
 
             $this->remissions = $this->getRemissions($this->selectedDate);
-            
-            session()->flash('message', "Cargando datos para el usuario ID: $userId - Fecha: {$this->selectedDate}");
 
-        }catch(\Exception $e){
-            // Para debug, muestra un mensaje
-            session()->flash('error', "Error al registrar el cargue".$e->getMessage());
+            session()->flash('message', "Cargando datos para el usuario ID: $userId - Fecha: {$this->selectedDate}");
+        } catch (\Exception $e) {
+            Log::error($e);
+            session()->flash('error', "Error al registrar el cargue" . $e->getMessage());
         }
-    
     }
 
     public function eliminar($userId)
-    {   
+    {
         if (!$this->selectedDate) {
             session()->flash('error', 'Por favor selecciona una fecha primero');
             return;
@@ -184,13 +184,14 @@ class Uploads extends Component
             } else {
                 session()->flash('warning', "No se encontró el registro para eliminar");
             }
-
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
+            Log::error($e);
             session()->flash('error', "Error al eliminar el registro: " . $e->getMessage());
         }
     }
 
-    public function validateScarce(){
+    public function validateScarce()
+    {
         $result = DB::selectOne("
         SELECT 
             CASE 
@@ -208,36 +209,40 @@ class Uploads extends Component
                 ) THEN 'SI' 
                 ELSE 'NO' 
             END AS hay_faltantes");
-    
-        return $result->hay_faltantes;        
+
+        return $result->hay_faltantes;
     }
 
-    public function showConfirmUploadModal(){
+    public function showConfirmUploadModal()
+    {
         $this->showConfirmModal = true;
     }
 
-    public function cancelConfirmUpload(){
+    public function cancelConfirmUpload()
+    {
         $this->showConfirmModal = false;
         $this->showFooter = true;
         $this->showClearOptions = false;
     }
 
 
-    public function confirmUpload(){
+    public function confirmUpload()
+    {
         $this->showConfirmModal = false;
-        
+
         $hayFaltantes = $this->validateScarce();
 
         if ($hayFaltantes === 'SI') {
             $this->showScares = true;
             $this->scarceUnits = $this->getscarceUnits();
             return;
-        }else{
-            try{
+        } else {
+            try {
                 $infoDisDeliveriesList = DisDeliveriesList::query()->get();
                 foreach ($infoDisDeliveriesList as $deliveryListItem) {
                     $dataDeliveries = [
                         'salesman_id' => $deliveryListItem->salesman_id,
+                        'deliveryman_id' => $deliveryListItem->deliveryman_id,
                         'user_id' => Auth::id(),
                         'sale_date' => $deliveryListItem->sale_date,
                         'created_at' => Carbon::now()
@@ -249,24 +254,24 @@ class Uploads extends Component
                     //Actualización registros en la tabla inv_remissions
                     InvRemissions::whereHas('quote', function ($query) use ($deliveryListItem) {
                         $query->where('userId', $deliveryListItem->salesman_id)
-                              ->whereDate('created_at', $deliveryListItem->sale_date);
+                            ->whereDate('created_at', $deliveryListItem->sale_date);
                     })->update(['delivery_id' => $dis_deliveries->id, 'deliveryDate' => $dis_deliveries->sale_date]);
-
                 }
                 // Si no hay faltantes, proceder con la lógica de confirmación
                 session()->flash('message', 'Cargue confirmado exitosamente.');
-            }catch(\Exception $e){
-                // Para debug, muestra un mensaje
+            } catch (\Exception $e) {
+                Log::error($e);
                 session()->flash('error', "Error al registrar el cargue: " . $e->getMessage());
             }
         }
     }
 
-    public function getscarceUnits(){
+    public function getscarceUnits()
+    {
         $results = DB::table('dis_deliveries_list as dl')
             ->join('vnt_quotes as q', function ($join) {
                 $join->on('dl.salesman_id', '=', 'q.userId')
-                     ->on(DB::raw('DATE(q.created_at)'), '=', 'dl.sale_date');
+                    ->on(DB::raw('DATE(q.created_at)'), '=', 'dl.sale_date');
             })
             ->join('vnt_detail_quotes as dt', 'dt.quoteId', '=', 'q.id')
             ->join('inv_items as i', 'i.id', '=', 'dt.itemId')
@@ -290,36 +295,50 @@ class Uploads extends Component
         return $results;
     }
 
-    public function closeAlertScares(){
+    public function closeAlertScares()
+    {
         $this->showScares = false;
     }
 
-    public function openMovementForm(){
+    public function openMovementForm()
+    {
         $this->dispatch("openMovementForm");
         $this->showModal = true;
         $this->showScares = false;
     }
 
-    public function closeModal(){
+    public function closeModal()
+    {
         $this->showConfirmModal = false;
         $this->showFooter = true;
         $this->showClearOptions = false;
     }
 
-    public function clearListUpload(){
+    public function clearListUpload()
+    {
         try {
             $deleted = DisDeliveriesList::where('user_id', Auth::id())
                 ->delete();
             if ($deleted) {
                 session()->flash('message', "La lista de cargue se vació exitosamente");
             } else {
-                session()->flash('error', "No se encontró el registro para eliminar");
+                session()->flash('error', "No se encontraron registros para eliminar");
             }
             $this->showConfirmModal = false;
             $this->showFooter = true;
             $this->showClearOptions = false;
-        }catch(\Exception $e) {
-            session()->flash('error', "Error al eliminar el registro: " . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error($e);
+            session()->flash('error', "Error al eliminar los registros: " . $e->getMessage());
+        }
+    }
+
+    public function printPreCharge()
+    {
+        try {
+        } catch (\Exception $e) {
+            Log::error($e);
+            session()->flash('error', "Error al generar la impresión: " . $e->getMessage());
         }
     }
 

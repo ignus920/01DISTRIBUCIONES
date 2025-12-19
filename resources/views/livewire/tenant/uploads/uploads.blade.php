@@ -135,14 +135,20 @@
                             </ul>
                         </div> --}}
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full pt-3">
-                            <button wire:click="showConfirmUploadModal"
-                                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Confirmar Cargue
-                            </button>
+                            <div class="flex-1">
+                                <button wire:click="showConfirmUploadModal"
+                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                    <x-heroicon-o-plus class="w-6 h-5 pr-2" />
+                                    Confirmar Cargue
+                                </button>
+                            </div>
+                            <div class="flex-1 flex items-center gap-3">
+                                <button wire:click="showConfirmUploadModal"
+                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                    <x-heroicon-o-eye class="w-6 h-5 pr-2" />
+                                    Previa del Cargue
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -377,10 +383,10 @@
 
                 <div class="space-y-6">
                     <div class="mb-3">
-                        <p class="px-3 pt-3">No hay productos suficientes</p>
+                        <p class="px-3 pt-3 text-gray-600 dark:text-gray-300">No hay productos suficientes</p>
                     </div>
                     <div
-                        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 px-6 pt-3">
+                        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 px-6 p-3">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
                                 <tr>
@@ -424,7 +430,7 @@
                         </table>
                     </div>
                     <div class="mb-3">
-                        <p class="px-3 pt-3">¿Desea agregar unidades de productos?</p>
+                        <p class="px-3 pt-3 text-gray-600 dark:text-gray-300">¿Desea agregar unidades de productos?</p>
                     </div>
                     <div
                         class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 px-4 pb-4 border-t border-gray-200 dark:border-gray-700">
