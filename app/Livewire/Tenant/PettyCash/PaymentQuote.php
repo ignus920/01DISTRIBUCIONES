@@ -508,16 +508,22 @@ class PaymentQuote extends Component
             foreach ($quote->items as $quoteItem) {
                 $item = $quoteItem->item; // Relación con el producto
                 if ($item) {
+                    // Calcular subtotal con IVA incluido
+                    $baseSubtotal = $quoteItem->price * $quoteItem->quantity;
+                    $taxPercentage = $quoteItem->tax_percentage ?? 0;
+                    $taxAmount = $baseSubtotal * ($taxPercentage / 100);
+                    $subtotalWithTax = $baseSubtotal + $taxAmount;
+
                     $cartItems[] = [
                         'id' => $item->id,
                         'name' => $item->name,
                         'sku' => $item->sku ?? 'N/A',
                         'price' => $quoteItem->price,
                         'quantity' => $quoteItem->quantity,
-                        'subtotal' => $quoteItem->price * $quoteItem->quantity,
+                        'subtotal' => $subtotalWithTax,
                         'stock' => $item->stock,
                         'tax_name' => $quoteItem->tax_percentage ? $quoteItem->tax_percentage . '%' : 'N/A',
-                        'tax_percentage' => $quoteItem->tax_percentage ?? 0
+                        'tax_percentage' => $taxPercentage
                     ];
                 }
             }

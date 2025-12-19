@@ -64,7 +64,11 @@ class QuoterView extends Component
         $this->loadCartFromSession();
         $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
         $this->calculateTotal();
-        $this->loadDefaultCustomer();
+
+        // Solo cargar cliente por defecto si no hay uno restaurado
+        if (!$this->selectedCustomer) {
+            $this->loadDefaultCustomer();
+        }
 
         Log::info('QuoterView mounted successfully', [
             'companyId' => $this->companyId,
@@ -106,7 +110,9 @@ class QuoterView extends Component
 
             // 3. Aplicar valor corregido
             $this->cartItems[$index]['quantity'] = $quantity;
-            $this->cartItems[$index]['subtotal'] = $quantity * $this->cartItems[$index]['price'];
+            $baseSubtotal = $quantity * $this->cartItems[$index]['price'];
+            $taxAmount = $baseSubtotal * ($this->cartItems[$index]['tax_percentage'] / 100);
+            $this->cartItems[$index]['subtotal'] = $baseSubtotal + $taxAmount;
             
             $this->calculateTotal();
             $this->saveCartToSession();
@@ -353,20 +359,26 @@ class QuoterView extends Component
              }
 
             $this->cartItems[$existingItemIndex]['quantity'] = $newQuantity;
-            $this->cartItems[$existingItemIndex]['subtotal'] =
-                $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
+            $baseSubtotal = $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
+            $taxAmount = $baseSubtotal * ($this->cartItems[$existingItemIndex]['tax_percentage'] / 100);
+            $this->cartItems[$existingItemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
         } else {
             // Agregar nuevo item
+            $basePrice = $product->price;
+            $taxPercentage = $product->tax ? $product->tax->percentage : 0;
+            $taxAmount = $basePrice * ($taxPercentage / 100);
+            $subtotalWithTax = $basePrice + $taxAmount;
+
             $this->cartItems[] = [
                 'id' => $product->id,
                 'name' => $product->name,
                 'sku' => $product->sku,
                 'price' => $product->price,
                 'quantity' => 1,
-                'subtotal' => $product->price,
+                'subtotal' => $subtotalWithTax,
                 'stock' => $product->stock,
                 'tax_name' => $product->tax ? $product->tax->name : 'N/A',
-                'tax_percentage' => $product->tax ? $product->tax->percentage : 0
+                'tax_percentage' => $taxPercentage
             ];
         }
 
@@ -404,7 +416,9 @@ class QuoterView extends Component
 
             // Actualizar cantidad y subtotal
             $this->cartItems[$itemIndex]['quantity'] = $quantity;
-            $this->cartItems[$itemIndex]['subtotal'] = $quantity * $this->cartItems[$itemIndex]['price'];
+            $baseSubtotal = $quantity * $this->cartItems[$itemIndex]['price'];
+            $taxAmount = $baseSubtotal * ($this->cartItems[$itemIndex]['tax_percentage'] / 100);
+            $this->cartItems[$itemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
 
             $this->calculateTotal();
             $this->saveCartToSession();
@@ -424,8 +438,9 @@ class QuoterView extends Component
 
         if ($itemIndex !== false) {
             $this->cartItems[$itemIndex]['price'] = $newPrice;
-            $this->cartItems[$itemIndex]['subtotal'] =
-                $this->cartItems[$itemIndex]['quantity'] * $newPrice;
+            $baseSubtotal = $this->cartItems[$itemIndex]['quantity'] * $newPrice;
+            $taxAmount = $baseSubtotal * ($this->cartItems[$itemIndex]['tax_percentage'] / 100);
+            $this->cartItems[$itemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
 
             $this->calculateTotal();
             $this->saveCartToSession();
