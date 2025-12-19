@@ -1,4 +1,41 @@
 <div>
+    <style>
+        /* Estilos personalizados para SweetAlert2 en dark mode */
+        .swal2-dark {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
+        }
+        
+        .swal2-dark .swal2-title {
+            color: #f9fafb !important;
+        }
+        
+        .swal2-dark .swal2-html-container {
+            color: #e5e7eb !important;
+        }
+        
+        .swal2-timer-dark {
+            background: rgba(255, 255, 255, 0.2) !important;
+        }
+        
+        .swal2-light .swal2-timer-progress-bar {
+            background: rgba(79, 70, 229, 0.8) !important;
+        }
+        
+        /* Mejorar el ícono de éxito en dark mode */
+        .swal2-dark .swal2-icon.swal2-success [class^='swal2-success-line'] {
+            background-color: currentColor !important;
+        }
+        
+        .swal2-dark .swal2-icon.swal2-success .swal2-success-ring {
+            border-color: currentColor !important;
+            opacity: 0.3;
+        }
+        
+        /* Animaciones suaves */
+        .swal2-popup {
+            transition: all 0.3s ease-in-out !important;
+        }
+    </style>
 
     @if(!$reusable)
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
@@ -106,19 +143,20 @@
                                 <!-- Bodegas -->
                                 @if($showSelectStore)
                                 <div>
-                                    <label
-                                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bodega
-                                        <span class="text-red-500">*</span></label>
-                                    <select wire:model.live="selectedStoreId" {{ !empty($selectedStoreId) ? 'disabled'
-                                        : '' }}
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 {{ !empty($selectedStoreId) ? 'opacity-75 cursor-not-allowed' : '' }}">
-                                        <option value="">Seleccionar</option>
-                                        @foreach($this->stores as $store)
-                                        <option value="{{ $store->id }}">{{ $store->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error('selectedStoreId') <span class="text-red-500 text-sm mt-1">{{ $message
-                                        }}</span> @enderror
+                                    @livewire('selects.generic-select', [
+                                        'selectedValue' => $selectedStoreId,
+                                        'items' => $this->stores,
+                                        'name' => 'selectedStoreId',
+                                        'placeholder' => 'Seleccionar',
+                                        'label' => 'Bodega',
+                                        'required' => true,
+                                        'showLabel' => true,
+                                        'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                        'eventName' => 'storeSelected',
+                                        'displayField' => 'name',
+                                        'valueField' => 'id',
+                                        'searchFields' => ['name']
+                                    ], key('store-select-' . now()->timestamp))
                                 </div>
                                 @endif
 
@@ -166,22 +204,20 @@
                                 </div>
                                 <!-- Motivo -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Motivo <span class="text-red-500">*</span>
-                                    </label>
-                                    <select wire:model.live="movementForm.reasonId" @if(( empty($selectedStoreId) &&
-                                        $showSelectStore ) || empty($warehouseForm['movementType']) ||
-                                        !empty($movementForm['reasonId'])) disabled @endif
-                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
-                                        <option value="">{{ empty($warehouseForm['movementType']) ? 'Primero seleccione
-                                            el tipo' : 'Seleccionar motivo' }}</option>
-                                        @foreach($this->reasons as $reason)
-                                        <option value="{{ $reason->id }}">{{ $reason->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error('movementForm.reasonId')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
+                                    @livewire('selects.generic-select', [
+                                        'selectedValue' => $movementForm['reasonId'],
+                                        'items' => $this->reasons,
+                                        'name' => 'movementForm.reasonId',
+                                        'placeholder' => empty($warehouseForm['movementType']) ? 'Primero seleccione el tipo' : 'Seleccionar motivo',
+                                        'label' => 'Motivo',
+                                        'required' => true,
+                                        'showLabel' => true,
+                                        'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                        'eventName' => 'reasonSelected',
+                                        'displayField' => 'name',
+                                        'valueField' => 'id',
+                                        'searchFields' => ['name']
+                                    ], key('reason-select-' . now()->timestamp))
                                 </div>
                             </div>
                             <!-- Observaciones -->
@@ -203,18 +239,20 @@
 
                                 <div class="grid grid-cols-3 gap-4 mb-4">
                                     <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item
-                                            *</label>
-                                        <select wire:model.defer="detailForm.itemId"
-                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
-                                            <option value="">Seleccionar</option>
-                                            @foreach($this->items as $item)
-                                            <option value="{{ $item->id }}">{{ $item->name }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('detailForm.itemId') <span class="text-red-500 text-sm mt-1">{{ $message
-                                            }}</span> @enderror
+                                        @livewire('selects.generic-select', [
+                                            'selectedValue' => $detailForm['itemId'],
+                                            'items' => $this->items,
+                                            'name' => 'detailForm.itemId',
+                                            'placeholder' => 'Seleccionar',
+                                            'label' => 'Item',
+                                            'required' => true,
+                                            'showLabel' => true,
+                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                            'eventName' => 'itemSelected',
+                                            'displayField' => 'name',
+                                            'valueField' => 'id',
+                                            'searchFields' => ['name', 'sku']
+                                        ], key('item-select-' . now()->timestamp))
                                     </div>
                                     <div>
                                         <label
@@ -226,28 +264,38 @@
                                             $message }}</span> @enderror
                                     </div>
                                     <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unidad
-                                            *</label>
-                                        <select wire:model.defer="detailForm.unitMeasurementId"
-                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
-                                            <option value="">Seleccionar</option>
-                                            @foreach($this->unitMeasurements as $unit)
-                                            <option value="{{ $unit->id }}">{{ $unit->description }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('detailForm.unitMeasurementId') <span
-                                            class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                                        @livewire('selects.generic-select', [
+                                            'selectedValue' => $detailForm['unitMeasurementId'],
+                                            'items' => $this->unitMeasurements,
+                                            'name' => 'detailForm.unitMeasurementId',
+                                            'placeholder' => 'Seleccionar',
+                                            'label' => 'Unidad',
+                                            'required' => true,
+                                            'showLabel' => true,
+                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                            'eventName' => 'unitMeasurementSelected',
+                                            'displayField' => 'description',
+                                            'valueField' => 'id',
+                                            'searchFields' => ['description']
+                                        ], key('unit-select-' . now()->timestamp))
                                     </div>
                                 </div>
 
-                                <button wire:click="addDetail" type="button"
-                                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-lg transition-colors">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <button wire:click="addDetail" type="button" 
+                                    wire:loading.attr="disabled"
+                                    wire:target="addDetail"
+                                    {{ $isProcessing ? 'disabled' : '' }}
+                                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <svg wire:loading.remove wire:target="addDetail" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 4v16m8-8H4"></path>
                                     </svg>
-                                    Agregar Item
+                                    <svg wire:loading wire:target="addDetail" class="animate-spin w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span wire:loading.remove wire:target="addDetail">Agregar Item</span>
+                                    <span wire:loading wire:target="addDetail">Agregando...</span>
                                 </button>
                             </div>
                             @endif
@@ -1273,4 +1321,55 @@
           </div>
       </div>
   </div>
+
+  <script>
+      document.addEventListener('DOMContentLoaded', () => {
+          // Escuchar el evento de movimiento creado
+          Livewire.on('movementCreated', (event) => {
+              const data = event[0];
+              const isEntrada = data.type === 'entrada';
+              
+              // Detectar si el tema es dark
+              const isDarkMode = document.documentElement.classList.contains('dark') || 
+                                localStorage.getItem('darkMode') === 'true';
+              
+              // Colores según el tipo de movimiento
+              const iconColor = isEntrada ? '#10b981' : '#ef4444';
+              const buttonColor = isEntrada ? '#10b981' : '#ef4444';
+              
+              // Colores según el tema
+              const backgroundColor = isDarkMode ? '#1f2937' : '#ffffff';
+              const textColor = isDarkMode ? '#f9fafb' : '#111827';
+              const borderColor = isDarkMode ? '#374151' : '#e5e7eb';
+              
+              // Mostrar alerta de éxito con SweetAlert2
+              Swal.fire({
+                  title: '¡Éxito!',
+                  text: data.message,
+                  icon: 'success',
+                  iconColor: iconColor,
+                  confirmButtonText: 'Aceptar',
+                  confirmButtonColor: buttonColor,
+                  background: backgroundColor,
+                  color: textColor,
+                  timer: 3000,
+                  timerProgressBar: true,
+                  allowOutsideClick: true,
+                  allowEscapeKey: true,
+                  customClass: {
+                      popup: isDarkMode ? 'swal2-dark' : 'swal2-light',
+                      confirmButton: 'focus:ring-2 focus:ring-offset-2'
+                  },
+                  didOpen: () => {
+                      // Aplicar estilos adicionales para dark mode
+                      const popup = Swal.getPopup();
+                      if (isDarkMode && popup) {
+                          popup.style.border = `1px solid ${borderColor}`;
+                          popup.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3)';
+                      }
+                  }
+              });
+          });
+      });
+  </script>
 </div>

@@ -47,6 +47,7 @@
                 <!-- Mensajes -->
 
                 @if($showCharge == "pedidos")
+                <div wire:key="uploads-pedidos-container">
                 <!--CARD IZQUIERDO-->
                 @if (session()->has('message'))
                 <div
@@ -253,8 +254,8 @@
                     </div> --}}
                 </div>
                 @else
-                <div>
-                    <livewire:tenant.uploads.components.print-uploads-charges />
+                <div wire:key="uploads-cargues-container">
+                    <livewire:tenant.uploads.components.print-uploads-charges wire:key="print-uploads-charges-component" />
                 </div>
                 @endif
 
@@ -449,7 +450,7 @@
 
 </div>
 
-<script>
+@script
     // Solo JavaScript simple para mejorar la UX
     document.addEventListener('DOMContentLoaded', function() {
         // Formatear fecha para input type="date"
@@ -463,7 +464,7 @@
         // Cerrar modal con ESC
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-                @this.set('showModal', false);
+                $wire.set('showModal', false);
             }
         });
 
@@ -472,45 +473,61 @@
         if (modalBackdrop) {
             modalBackdrop.addEventListener('click', function(e) {
                 if (e.target === this) {
-                    @this.set('showModal', false);
+                    $wire.set('showModal', false);
                 }
             });
         }
     });
 
     // Debug: Verificar que Livewire responde
-    Livewire.hook('request', ({
-        uri,
-        options,
-        payload
-    }) => {
-        console.log('Livewire request:', {
+    if (typeof Livewire !== 'undefined') {
+        Livewire.hook('request', ({
             uri,
+            options,
             payload
+        }) => {
+            console.log('Livewire request:', {
+                uri,
+                payload
+            });
         });
-    });
 
-    Livewire.hook('response', ({
-        status,
-        component
-    }) => {
-        console.log('Livewire response:', status, component);
-    });
+        Livewire.hook('response', ({
+            status,
+            component
+        }) => {
+            console.log('Livewire response:', status, component);
+        });
+    }
 
     window.addEventListener('open-movement-form', (e) => {
         // If you dispatch the event with the child component id: dispatchBrowserEvent('open-movement-form', { componentId: 'xyz' })
         if (e?.detail?.componentId) {
-            try { Livewire.find(e.detail.componentId).call('create'); return; } catch (err) {}
+            try {
+                if (typeof Livewire !== 'undefined') {
+                    Livewire.find(e.detail.componentId).call('create');
+                    return;
+                }
+            } catch (err) {
+                console.error('Error finding Livewire component:', err);
+            }
         }
 
-        // Option A — recommended: wrap the movement form in <div id="movementFormLivewire"> @livewire('tenant.movements.movement-form') </div>
+        // Option A — recommended: wrap the movement form in <div id="movementFormLivewire"> livewire('tenant.movements.movement-form') </div>
         const wrapper = document.getElementById('movementFormLivewire');
         if (wrapper) {
             const lwEl = wrapper.querySelector('[wire\\:id]');
             if (lwEl) {
                 const id = lwEl.getAttribute('wire:id');
-                try { Livewire.find(id).call('create'); return; } catch (err) {}
+                try {
+                    if (typeof Livewire !== 'undefined') {
+                        Livewire.find(id).call('create');
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error finding Livewire component by ID:', err);
+                }
             }
         }
     });
-</script>
+@endscript

@@ -1,5 +1,5 @@
 <div class="{{ !$isModalMode ? 'min-h-screen bg-gray-50 dark:bg-gray-900 p-6' : '' }}">
-@if(!$isModalMode)
+    @if(!$isModalMode)
     <div class="max-w-12xl mx-auto">
         <!-- Header -->
         <div
@@ -21,14 +21,85 @@
 
         <!-- Mensajes -->
         @if (session()->has('message'))
-        <div
-            class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg mb-6">
-            <div class="flex items-center">
-                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                {{ session('message') }}
+        <div x-data="{ show: true }"
+            x-show="show"
+            x-init="$nextTick(() => { if({{ $showCredentialsAlert ? 'true' : 'false' }}) { $el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } })"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100"
+            class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg mb-6 overflow-hidden">
+            <div class="px-4 py-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-3 text-green-700 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-green-700 dark:text-green-300 font-medium">{{ session('message') }}</span>
+                    </div>
+                    @if(!$showCredentialsAlert)
+                    <button @click="show = false" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    @endif
+                </div>
+
+                @if($showCredentialsAlert)
+                <div class="mt-3 pt-3 border-t border-green-200 dark:border-green-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-semibold text-green-800 dark:text-green-200">Credenciales de acceso creadas:</p>
+                        <button @click="show = false; $wire.closeCredentialsAlert()" class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2" x-data="{ copiedEmail: false, copiedPassword: false }">
+                        <!-- Email -->
+                        <div class="bg-white dark:bg-gray-800 rounded p-2 border border-green-200 dark:border-green-800">
+                            <label class="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Email</label>
+                            <div class="flex items-center gap-2">
+                                <code class="flex-1 text-xs font-mono text-gray-900 dark:text-white truncate">{{ $userCredentials['email'] }}</code>
+                                <button @click="navigator.clipboard.writeText('{{ $userCredentials['email'] }}'); copiedEmail = true; setTimeout(() => copiedEmail = false, 2000)"
+                                    class="flex-shrink-0 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                                    <svg x-show="!copiedEmail" class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <svg x-show="copiedEmail" class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Contraseña -->
+                        <div class="bg-white dark:bg-gray-800 rounded p-2 border border-green-200 dark:border-green-800">
+                            <label class="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Contraseña</label>
+                            <div class="flex items-center gap-2">
+                                <code class="flex-1 text-xs font-mono text-gray-900 dark:text-white">{{ $userCredentials['password'] }}</code>
+                                <button @click="navigator.clipboard.writeText('{{ $userCredentials['password'] }}'); copiedPassword = true; setTimeout(() => copiedPassword = false, 2000)"
+                                    class="flex-shrink-0 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                                    <svg x-show="!copiedPassword" class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <svg x-show="copiedPassword" class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-green-700 dark:text-green-300 mt-2 flex items-start gap-1">
+                        <svg class="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Guarda estas credenciales. El usuario debe cambiar su contraseña al iniciar sesión.</span>
+                    </p>
+                </div>
+                @endif
             </div>
         </div>
         @endif
@@ -93,11 +164,15 @@
                                 <div class="flex items-center gap-1">
                                     ID
                                     @if($sortField === 'id')
-                                        @if($sortDirection === 'asc')
-                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path></svg>
-                                        @else
-                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"></path></svg>
-                                        @endif
+                                    @if($sortDirection === 'asc')
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+                                    </svg>
+                                    @else
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"></path>
+                                    </svg>
+                                    @endif
                                     @endif
                                 </div>
                             </th>
@@ -107,17 +182,22 @@
                                 <div class="flex items-center gap-1">
                                     Nombre / Razón Social
                                     @if($sortField === 'businessName')
-                                        @if($sortDirection === 'asc')
-                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path></svg>
-                                        @else
-                                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"></path></svg>
-                                        @endif
+                                    @if($sortDirection === 'asc')
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
+                                    </svg>
+                                    @else
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"></path>
+                                    </svg>
+                                    @endif
                                     @endif
                                 </div>
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Identificación</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Teléfono</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
                         </tr>
                     </thead>
@@ -134,11 +214,50 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ $customer->identification }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ $customer->billingEmail ?: 'N/A' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ $customer->business_phone ?: 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <!-- Estado Toggle -->
+                                <div class="flex items-center justify-center gap-2">
+                                    <!-- Toggle Switch -->
+                                    <button type="button"
+                                        wire:click="toggleStatus({{ $customer->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:loading.class="opacity-50 cursor-not-allowed"
+                                        wire:target="toggleStatus({{ $customer->id }})"
+                                        class="relative inline-flex h-5 w-10 items-center rounded-full transition-all duration-200 ease-in-out 
+                                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 
+                                               dark:focus:ring-offset-gray-800 hover:shadow-md 
+                                               {{ $customer->status ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500' }}"
+                                        role="switch"
+                                        aria-checked="{{ $customer->status ? 'true' : 'false' }}"
+                                        aria-label="Toggle customer status for {{ $customer->display_name }}">
+
+                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-all duration-200 ease-in-out 
+                                           {{ $customer->status ? 'translate-x-5' : 'translate-x-1' }}"></span>
+                                    </button>
+
+                                    <!-- Estado de carga -->
+                                    <div wire:loading wire:target="toggleStatus({{ $customer->id }})" class="ml-1">
+                                        <svg class="animate-spin h-4 w-4 text-indigo-600 dark:text-indigo-400"
+                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+
+                            </td>
+
+
+
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                 <div class="flex items-center justify-center gap-2">
                                     <button wire:click="edit({{ $customer->id }})"
                                         class="inline-flex items-center px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs font-medium rounded-full hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-colors">
-                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
                                         Editar
                                     </button>
                                 </div>
@@ -146,9 +265,11 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="8" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                 <div class="flex flex-col items-center">
-                                    <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                    </svg>
                                     <p class="text-lg font-medium">No se encontraron clientes</p>
                                     <p class="text-sm">{{ $search ? 'Intenta ajustar tu búsqueda' : 'Comienza creando un nuevo cliente' }}</p>
                                 </div>
@@ -172,87 +293,92 @@
             @endif
         </div>
     </div>
-@endif
+    @endif
 
     <!-- Modal Formulario -->
     @if($showModal)
-        @if(!$isModalMode)
-        <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
-            <div class="relative min-h-screen flex items-center justify-center p-4">
-                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        @endif
-
-        <div class="{{ !$isModalMode ? '' : 'w-full' }}">
-                @if(!$isModalMode)
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        {{ $editingId ? 'Editar Cliente' : 'Nuevo Cliente' }}
-                    </h3>
-                    <button wire:click="closeModal" class="text-gray-400 hover:text-gray-500 focus:outline-none">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                </div>
+    @if(!$isModalMode)
+    <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 @endif
 
-                <form wire:submit="save" class="p-6 space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Tipo de Persona -->
-                        <div>
-                            <label for="typePerson" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Persona *</label>
-                            <select wire:model.live="typePerson" id="typePerson"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Seleccionar tipo</option>
-                                <option value="Natural">Persona Natural</option>
-                                <option value="Juridica">Persona Jurídica</option>
-                            </select>
-                            @error('typePerson') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
+                <div class="{{ !$isModalMode ? '' : 'w-full' }}">
+                    @if(!$isModalMode)
+                    <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $editingId ? 'Editar Cliente' : 'Nuevo Cliente' }}
+                        </h3>
+                        <button wire:click="closeModal" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    @endif
 
-                        <!-- Tipo de Identificación -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Identificación *</label>
-                            @livewire('selects.type-identification-select', [
+                    <form wire:submit="save" class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Tipo de Persona -->
+                            <div>
+                                <label for="typePerson" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Persona *</label>
+                                <select wire:model.live="typePerson" id="typePerson"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Seleccionar tipo</option>
+                                    <option value="Natural">Persona Natural</option>
+                                    <option value="Juridica">Persona Jurídica</option>
+                                </select>
+                                @error('typePerson') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            </div>
+
+                            <!-- Tipo de Identificación -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Identificación *</label>
+                                @livewire('selects.type-identification-select', [
                                 'typeIdentificationId' => $typeIdentificationId,
                                 'name' => 'typeIdentificationId',
                                 'label' => '',
                                 'showLabel' => false,
                                 'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                            ])
-                            @error('typeIdentificationId') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                        </div>
+                                ])
+                                @error('typeIdentificationId') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
 
-                        <!-- Número de Identificación -->
-                        <div>
-                            <label for="identification" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número de Identificación *</label>
-                            <div class="relative">
-                                <input wire:model.live.debounce.500ms="identification" type="text" id="identification" maxlength="15"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 @if($identificationExists) border-red-500 @endif"
-                                    placeholder="Ingrese el número">
-                                @if($validatingIdentification)
+                            <!-- Número de Identificación -->
+                            <div>
+                                <label for="identification" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número de Identificación *</label>
+                                <div class="relative">
+                                    <input wire:model.live.debounce.500ms="identification" type="text" id="identification" maxlength="15"
+                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 @if($identificationExists) border-red-500 @endif"
+                                        placeholder="Ingrese el número">
+                                    @if($validatingIdentification)
                                     <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                        <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <svg class="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
                                     </div>
+                                    @endif
+                                </div>
+                                @error('identification') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                @if($identificationExists && !$errors->has('identification'))
+                                <span class="text-red-500 text-sm">Este número ya está registrado</span>
                                 @endif
                             </div>
-                            @error('identification') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            @if($identificationExists && !$errors->has('identification'))
-                                <span class="text-red-500 text-sm">Este número ya está registrado</span>
-                            @endif
-                        </div>
 
-                        <!-- Ciudad -->
-                        <div>
-                            @livewire('selects.city-select', [
+                            <!-- Ciudad -->
+                            <div>
+                                @livewire('selects.city-select', [
                                 'cityId' => $cityId,
                                 'countryId' => 48,
                                 'name' => 'cityId',
                                 'label' => 'Ciudad',
                                 'showLabel' => true,
                                 'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                            ], key('city-select-'.($editingId ?: 'new')))
-                        </div>
+                                ], key('city-select-'.($editingId ?: 'new')))
+                            </div>
 
-                        @if($typePerson == 'Natural')
+                            @if($typePerson == 'Natural')
                             <div>
                                 <label for="firstName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre *</label>
                                 <input wire:model="firstName" type="text" id="firstName" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Nombre">
@@ -263,98 +389,146 @@
                                 <input wire:model="lastName" type="text" id="lastName" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Apellido">
                                 @error('lastName') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
-                        @elseif($typePerson == 'Juridica')
+                            @elseif($typePerson == 'Juridica')
                             <div class="md:col-span-2">
                                 <label for="businessName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Razón Social *</label>
                                 <input wire:model="businessName" type="text" id="businessName" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Razón Social">
                                 @error('businessName') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
-                        @endif
-
-                        <!-- Email -->
-                        <div>
-                            <label for="billingEmail" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
-                            <input wire:model.live.debounce.500ms="billingEmail" type="email" id="billingEmail" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 @if($emailExists) border-red-500 @endif" placeholder="email@ejemplo.com">
-                            @error('billingEmail') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            @if($emailExists && !$errors->has('billingEmail'))
-                                <span class="text-red-500 text-sm">Este email ya está registrado</span>
                             @endif
-                        </div>
 
-                        <!-- Teléfono -->
-                        <div>
-                            <label for="business_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Teléfono</label>
-                            <input wire:model="business_phone" type="text" id="business_phone" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Teléfono">
-                        </div>
+                            <!-- Email -->
+                            <div>
+                                <label for="billingEmail" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
+                                <input wire:model.live.debounce.500ms="billingEmail" type="email" id="billingEmail" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 @if($emailExists) border-red-500 @endif" placeholder="email@ejemplo.com">
+                                @error('billingEmail') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                @if($emailExists && !$errors->has('billingEmail'))
+                                <span class="text-red-500 text-sm">Este email ya está registrado</span>
+                                @endif
+                            </div>
 
-                        <!-- Dirección -->
-                        <div class="md:col-span-2">
-                            <label for="address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dirección</label>
-                            <input wire:model="address" type="text" id="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Dirección">
-                        </div>
+                            <!-- Teléfono -->
+                            <div>
+                                <label for="business_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Teléfono</label>
+                                <input wire:model="business_phone" type="text" id="business_phone" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Teléfono">
+                            </div>
 
-                        <!-- Régimen -->
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Régimen</label>
-                            @livewire('selects.regime-select', [
+                            <!-- Dirección -->
+                            <div class="md:col-span-2">
+                                <label for="address" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dirección</label>
+                                <input wire:model="address" type="text" id="address" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Dirección">
+                            </div>
+
+                            <!-- Régimen -->
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Régimen</label>
+                                @livewire('selects.regime-select', [
                                 'regimeId' => $regimeId,
                                 'name' => 'regimeId',
                                 'label' => '',
                                 'showLabel' => false,
                                 'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500'
-                            ])
-                        </div>
+                                ])
+                            </div>
 
-                        <!-- Convertir en Usuario -->
-                        @if(!$editingId)
-                        <div class="md:col-span-2 mt-4">
-                            <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                                <div class="flex items-start gap-3">
-                                    <div class="flex items-center h-5">
-                                        <input wire:model.live="convertToUser" type="checkbox" id="convertToUser" 
-                                            @if(empty($billingEmail)) disabled @endif
-                                            class="w-5 h-5 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 @if(empty($billingEmail)) opacity-50 @endif">
-                                    </div>
-                                    <div class="flex-1">
-                                        <label for="convertToUser" class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                            Convertir en Usuario
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 ml-auto">
-                                                Perfil: Tienda
-                                            </span>
-                                        </label>
-                                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                            @if(empty($billingEmail))
+                            <!-- Convertir en Usuario -->
+                            @if(!$editingId)
+                            <div class="md:col-span-2 mt-4">
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-start gap-3">
+                                        <div class="flex items-center h-5">
+                                            <input wire:model.live="convertToUser" type="checkbox" id="convertToUser"
+                                                @if(empty($billingEmail)) disabled @endif
+                                                class="w-5 h-5 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 @if(empty($billingEmail)) opacity-50 @endif">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label for="convertToUser" class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                                Convertir en Usuario
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 ml-auto">
+                                                    Perfil: Tienda
+                                                </span>
+                                            </label>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                @if(empty($billingEmail))
                                                 Ingrese un email de facturación válido para habilitar esta opción
-                                            @else
+                                                @else
                                                 Se creará un acceso al sistema usando el email y la contraseña <b>12345678</b>.
-                                            @endif
-                                        </p>
+                                                @endif
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            @else
+                            <!-- Información de Usuario Asignado (Modo Edición) -->
+                            <div class="md:col-span-2 mt-4">
+                                @if($hasAssignedUser)
+                                <!-- Alerta: Cliente tiene usuario asignado -->
+                                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                                    <div class="flex items-start gap-3">
+                                        <div class="flex-shrink-0">
+                                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1">
+                                            <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-200">Usuario Asignado</h4>
+                                            <p class="text-xs text-blue-800 dark:text-blue-300 mt-1">
+                                                Este cliente ya tiene un usuario asignado con el email: <span class="font-mono font-semibold">{{ $assignedUserEmail }}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                @else
+                                <!-- Checkbox: Permitir crear usuario -->
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                                    <div class="flex items-start gap-3">
+                                        <div class="flex items-center h-5">
+                                            <input wire:model.live="convertToUser" type="checkbox" id="convertToUserEdit"
+                                                @if(empty($billingEmail)) disabled @endif
+                                                class="w-5 h-5 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 @if(empty($billingEmail)) opacity-50 @endif">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label for="convertToUserEdit" class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                                Convertir en Usuario
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 ml-auto">
+                                                    Perfil: Tienda
+                                                </span>
+                                            </label>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                @if(empty($billingEmail))
+                                                Ingrese un email de facturación válido para habilitar esta opción
+                                                @else
+                                                Se creará un acceso al sistema usando el email y la contraseña <b>12345678</b>.
+                                                @endif
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                            @endif
                         </div>
-                        @endif
-                    </div>
 
-                    <!-- Actions -->
-                    <div class="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <button type="button" wire:click="closeModal" 
-                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors">
-                            Cancelar
-                        </button>
-                        <button type="submit" wire:loading.attr="disabled" 
-                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors disabled:opacity-50">
-                            <span wire:loading.remove>{{ $editingId ? 'Actualizar' : 'Crear Cliente' }}</span>
-                            <span wire:loading>Guardando...</span>
-                        </button>
-                    </div>
-                </form>
-        </div>
-
-        @if(!$isModalMode)
+                        <!-- Actions -->
+                        <div class="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                            <button type="button" wire:click="closeModal"
+                                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors">
+                                Cancelar
+                            </button>
+                            <button type="submit" wire:loading.attr="disabled"
+                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors disabled:opacity-50">
+                                <span wire:loading.remove>{{ $editingId ? 'Actualizar' : 'Crear Cliente' }}</span>
+                                <span wire:loading>Guardando...</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
+
+                @if(!$isModalMode)
             </div>
         </div>
-        @endif
+    </div>
+    @endif
     @endif
 </div>
