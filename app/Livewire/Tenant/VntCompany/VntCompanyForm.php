@@ -15,6 +15,7 @@ use App\Livewire\Tenant\VntCompany\Services\ExportService;
 use App\Models\Auth\User;
 use App\Models\Tenant\Customer\TatCompanyRoute;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Central\CnfFiscalResponsability;
 
 
 class VntCompanyForm extends Component
@@ -655,7 +656,12 @@ class VntCompanyForm extends Component
         $this->typePerson = '';
         $this->code_ciiu = '';
         $this->regimeId = '';
-        $this->fiscalResponsabilityId = '';
+        // Asignar por defecto la responsabilidad fiscal 'Ninguna' si existe
+        try {
+            $this->fiscalResponsabilityId = CnfFiscalResponsability::where('description', 'Ninguna')->value('id') ?? '';
+        } catch (\Exception $e) {
+            $this->fiscalResponsabilityId = '';
+        }
         $this->verification_digit = '';
         $this->business_phone = '';
         $this->personal_phone = '';
