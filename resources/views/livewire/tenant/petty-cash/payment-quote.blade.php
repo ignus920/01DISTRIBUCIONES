@@ -209,7 +209,7 @@
                 <!-- Footer de Acciones -->
                 <div class="p-6 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4 justify-end items-center">
                     
-                    <button onclick="window.history.back()"
+                    <button wire:click="cancelPayment()"
                             class="w-full sm:w-auto px-6 py-3 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300 font-semibold rounded-xl transition-colors focus:ring-2 focus:ring-gray-200 dark:focus:ring-slate-700 outline-none">
                         Cancelar
                     </button>

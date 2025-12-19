@@ -62,6 +62,7 @@ class QuoterView extends Component
         }
 
         $this->loadCartFromSession();
+        $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
         $this->calculateTotal();
         $this->loadDefaultCustomer();
 
@@ -205,18 +206,18 @@ class QuoterView extends Component
                 'bindings' => $bindings
             ]);
 
-            $results = $query->take(20)->get();
+            $results = $query->get(); // SIN LÍMITE - Obtener TODOS los resultados
 
             Log::info('Resultados encontrados', [
                 'total_results' => $results->count(),
-                'results' => $results->take(3)->pluck('name')->toArray()
+                'results' => $results->take(5)->pluck('name')->toArray()
             ]);
 
-            // Primeros 3 resultados en dropdown principal
-            $this->searchResults = $results->take(3)->toArray();
+            // TODOS los resultados en dropdown principal
+            $this->searchResults = $results->toArray();
 
-            // Resultados adicionales como sugerencias
-            $this->additionalSuggestions = $results->skip(3)->take(4)->toArray();
+            // No usar resultados adicionales
+            $this->additionalSuggestions = [];
         } else {
             $this->searchResults = [];
             $this->additionalSuggestions = [];
@@ -651,14 +652,19 @@ class QuoterView extends Component
     public function updatedCustomerSearch()
     {
         if (strlen($this->customerSearch) >= 1) {
-            $this->customerSearchResults = TatCustomer::where('company_id', $this->companyId)
+            $this->customerSearchResults = TatCustomer::where(function ($companyQuery) {
+                    // Buscar en la empresa actual O en clientes globales (company_id = 0)
+                    $companyQuery->where('company_id', $this->companyId)
+                                 ->orWhere('company_id', 0);
+                })
                 ->where(function ($query) {
                     $query->where('identification', 'like', '%' . $this->customerSearch . '%')
                           ->orWhere('businessName', 'like', '%' . $this->customerSearch . '%')
                           ->orWhere('firstName', 'like', '%' . $this->customerSearch . '%')
                           ->orWhere('lastName', 'like', '%' . $this->customerSearch . '%');
                 })
-                ->take(5)
+                ->orderBy('company_id', 'desc') // Primero los de la empresa, luego los globales
+                ->take(10) // Aumenté el límite para mostrar más resultados
                 ->get()
                 ->map(function ($customer) {
                     return [
@@ -730,6 +736,34 @@ class QuoterView extends Component
     public function handleCustomerModalClosed()
     {
         $this->closeCustomerModal();
+    }
+
+    /**
+     * Cargar datos restaurados desde un pago cancelado
+     */
+    protected function loadRestoredData()
+    {
+        if (session('quoter_restored')) {
+            // Cargar carrito restaurado
+            $restoredCart = session('quoter_cart', []);
+            if (!empty($restoredCart)) {
+                $this->cartItems = $restoredCart;
+            }
+
+            // Cargar cliente restaurado
+            $restoredCustomer = session('quoter_customer');
+            if ($restoredCustomer) {
+                $this->selectedCustomer = $restoredCustomer;
+            }
+
+            // Limpiar las sesiones de restauración
+            session()->forget(['quoter_restored', 'quoter_customer']);
+
+            Log::info('Datos restaurados desde pago cancelado', [
+                'cartItems' => count($this->cartItems),
+                'customer' => $this->selectedCustomer ? $this->selectedCustomer['identification'] : null
+            ]);
+        }
     }
 
     public function render()

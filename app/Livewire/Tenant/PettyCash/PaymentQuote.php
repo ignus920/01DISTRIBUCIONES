@@ -449,6 +449,77 @@ class PaymentQuote extends Component
     }
 
     #[Layout('layouts.app')]
+    /**
+     * Cancelar pago y regresar al quoter con los datos cargados
+     */
+    public function cancelPayment()
+    {
+        try {
+            // Obtener los datos de la cotización para restaurar el carrito
+            $quote = null;
+
+            if (auth()->user()->profile_id == 17) {
+                // TAT
+                $quote = \App\Models\TAT\Quoter\Quote::with('items.item')->find($this->quoteId);
+            } else {
+                // VNT
+                $quote = VntQuote::with('items.item')->find($this->quoteId);
+            }
+
+            if (!$quote) {
+                session()->flash('error', 'No se pudo encontrar la cotización.');
+                return redirect()->route('tenant.tat.quoter.index');
+            }
+
+            // Preparar datos del carrito para restaurar
+            $cartItems = [];
+            foreach ($quote->items as $quoteItem) {
+                $item = $quoteItem->item; // Relación con el producto
+                if ($item) {
+                    $cartItems[] = [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'sku' => $item->sku ?? 'N/A',
+                        'price' => $quoteItem->price,
+                        'quantity' => $quoteItem->quantity,
+                        'subtotal' => $quoteItem->price * $quoteItem->quantity,
+                        'stock' => $item->stock,
+                        'tax_name' => $quoteItem->tax_percentage ? $quoteItem->tax_percentage . '%' : 'N/A',
+                        'tax_percentage' => $quoteItem->tax_percentage ?? 0
+                    ];
+                }
+            }
+
+            // Preparar datos del cliente
+            $customerData = [
+                'id' => $quote->customerId,
+                'identification' => $quote->customer->identification ?? 'N/A',
+                'display_name' => $quote->customer->display_name ?? 'N/A',
+                'typePerson' => $quote->customer->typePerson ?? 'Natural'
+            ];
+
+            // Guardar en sesión para que el QuoterView los cargue
+            session([
+                'quoter_cart' => $cartItems,
+                'quoter_customer' => $customerData,
+                'quoter_restored' => true
+            ]);
+
+            // Redirigir al quoter
+            return redirect()->route('tenant.tat.quoter.index')
+                            ->with('success', 'Venta restaurada. Puede continuar agregando productos.');
+
+        } catch (\Exception $e) {
+            Log::error('Error al cancelar pago', [
+                'error' => $e->getMessage(),
+                'quoteId' => $this->quoteId
+            ]);
+
+            session()->flash('error', 'Error al restaurar la venta: ' . $e->getMessage());
+            return redirect()->route('tenant.tat.quoter.index');
+        }
+    }
+
     public function render()
     {
         return view('livewire.tenant.petty-cash.payment-quote');

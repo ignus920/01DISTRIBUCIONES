@@ -1,16 +1,16 @@
-<div>
-<div class="w-full max-w-md lg:max-w-4xl mx-auto bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-visible border-2 border-gray-300 dark:border-gray-700 mt-10">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div class="max-w-12xl mx-auto">
     <!-- Header con botones de estado -->
     <div class="bg-gray-50 dark:bg-gray-800 p-3 border-b dark:border-gray-700">
      
 
         <!-- Total -->
-        <div class="bg-black dark:bg-gray-950 text-white p-3 rounded mb-3 ring-2 ring-blue-500 dark:ring-blue-600">
-            <div class="text-right text-2xl font-bold text-white">{{ number_format($total, 0, '.', '.') }}</div>
+        <div class="bg-black dark:bg-gray-950 text-white p-4 lg:p-6 rounded mb-3 ring-2 ring-blue-500 dark:ring-blue-600">
+            <div class="text-right lg:text-center text-2xl lg:text-4xl font-bold text-white">${{ number_format($total, 0, '.', '.') }}</div>
         </div>
 
         <!-- Cliente -->
-        <div class="bg-green-100 dark:bg-green-900/30 p-2 rounded border border-green-200 dark:border-green-700">
+        <div class="bg-green-100 dark:bg-green-900/30 p-3 lg:p-4 rounded border border-green-200 dark:border-green-700">
             @if($showClientSearch)
                 <!-- Modo búsqueda de cliente -->
                 <div class="space-y-2">
@@ -19,7 +19,7 @@
                             wire:model.live.debounce.300ms="customerSearch"
                             type="text"
                             placeholder="Buscar por nombre o cédula... (↑↓ navegar, Enter seleccionar)"
-                            class="flex-1 text-sm px-2 py-1 border border-green-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                            class="flex-1 text-sm px-3 py-2 lg:px-4 lg:py-3 lg:text-base bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm"
                             onkeydown="handleCustomerSearchKeydown(event)"
                             id="customerSearchInput"
                             autofocus
@@ -65,15 +65,15 @@
                 <div class="flex justify-between items-center">
                     <div>
                         @if($selectedCustomer)
-                            <div class="text-green-700 dark:text-green-300 font-mono text-sm font-bold">
+                            <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold">
                                 {{ $selectedCustomer['identification'] }}
                             </div>
-                            <div class="text-xs text-green-600 dark:text-green-400">{{ $selectedCustomer['display_name'] }}</div>
+                            <div class="text-xs lg:text-sm text-green-600 dark:text-green-400">{{ $selectedCustomer['display_name'] }}</div>
                         @else
-                            <div class="text-green-700 dark:text-green-300 font-mono text-sm font-bold">
+                            <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold">
                                 Sin cliente
                             </div>
-                            <div class="text-xs text-green-600 dark:text-green-400">Seleccionar cliente</div>
+                            <div class="text-xs lg:text-sm text-green-600 dark:text-green-400">Seleccionar cliente</div>
                         @endif
                     </div>
                     <button
@@ -94,29 +94,29 @@
             <!-- Siempre mostrar un input activo para nueva búsqueda -->
             <div class="relative">
                 <input type="text"
-                       wire:model.live.debounce.300ms="currentSearch"
+                       wire:model.live.debounce.150ms="currentSearch"
                        placeholder="Buscar producto... (Use ↑↓ para navegar, Enter para seleccionar)"
                        class="w-full px-3 py-2 lg:px-4 lg:py-3 text-sm lg:text-base bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm"
                        autocomplete="off"
                        id="product-search-input"
-                       x-on:keydown.arrow-down.prevent="$wire.navigateResults('down')"
-                       x-on:keydown.arrow-up.prevent="$wire.navigateResults('up')"
-                       x-on:keydown.enter.prevent="$wire.selectCurrentProduct()"
-                       x-on:keydown.escape.prevent="$wire.clearSearch()"
+                       onkeydown="handleProductSearchKeydown(event)"
 
                 <!-- Dropdown de resultados mejorado -->
                 @if(!empty($currentSearch) && count($searchResults) > 0)
-                    <div class="absolute z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-60 overflow-y-auto mt-1">
+                    <div id="productSearchResults" class="absolute z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-60 overflow-y-auto mt-1">
                         @foreach($searchResults as $index => $product)
                             @php
                                 $hasStock = $product['stock'] > 0;
                                 $isSelected = $selectedIndex === $index;
                             @endphp
-                            <div class="px-3 py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors duration-150
+                            <div class="product-result px-3 py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors duration-75
                                         {{ $hasStock ? 'cursor-pointer' : 'cursor-not-allowed opacity-60' }}
                                         {{ $isSelected && $hasStock ? 'bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-500 dark:ring-blue-400' : '' }}
                                         {{ $hasStock && !$isSelected ? 'hover:bg-blue-50 dark:hover:bg-gray-700' : '' }}
                                         {{ !$hasStock ? 'bg-red-50 dark:bg-red-900/20' : '' }}"
+                                 data-product-id="{{ $product['id'] }}"
+                                 data-index="{{ $index }}"
+                                 data-has-stock="{{ $hasStock ? 'true' : 'false' }}"
                                  {{ $hasStock ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}>
                                 <div class="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-1 {{ !$hasStock ? 'line-through' : '' }}">
                                     {{ $product['name'] }}
@@ -138,37 +138,13 @@
                 @endif
             </div>
 
-            <!-- Sugerencias adicionales mejoradas -->
-            @if(!empty($currentSearch) && count($additionalSuggestions) > 0)
-                <div class="mt-2 space-y-2">
-                    <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold px-2">Más resultados:</div>
-                    @foreach($additionalSuggestions as $product)
-                        @php
-                            $hasStock = $product['stock'] > 0;
-                        @endphp
-                        <div class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 transition-all duration-150
-                                    {{ $hasStock ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-400 dark:hover:border-blue-500' : 'cursor-not-allowed opacity-60 bg-red-50 dark:bg-red-900/20' }}"
-                             {{ $hasStock ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}>
-                            <div class="font-medium text-gray-800 dark:text-gray-200 text-sm {{ !$hasStock ? 'line-through' : '' }}">{{ $product['name'] }}</div>
-                            <div class="flex justify-between items-center mt-1">
-                                @if($hasStock)
-                                    <span class="text-xs text-gray-600 dark:text-gray-400">Stock: {{ number_format($product['stock'], 0) }}</span>
-                                @else
-                                    <span class="text-xs text-red-600 dark:text-red-400">Sin Stock</span>
-                                @endif
-                                <span class="text-xs text-blue-600 dark:text-blue-400 font-semibold">${{ number_format($product['price'], 0, '.', '.') }}</span>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
         </div>
     </div>
 
     <!-- Contenido principal -->
     <div class="p-3">
         <!-- Headers de la tabla -->
-        <div class="hidden lg:grid lg:grid-cols-7 gap-2 mb-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+        <div class="hidden lg:grid lg:grid-cols-7 gap-2 mb-3 lg:mb-4 text-sm lg:text-lg font-semibold text-gray-700 dark:text-gray-300 lg:py-2">
             <div class="col-span-2">Producto</div>
             <div class="text-center">IVA</div>
             <div class="text-center">Precio Unit.</div>
@@ -182,15 +158,15 @@
         <div class="space-y-2 mb-3">
             @foreach($cartItems as $index => $item)
                 <!-- Vista Desktop -->
-                <div wire:key="cart-item-desktop-{{ $item['id'] }}" class="hidden lg:grid lg:grid-cols-7 gap-2 items-center text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                <div wire:key="cart-item-desktop-{{ $item['id'] }}" class="hidden lg:grid lg:grid-cols-7 gap-2 items-center text-sm lg:text-base bg-gray-50 dark:bg-gray-800 p-3 lg:p-4 rounded border border-gray-200 dark:border-gray-700">
                     <!-- Nombre del producto -->
-                    <div class="col-span-2 text-xs font-medium text-gray-800 dark:text-gray-200">
+                    <div class="col-span-2 text-sm lg:text-base font-medium text-gray-800 dark:text-gray-200">
                         {{ $item['name'] }}
-                        <div class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ $item['sku'] ?? 'N/A' }}</div>
+                        <div class="text-xs lg:text-sm text-gray-500 dark:text-gray-400">SKU: {{ $item['sku'] ?? 'N/A' }}</div>
                     </div>
 
                     <!-- IVA -->
-                    <div class="text-center text-xs text-gray-600 dark:text-gray-400">
+                    <div class="text-center text-xs lg:text-sm text-gray-600 dark:text-gray-400">
                         {{ $item['tax_name'] ?? 'N/A' }}
                     </div>
 
@@ -346,30 +322,6 @@
             <!-- Siempre mostrar un input activo para nueva búsqueda -->
            
 
-            <!-- Sugerencias adicionales mejoradas -->
-            @if(!empty($currentSearch) && count($additionalSuggestions) > 0)
-                <div class="mt-2 space-y-2">
-                    <div class="text-xs text-gray-500 dark:text-gray-400 font-semibold px-2">Más resultados:</div>
-                    @foreach($additionalSuggestions as $product)
-                        @php
-                            $hasStock = $product['stock'] > 0;
-                        @endphp
-                        <div class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 transition-all duration-150
-                                    {{ $hasStock ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-400 dark:hover:border-blue-500' : 'cursor-not-allowed opacity-60 bg-red-50 dark:bg-red-900/20' }}"
-                             {{ $hasStock ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}>
-                            <div class="font-medium text-gray-800 dark:text-gray-200 text-sm {{ !$hasStock ? 'line-through' : '' }}">{{ $product['name'] }}</div>
-                            <div class="flex justify-between items-center mt-1">
-                                @if($hasStock)
-                                    <span class="text-xs text-gray-600 dark:text-gray-400">Stock: {{ number_format($product['stock'], 0) }}</span>
-                                @else
-                                    <span class="text-xs text-red-600 dark:text-red-400">Sin Stock</span>
-                                @endif
-                                <span class="text-xs text-blue-600 dark:text-blue-400 font-semibold">${{ number_format($product['price'], 0, '.', '.') }}</span>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
         </div>
 
     </div>
@@ -418,9 +370,62 @@
 
 
 @push('scripts')
+<style>
+    @media (max-width: 1023px) {
+        .mobile-full-width {
+            width: 100vw !important;
+            margin-left: calc(-50vw + 50%) !important;
+            margin-right: calc(-50vw + 50%) !important;
+            max-width: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            margin-top: 0 !important;
+        }
+
+        /* Forzar ancho completo en cualquier contenedor padre */
+        .mobile-full-width {
+            position: relative !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+        }
+
+        /* Asegurar que el contenedor padre no limite el ancho */
+        body, main, [data-livewire-component] {
+            overflow-x: visible !important;
+        }
+    }
+</style>
 <script>
+    // Forzar ancho completo en móviles
+    function forceFullWidth() {
+        if (window.innerWidth < 1024) {
+            const element = document.querySelector('.mobile-full-width');
+            if (element) {
+                element.style.width = '100vw';
+                element.style.maxWidth = 'none';
+                element.style.position = 'relative';
+                element.style.left = '50%';
+                element.style.transform = 'translateX(-50%)';
+                element.style.marginLeft = '0';
+                element.style.marginRight = '0';
+                element.style.borderRadius = '0';
+                element.style.boxShadow = 'none';
+                element.style.border = 'none';
+                element.style.marginTop = '0';
+            }
+        }
+    }
+
+    // Aplicar en carga inicial y cambio de tamaño
+    document.addEventListener('DOMContentLoaded', forceFullWidth);
+    window.addEventListener('resize', forceFullWidth);
+    document.addEventListener('livewire:navigated', forceFullWidth);
+
     // Mejorar la funcionalidad del input de búsqueda
     document.addEventListener('livewire:init', () => {
+        // Forzar ancho completo después de que Livewire esté listo
+        setTimeout(forceFullWidth, 100);
         // Listener para alertas de SweetAlert2
         Livewire.on('swal:warning', (data) => {
             // data es un array con los argumentos pasados desde el componente
@@ -557,7 +562,108 @@
     document.addEventListener('livewire:updated', () => {
         selectedCustomerIndex = -1;
         customerResults = [];
+        selectedProductIndex = -1;
+        productResults = [];
     });
+
+    // Variables para navegación por teclado en búsqueda de productos
+    let selectedProductIndex = -1;
+    let productResults = [];
+
+    // Función para manejar navegación por teclado en búsqueda de productos (optimizada)
+    function handleProductSearchKeydown(event) {
+        const resultsContainer = document.getElementById('productSearchResults');
+
+        if (!resultsContainer) return;
+
+        productResults = Array.from(resultsContainer.querySelectorAll('.product-result'));
+
+        if (productResults.length === 0) return;
+
+        // Filtrar solo productos con stock para navegación
+        const availableProducts = productResults.filter(result =>
+            result.dataset.hasStock === 'true'
+        );
+
+        if (availableProducts.length === 0) return;
+
+        switch(event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                // Encontrar el siguiente producto disponible
+                let nextIndex = -1;
+                for (let i = selectedProductIndex + 1; i < productResults.length; i++) {
+                    if (productResults[i].dataset.hasStock === 'true') {
+                        nextIndex = i;
+                        break;
+                    }
+                }
+                if (nextIndex === -1) {
+                    // Si llegamos al final, ir al primer producto disponible
+                    nextIndex = productResults.findIndex(result => result.dataset.hasStock === 'true');
+                }
+                selectedProductIndex = nextIndex;
+                updateProductSelection();
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                // Encontrar el producto anterior disponible
+                let prevIndex = -1;
+                for (let i = selectedProductIndex - 1; i >= 0; i--) {
+                    if (productResults[i].dataset.hasStock === 'true') {
+                        prevIndex = i;
+                        break;
+                    }
+                }
+                if (prevIndex === -1) {
+                    // Si llegamos al inicio, ir al último producto disponible
+                    for (let i = productResults.length - 1; i >= 0; i--) {
+                        if (productResults[i].dataset.hasStock === 'true') {
+                            prevIndex = i;
+                            break;
+                        }
+                    }
+                }
+                selectedProductIndex = prevIndex;
+                updateProductSelection();
+                break;
+
+            case 'Enter':
+                event.preventDefault();
+                if (selectedProductIndex >= 0 && productResults[selectedProductIndex] &&
+                    productResults[selectedProductIndex].dataset.hasStock === 'true') {
+                    const productId = productResults[selectedProductIndex].dataset.productId;
+                    // Disparar el evento de Livewire para seleccionar producto
+                    Livewire.find('{{ $this->getId() }}').call('selectProduct', productId);
+                }
+                break;
+
+            case 'Escape':
+                event.preventDefault();
+                selectedProductIndex = -1;
+                updateProductSelection();
+                // Limpiar búsqueda
+                Livewire.find('{{ $this->getId() }}').call('clearSearch');
+                break;
+        }
+    }
+
+    // Función para actualizar la selección visual de productos (optimizada)
+    function updateProductSelection() {
+        productResults.forEach((result, index) => {
+            result.classList.remove('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
+
+            if (index === selectedProductIndex && result.dataset.hasStock === 'true') {
+                result.classList.add('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
+                // Scroll hacia el elemento seleccionado si está fuera de vista
+                result.scrollIntoView({
+                    block: 'nearest',
+                    behavior: 'smooth'
+                });
+            }
+        });
+    }
 </script>
 @endpush
 </div>
