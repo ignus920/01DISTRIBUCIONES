@@ -146,9 +146,19 @@ class PaymentQuote extends Component
     private function loadQuoteData()
     {
         try {
-            $quote = VntQuote::with(['customer', 'detalles.item'])
-                ->where('id', $this->quoteId)
-                ->first();
+            $quote = null;
+
+            if (auth()->user()->profile_id == 17) {
+                // TAT - Usuario de tienda
+                $quote = \App\Models\TAT\Quoter\Quote::with(['customer', 'items.item'])
+                    ->where('id', $this->quoteId)
+                    ->first();
+            } else {
+                // VNT - Usuario distribuidora
+                $quote = VntQuote::with(['customer', 'detalles.item'])
+                    ->where('id', $this->quoteId)
+                    ->first();
+            }
 
             if (!$quote) {
                 session()->flash('error', 'Cotización no encontrada.');
@@ -156,14 +166,18 @@ class PaymentQuote extends Component
                 return;
             }
 
-            // Cargar datos del cliente (no almacenar el modelo)
-            $this->quoteCustumer = $quote->customer_name ?? 'Cliente no encontrado';
-
-            // Cargar número de cotización
-            $this->quoteNumber = 'COT-' . str_pad($quote->consecutive ?? 0, 6, '0', STR_PAD_LEFT);
-
-            // Calcular totales desde los detalles
-            $this->calculateQuoteTotals($quote);
+            // Cargar datos del cliente
+            if (auth()->user()->profile_id == 17) {
+                // TAT
+                $this->quoteCustumer = $quote->customer->display_name ?? 'Cliente no encontrado';
+                $this->quoteNumber = 'COT-' . str_pad($quote->consecutive ?? 0, 6, '0', STR_PAD_LEFT);
+                $this->calculateQuoteTotalsTAT($quote);
+            } else {
+                // VNT
+                $this->quoteCustumer = $quote->customer_name ?? 'Cliente no encontrado';
+                $this->quoteNumber = 'COT-' . str_pad($quote->consecutive ?? 0, 6, '0', STR_PAD_LEFT);
+                $this->calculateQuoteTotals($quote);
+            }
 
         } catch (\Exception $e) {
             session()->flash('error', 'Error al cargar la cotización: ' . $e->getMessage());
@@ -189,15 +203,33 @@ class PaymentQuote extends Component
         $this->quoteTotal = round($subtotal + $totalTaxes, 0);
     }
 
-    // private function setDefaultQuoteData()
-    // {
-    //     // Datos por defecto si no se puede cargar la cotización
-    //     $this->quoteCustumer = 'CLIENTE DE PRUEBA';
-    //     $this->quoteNumber = 'COT-000001';
-    //     $this->quoteSubtotal = 100000;
-    //     $this->quoteTaxes = 19000;
-    //     $this->quoteTotal = 119000;
-    // }
+    private function calculateQuoteTotalsTAT($quote)
+    {
+        $subtotal = 0;
+        $totalTaxes = 0;
+
+        foreach ($quote->items as $quoteItem) {
+            $lineSubtotal = $quoteItem->quantity * $quoteItem->price;
+            $lineTax = $lineSubtotal * ($quoteItem->tax_percentage / 100);
+
+            $subtotal += $lineSubtotal;
+            $totalTaxes += $lineTax;
+        }
+
+        $this->quoteSubtotal = round($subtotal, 0);
+        $this->quoteTaxes = round($totalTaxes, 0);
+        $this->quoteTotal = round($subtotal + $totalTaxes, 0);
+    }
+
+    private function setDefaultQuoteData()
+    {
+        // Datos por defecto si no se puede cargar la cotización
+        $this->quoteCustumer = 'CLIENTE DE PRUEBA';
+        $this->quoteNumber = 'COT-000001';
+        $this->quoteSubtotal = 100000;
+        $this->quoteTaxes = 19000;
+        $this->quoteTotal = 119000;
+    }
 
     private function checkActivePettyCash()
     {

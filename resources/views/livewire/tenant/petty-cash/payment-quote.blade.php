@@ -1,19 +1,19 @@
-<div class="fixed inset-0 bg-gray-900/80 dark:bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+<div class="min-h-screen bg-gray-900/80 dark:bg-black/90 lg:fixed lg:inset-0 lg:backdrop-blur-sm lg:flex lg:items-center lg:justify-center lg:z-50 lg:p-4"
      x-data="paymentKeyboard()"
      x-init="init()">
 
     <!-- Modal Principal -->
-    <div class="w-full max-w-7xl h-[90vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-slate-700">
+    <div class="w-full lg:max-w-7xl h-screen lg:h-[90vh] bg-white dark:bg-slate-900 lg:rounded-2xl lg:shadow-2xl overflow-hidden flex flex-col lg:border border-gray-200 dark:border-slate-700">
 
         <!-- Header -->
-        <div class="bg-gray-900 dark:bg-black text-white px-6 py-4 flex-none">
-            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-white/90">CAJA REGISTRADORA</h1>
-                    <div class="flex items-center gap-2 text-sm text-gray-400">
+        <div class="bg-gray-900 dark:bg-black text-white px-4 lg:px-6 py-3 lg:py-4 flex-none">
+            <div class="flex flex-col lg:flex-row justify-between items-center gap-2 lg:gap-4">
+                <div class="text-center lg:text-left">
+                    <h1 class="text-xl lg:text-2xl font-bold tracking-tight text-white/90">CAJA REGISTRADORA</h1>
+                    <div class="flex items-center gap-2 text-xs lg:text-sm text-gray-400 justify-center lg:justify-start">
                         <span class="font-mono bg-gray-800 px-2 py-0.5 rounded">{{ $quoteNumber }}</span>
                         <span>•</span>
-                        <span class="font-medium truncate max-w-[200px] sm:max-w-md" title="{{ $quoteCustumer }}">{{ $quoteCustumer }}</span>
+                        <span class="font-medium truncate max-w-[120px] lg:max-w-md" title="{{ $quoteCustumer }}">{{ $quoteCustumer }}</span>
                     </div>
                 </div>
                 <div class="text-right">
@@ -36,47 +36,47 @@
         <div class="flex flex-col lg:flex-row flex-1 overflow-hidden">
 
             <!-- Panel Izquierdo - Resumen (Scrollable en móvil, fijo en desktop) -->
-            <div class="w-full lg:w-1/3 bg-gray-50 dark:bg-slate-800/50 p-6 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-slate-700 overflow-y-auto">
-                <div class="space-y-6 max-w-sm mx-auto lg:max-w-none">
+            <div class="w-full lg:w-1/3 bg-gray-50 dark:bg-slate-800/50 p-3 lg:p-6 border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-slate-700 overflow-y-auto">
+                <div class="space-y-3 lg:space-y-6 max-w-sm mx-auto lg:max-w-none">
 
                     <!-- Total de la Venta -->
-                    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">Total a Pagar</h3>
-                        <div class="text-center py-2">
-                            <div class="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-1 lg:mb-2">Total a Pagar</h3>
+                        <div class="text-center py-1 lg:py-2">
+                            <div class="text-3xl lg:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                                 ${{ number_format($quoteTotal, 0, ',', '.') }}
                             </div>
                         </div>
                     </div>
 
-                    <!-- Estado del Pago -->
-                    <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 space-y-4">
+                    <!-- Estado del Pago - Solo en desktop -->
+                    <div class="hidden lg:block bg-white dark:bg-slate-800 rounded-xl p-3 lg:p-6 shadow-sm border border-gray-100 dark:border-slate-700 space-y-2 lg:space-y-4">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400">Balance</h3>
 
                         <div class="flex justify-between items-baseline">
-                            <span class="text-gray-600 dark:text-slate-300">Pagado</span>
-                            <span class="text-xl font-bold text-green-600 dark:text-green-500">
+                            <span class="text-sm lg:text-base text-gray-600 dark:text-slate-300">Pagado</span>
+                            <span class="text-lg lg:text-xl font-bold text-green-600 dark:text-green-500">
                                 ${{ number_format($totalPaid, 0, ',', '.') }}
                             </span>
                         </div>
 
-                        <div class="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                        <div class="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2 lg:h-2.5 overflow-hidden">
                             @php
                                 $percent = $quoteTotal > 0 ? min(100, ($totalPaid / $quoteTotal) * 100) : 0;
                             @endphp
-                            <div class="bg-green-500 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: {{ $percent }}%"></div>
+                            <div class="bg-green-500 h-2 lg:h-2.5 rounded-full transition-all duration-500 ease-out" style="width: {{ $percent }}%"></div>
                         </div>
 
-                        <div class="flex justify-between items-baseline pt-2 border-t border-gray-100 dark:border-slate-700/50">
-                            <span class="text-gray-600 dark:text-slate-300 font-medium">Restante</span>
-                            <span class="text-2xl font-bold {{ $remainingBalance > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500' }}">
+                        <div class="flex justify-between items-baseline pt-1 lg:pt-2 border-t border-gray-100 dark:border-slate-700/50">
+                            <span class="text-sm lg:text-base text-gray-600 dark:text-slate-300 font-medium">Restante</span>
+                            <span class="text-xl lg:text-2xl font-bold {{ $remainingBalance > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500' }}">
                                 ${{ number_format($remainingBalance, 0, ',', '.') }}
                             </span>
                         </div>
                     </div>
 
-                    <!-- Instrucciones -->
-                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 border border-blue-100 dark:border-blue-800/30">
+                    <!-- Instrucciones - Solo en desktop -->
+                    <div class="hidden lg:block bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 border border-blue-100 dark:border-blue-800/30">
                         <div class="flex items-center gap-2 font-semibold text-blue-800 dark:text-blue-300 mb-3 text-sm uppercase tracking-wide">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             Teclado
