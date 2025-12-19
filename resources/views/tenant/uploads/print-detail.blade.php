@@ -47,18 +47,14 @@
     <div class="container mx-auto p-8 max-w-6xl">
         <!-- Header -->
         <div class="text-center mb-8 pb-6 border-b-2 border-gray-300 dark:border-gray-700">
-            <h1 class="text-3xl font-bold mb-2">Detalle de Cargue</h1>
-            <p class="text-gray-600 dark:text-gray-400">Reporte de Items por Categoría</p>
+            <h1 class="text-3xl font-bold mb-2">Más distribuciones</h1>
+            <p class="text-gray-600 font-bold dark:text-gray-400">Cargue de ventas #{{ $delivery->id }}</p>
         </div>
 
         <!-- Info Section -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
             <div class="text-sm">
-                <span class="font-semibold text-gray-700 dark:text-gray-300">Cargue:</span>
-                <span class="ml-2 text-gray-900 dark:text-gray-100">#{{ $delivery->id }}</span>
-            </div>
-            <div class="text-sm">
-                <span class="font-semibold text-gray-700 dark:text-gray-300">Fecha:</span>
+                 <span class="font-semibold text-gray-700 dark:text-gray-300">Fecha entrega bodega:</span>
                 <span class="ml-2 text-gray-900 dark:text-gray-100">{{ \Carbon\Carbon::parse($delivery->sale_date)->format('d/m/Y') }}</span>
             </div>
             <div class="text-sm">
