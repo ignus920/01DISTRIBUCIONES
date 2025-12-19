@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Quoter;
 use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
 use App\Models\Tenant\Quoter\VntQuote;
+use App\Models\Tenant\Quoter\VntDetailQuote;
 use App\Models\Central\VntWarehouse;
 use App\Traits\HasCompanyConfiguration;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,8 @@ class Quoter extends Component
     public $search = '';
     public $viewType = 'desktop'; // 'desktop' o 'mobile'
     public $perPage = 10; // Registros por página
+    public $showDetailsModal = false;
+    public $selectedQuote = null;
 
 
 
@@ -82,6 +85,96 @@ class Quoter extends Component
             $quote->delete();
             session()->flash('message', 'Cotización eliminada correctamente.');
         }
+    }
+
+    /**
+     * Muestra el modal con los detalles de la cotización
+     * 
+     * @param int $id ID de la cotización
+     */
+    public function verDetalles($id)
+    {
+        try {
+            Log::info('🔍 Iniciando verDetalles', ['quote_id' => $id]);
+            // Mostrar el modal
+            $this->showDetailsModal = true;
+            // Asegurar conexión tenant
+            $this->ensureTenantConnection();
+            Log::info('✅ Conexión tenant establecida');
+
+            // Cargar la cotización con todas sus relaciones
+            Log::info('🔄 Cargando cotización...');
+            $this->selectedQuote = VntQuote::with([
+                'detalles.item',
+                'customer',
+                'warehouse',
+                'branch'
+            ])->findOrFail($id);
+            
+            Log::info('✅ Cotización cargada', [
+                'consecutive' => $this->selectedQuote->consecutive,
+                'has_customer' => $this->selectedQuote->customer ? 'YES' : 'NO',
+                'detalles_count' => $this->selectedQuote->detalles->count()
+            ]);
+
+         
+            Log::info('✅ Modal activado', ['showDetailsModal' => $this->showDetailsModal]);
+
+            // Log detallado para debug
+            Log::info('📋 Detalles de cotización cargados', [
+                'quote_id' => $id,
+                'consecutive' => $this->selectedQuote->consecutive,
+                'detalles_count' => $this->selectedQuote->detalles->count(),
+                'customer_loaded' => $this->selectedQuote->customer ? 'YES' : 'NO',
+                'customer_name' => $this->selectedQuote->customer_name ?? 'N/A',
+                'customer_id' => $this->selectedQuote->customerId ?? 'N/A',
+                'warehouse_loaded' => $this->selectedQuote->warehouse ? 'YES' : 'NO',
+                'warehouse_name' => $this->selectedQuote->warehouse->name ?? 'N/A'
+            ]);
+
+            // Log de cada detalle
+            foreach ($this->selectedQuote->detalles as $index => $detalle) {
+                Log::info("📦 Detalle #{$index}", [
+                    'item_id' => $detalle->itemId,
+                    'item_loaded' => $detalle->item ? 'YES' : 'NO',
+                    'item_name' => $detalle->item->name ?? 'N/A',
+                    'quantity' => $detalle->quantity,
+                    'price' => $detalle->value
+                ]);
+            }
+
+            Log::info('✅ verDetalles completado exitosamente');
+            
+            // Forzar actualización del DOM
+            $this->js('console.log("Modal should be visible now", ' . json_encode(['showDetailsModal' => $this->showDetailsModal]) . ')');
+
+        } catch (\Exception $e) {
+            Log::error('❌ Error al cargar detalles de cotización', [
+                'quote_id' => $id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Asegurar que el modal no se muestre si hay error
+            $this->showDetailsModal = false;
+            $this->selectedQuote = null;
+
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al cargar los detalles: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Cierra el modal de detalles
+     */
+    public function cerrarDetalles()
+    {
+        $this->showDetailsModal = false;
+        $this->selectedQuote = null;
     }
 
     /**

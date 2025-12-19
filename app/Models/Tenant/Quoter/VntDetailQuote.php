@@ -9,7 +9,7 @@ use App\Models\Tenant\Items\Items;
 class VntDetailQuote extends Model
 {
     protected $connection = 'tenant';
-    protected $table = 'tat_detail_quotes';
+    protected $table = 'vnt_detail_quotes';
 
     protected $fillable = [
         'quantity',
@@ -17,14 +17,14 @@ class VntDetailQuote extends Model
         'price',
         'quoteId',
         'itemId',
-        'descripcion',
+        'description',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'price' => 'float',
-        'tax_percentage' => 'float'
+        'tax_percentage' => 'int'
     ];
 
     public function cotizacion(): BelongsTo
@@ -40,16 +40,14 @@ class VntDetailQuote extends Model
     // Accessors para mantener compatibilidad con PaymentQuote
     public function getValueAttribute()
     {
-        return $this->price;
+        return $this->attributes['price'] ?? 0;
     }
 
     public function getTaxAttribute()
     {
-        return $this->tax_percentage;
+        return $this->attributes['tax_percentage'] ?? 0;
     }
 
-    public function getDescriptionAttribute()
-    {
-        return $this->descripcion;
-    }
+    // Nota: No necesitamos accessor para description porque ya existe como campo
+    // Si lo necesitas, usa un nombre diferente para evitar conflictos
 }

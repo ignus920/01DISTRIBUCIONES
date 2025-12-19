@@ -345,8 +345,8 @@ class ProductQuoter extends Component
             foreach ($this->quoterItems as $item) {
                 VntDetailQuote::create([
                     'quantity' => $item['quantity'],
-                    'tax' => 0, // Puedes ajustar esto según tus necesidades
-                    'value' => $item['price'],
+                    'tax_percentage' => 0, // Puedes ajustar esto según tus necesidades
+                    'price' => $item['price'],
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
                     'description' => $item['name'],
