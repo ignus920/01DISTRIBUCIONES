@@ -563,6 +563,32 @@
             }
         });
 
+        // Listener para validar caja abierta
+        Livewire.on('swal:no-petty-cash', () => {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Caja Cerrada',
+                    html: 'No hay una caja abierta.<br>Debe aperturar una caja antes de registrar ventas.',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Ir a Aperturar Caja',
+                    cancelButtonText: 'Cancelar',
+                    allowOutsideClick: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Redirigir a la página de apertura de caja
+                        window.location.href = '{{ route("petty-cash.petty-cash") }}';
+                    }
+                });
+            } else {
+                if (confirm('No hay una caja abierta. Debe aperturar una caja antes de registrar ventas.\n\n¿Desea ir a aperturar una caja ahora?')) {
+                    window.location.href = '{{ route("petty-cash.petty-cash") }}';
+                }
+            }
+        });
+
         const searchInput = document.getElementById('product-search-input');
 
         if (searchInput) {

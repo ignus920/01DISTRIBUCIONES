@@ -56,6 +56,7 @@ class PaymentQuote extends Component
 
     // Estado de validaciones
     public $canProceedToPayment = false;
+    public $isProcessing = false;
 
     public function updating($name, $value)
     {
@@ -405,6 +406,11 @@ class PaymentQuote extends Component
 
     public function confirmPayment()
     {
+        // Prevenir múltiples clics
+        if ($this->isProcessing) {
+            return;
+        }
+
         // Validaciones finales
         if (!$this->canProceedToPayment) {
             $this->dispatch('showAlert', 'Error: Debe ingresar al menos un pago para proceder.');
@@ -415,6 +421,9 @@ class PaymentQuote extends Component
             $this->dispatch('showAlert', 'Advertencia: Queda un saldo pendiente de $' . number_format($this->remainingBalance, 0, ',', '.'));
             return;
         }
+
+        // Marcar como procesando
+        $this->isProcessing = true;
 
         // Mapeo de IDs de formas de pago
         $methodMap = [
@@ -478,6 +487,8 @@ class PaymentQuote extends Component
         } catch (\Exception $e) {
             Log::error('Error guardando pago: ' . $e->getMessage());
             $this->dispatch('showAlert', 'Error: ' . $e->getMessage());
+            // Resetear estado de procesamiento en caso de error
+            $this->isProcessing = false;
         }
     }
 

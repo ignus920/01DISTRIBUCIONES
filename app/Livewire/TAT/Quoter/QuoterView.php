@@ -627,6 +627,30 @@ class QuoterView extends Component
     }
 
     /**
+     * Verificar si hay una caja abierta para el usuario actual
+     */
+    protected function checkActivePettyCash()
+    {
+        try {
+            // Verificar si hay una caja abierta (status = 1)
+            $activePettyCash = DB::table('tat_petty_cash')
+                ->join('tat_company_petty_cash', 'tat_petty_cash.id', '=', 'tat_company_petty_cash.petty_cash_id')
+                ->where('tat_petty_cash.status', 1)
+                ->where('tat_company_petty_cash.company_id', $this->companyId)
+                ->select('tat_petty_cash.*')
+                ->first();
+
+            return $activePettyCash !== null;
+        } catch (\Exception $e) {
+            Log::error('Error verificando caja abierta', [
+                'error' => $e->getMessage(),
+                'company_id' => $this->companyId
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Guardar cotización/venta
      */
     public function saveQuote()
@@ -638,6 +662,12 @@ class QuoterView extends Component
 
         if (!$this->selectedCustomer) {
             session()->flash('error', 'Debe seleccionar un cliente para realizar la venta.');
+            return;
+        }
+
+        // Validar que haya una caja abierta
+        if (!$this->checkActivePettyCash()) {
+            $this->dispatch('swal:no-petty-cash');
             return;
         }
 
