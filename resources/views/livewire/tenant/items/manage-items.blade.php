@@ -194,7 +194,7 @@
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 @if($it->inventoriable == 1)
                                 @if($it->invItemsStore->isNotEmpty())
-                                @foreach($item->invItemsStore as $store)
+                                @foreach($it->invItemsStore as $store)
                                 {{ $store->stock_items_store }}
                                 @endforeach
                                 @else
@@ -271,11 +271,7 @@
                                             </button> --}}
                                             <button wire:click="openValuesModal({{ $it->id }})"
                                                 class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="currentColor" class="size-6">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                                </svg>
+                                                <x-heroicon-o-currency-dollar class="w-6 h-6" />
                                                 Valores
                                             </button>
                                         </div>
@@ -544,103 +540,152 @@
                         </div -->
 
                         <div class="border-t border-gray-300 my-6"></div>
-                        @if ($item_id)
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-gray-700 mb-4">Valores</h3>
-                            <div class="flex items-center space-x-3">
-                                <button type="button" wire:click="toggleValuesForm"
-                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
-                                    title="Agregar nuevo valor">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 4v16m8-8H4"></path>
-                                    </svg>
-                                    Agregar Valor
-                                </button>
-                            </div>
-                        </div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Valores</h3>
 
-
-                        @if ($showValuesSection)
-                        <div class="mb-3 grid grid-cols-2 gap-2">
-                            <!--Valor-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor</label>
-                                <input wire:model="valueItem" type="text" id="valueItem"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="Ingrese el valor">
-                                @error('valueItem') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                        {{-- Si el item es NUEVO: mostrar inputs para agregar valores --}}
+                        @if (!$item_id)
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead class="bg-gray-50 dark:bg-gray-900">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Etiqueta</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        @php
+                                            $staticValues = [
+                                                ['label' => 'Costo Inicial', 'type' => 'Costo'],
+                                                ['label' => 'Costo', 'type' => 'Costo'],
+                                                ['label' => 'Precio Base', 'type' => 'Precio'],
+                                                ['label' => 'Precio Regular', 'type' => 'Precio'],
+                                                ['label' => 'Precio Crédito', 'type' => 'Precio'],
+                                            ];
+                                        @endphp
+                                        @foreach ($staticValues as $index => $staticValue)
+                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                                    {{ $staticValue['label'] }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm">
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $staticValue['type'] === 'Costo' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }}">
+                                                        {{ $staticValue['type'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-right">
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        min="0"
+                                                        wire:model="tempValues.{{ $staticValue['label'] }}"
+                                                        placeholder="0.00"
+                                                        class="w-28 px-2 py-1 text-right border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                                    >
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
-                            <!--Tipo de valor-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
-                                <select wire:model.live="typeValue"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">-- Seleccione --</option>
-                                    <option value="costo">Costo</option>
-                                    <option value="precio">Precio</option>
-                                </select>
-                                @error('typeValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-3">
+                                <strong>Nota:</strong> Los valores serán guardados cuando registres el item.
+                            </p>
+                        @else
+                            {{-- Si el item YA EXISTE: mostrar botón para abrir modal --}}
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <button type="button" wire:click="openValuesModal({{ $item_id }})"
+                                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
+                                        title="Gestionar valores del item">
+                                        <x-heroicon-o-cog-6-tooth class="w-4 h-4 mr-2" />
+                                        Gestionar Valores
+                                    </button>
+                                </div>
                             </div>
-                            <!--Etiqueta del valor-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Etiqueta</label>
-                                <select wire:model="labelValue"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
-                                    <option value="">-- Seleccione --</option>
-                                    @foreach($this->labelsValues as $key => $value)
-                                    <option wire:key="label-{{ $key }}" value="{{ $key }}">
-                                        {{ $value }}
-                                    </option>
-                                    @endforeach
-                                </select>
-                                @error('labelValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <!--Sucursal / Si aplica-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sucursal</label>
-                                <select wire:model="warehouseIdValue"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">-- Seleccione --</option>
-                                    @foreach($warehouses as $warehouse)
-                                    <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('warehouseIdValue') <span class="text-red-600 text-sm">{{ $message }}</span>
-                                @enderror
-                            </div>
-                        </div>
-                        @if($temporaryErrorMessage)
-                        <div x-data="{show:true}" x-show="show"
-                            x-init="setTimeout(()=>{show = false; $wire.call('clearTemporaryMessage')}, 2000)"
-                            class="p-4 mt-2 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
-                            role="alert">
-                            <span class="font-medium">{{$temporaryErrorMessage}}</span>
-                        </div>
                         @endif
 
-                        <!--Botón-->
-                        <div class="flex justify-end">
-                            <button type="button" wire:click="SaveValueItem" wire:loading.attr="disabled"
-                                class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors order-1 sm:order-2">
-                                <span wire:loading.remove>Agregar</span>
-                                <span wire:loading>Guardando...</span>
-                            </button>
-                        </div>
-                        @endif
 
-                        <!----Tabla Valores----->
+                            {{-- @if ($showValuesSection)
+                                <div class="mb-3 grid grid-cols-2 gap-2">
+                                    <!--Valor-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor</label>
+                                        <input wire:model="valueItem" type="text" id="valueItem"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Ingrese el valor">
+                                        @error('valueItem') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    </div>
+                                    <!--Tipo de valor-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
+                                        <select wire:model.live="typeValue"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">-- Seleccione --</option>
+                                            <option value="costo">Costo</option>
+                                            <option value="precio">Precio</option>
+                                        </select>
+                                        @error('typeValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    </div>
+                                    <!--Etiqueta del valor-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Etiqueta</label>
+                                        <select wire:model="labelValue"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+                                            <option value="">-- Seleccione --</option>
+                                            @foreach($this->labelsValues as $key => $value)
+                                            <option wire:key="label-{{ $key }}" value="{{ $key }}">
+                                                {{ $value }}
+                                            </option>
+                                            @endforeach
+                                        </select>
+                                        @error('labelValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    </div>
+                                    <!--Sucursal / Si aplica-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sucursal</label>
+                                        <select wire:model="warehouseIdValue"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">-- Seleccione --</option>
+                                            @foreach($warehouses as $warehouse)
+                                            <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('warehouseIdValue') <span class="text-red-600 text-sm">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+                                </div>
+                                @if($temporaryErrorMessage)
+                                    <div x-data="{show:true}" x-show="show"
+                                        x-init="setTimeout(()=>{show = false; $wire.call('clearTemporaryMessage')}, 2000)"
+                                        class="p-4 mt-2 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                                        role="alert">
+                                        <span class="font-medium">{{$temporaryErrorMessage}}</span>
+                                    </div>
+                                @endif
 
-                        <div
-                            class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                            @livewire('tenant.items.inv-values', ['ItemId' => $item_id])
-                        </div>
+                                <!--Botón-->
+                                <div class="flex justify-end">
+                                    <button type="button" wire:click="SaveValueItem" wire:loading.attr="disabled"
+                                        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors order-1 sm:order-2">
+                                        <span wire:loading.remove>Agregar</span>
+                                        <span wire:loading>Guardando...</span>
+                                    </button>
+                                </div>
+                            @endif
 
-                        @endif
+                            <!----Tabla Valores----->
+
+                            <div
+                                class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                @livewire('tenant.items.inv-values', ['ItemId' => $item_id])
+                            </div> --}}
+
+                        {{-- @endif --}}
 
                         <!-- Sección de Galería de Imágenes -->
                         @if ($item_id)

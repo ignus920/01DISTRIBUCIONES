@@ -91,108 +91,177 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            @forelse($values as $value)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {{ $value->created_at->format('d/m/Y H:i') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                    {{ $value->label ?? 'N/A' }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <span
-                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                        {{ $value->type === 'costo' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }}">
-                                        {{ ucfirst($value->type) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
-                                    <div x-data="{ 
-                                        editing: false, 
-                                        originalValue: {{ $value->values }},
-                                        newValue: {{ $value->values }}
-                                    }">
-                                        <div x-show="!editing" class="flex items-center justify-end space-x-2">
-                                            <span class="text-gray-900 dark:text-white">
-                                                ${{ number_format($value->values, 2) }}
-                                            </span>
-                                            <button @click="editing = true"
-                                                class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
-                                                    </path>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        <div x-show="editing" class="flex items-center justify-end space-x-2">
-                                            <input type="number" step="0.01" min="0" x-model="newValue" @keydown.enter="
-                                                    $wire.updateValue({{ $value->id }}, newValue);
-                                                    originalValue = newValue;
-                                                    editing = false;
-                                                " @keydown.escape="newValue = originalValue; editing = false"
-                                                class="w-32 px-2 py-1 text-right border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
-                                            <button @click="
-                                                $wire.updateValue({{ $value->id }}, newValue);
-                                                originalValue = newValue;
-                                                editing = false;
-                                            "
-                                                class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                </svg>
-                                            </button>
-                                            <button @click="newValue = originalValue; editing = false"
-                                                class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td
-                                    class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
-                                    {{ $value->warehouseId ?? 'General' }}
-                                </td>
+                            @php
+                                // Definir los 5 tipos de valores estáticos
+                                $staticValues = [
+                                    ['label' => 'Costo Inicial', 'type' => 'Costo'],
+                                    ['label' => 'Costo', 'type' => 'Costo'],
+                                    ['label' => 'Precio Base', 'type' => 'Precio'],
+                                    ['label' => 'Precio Regular', 'type' => 'Precio'],
+                                    ['label' => 'Precio Crédito', 'type' => 'Precio'],
+                                ];
+                                
+                                // Obtener valores existentes indexados por label
+                                $existingValuesByLabel = $values->keyBy('label');
+                            @endphp
 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <button wire:click="deleteValue({{ $value->id }})"
-                                            class="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs font-medium rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                                                </path>
-                                            </svg>
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                                    <div class="flex flex-col items-center">
-                                        <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                            </path>
-                                        </svg>
-                                        <p class="text-lg font-medium">No hay valores registrados</p>
-                                        <p class="text-sm">Este item aún no tiene valores asociados</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            @endforelse
+                            @foreach ($staticValues as $staticValue)
+                                @php
+                                    $existingValue = $existingValuesByLabel->get($staticValue['label']);
+                                @endphp
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <!-- Fecha -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        @if($existingValue)
+                                            {{ $existingValue->created_at->format('d/m/Y H:i') }}
+                                        @else
+                                            <span class="text-gray-300 dark:text-gray-600">-</span>
+                                        @endif
+                                    </td>
+
+                                    <!-- Etiqueta -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                        {{ $staticValue['label'] }}
+                                    </td>
+
+                                    <!-- Tipo -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            {{ $staticValue['type'] === 'Costo' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }}">
+                                            {{ $staticValue['type'] }}
+                                        </span>
+                                    </td>
+
+                                    <!-- Valor -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                                        @if($existingValue)
+                                            <!-- Valor existente con opción de editar -->
+                                            <div x-data="{ 
+                                                editing: false, 
+                                                originalValue: {{ $existingValue->values }},
+                                                newValue: {{ $existingValue->values }}
+                                            }">
+                                                <div x-show="!editing" class="flex items-center justify-end space-x-2">
+                                                    <span class="text-gray-900 dark:text-white">
+                                                        ${{ number_format($existingValue->values, 2) }}
+                                                    </span>
+                                                    <button @click="editing = true"
+                                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                                            </path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <div x-show="editing" class="flex items-center justify-end space-x-2">
+                                                    <input type="number" step="0.01" min="0" x-model="newValue" @keydown.enter="
+                                                            $wire.updateValue({{ $existingValue->id }}, newValue);
+                                                            originalValue = newValue;
+                                                            editing = false;
+                                                        " @keydown.escape="newValue = originalValue; editing = false"
+                                                        class="w-32 px-2 py-1 text-right border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                                    <button @click="
+                                                        $wire.updateValue({{ $existingValue->id }}, newValue);
+                                                        originalValue = newValue;
+                                                        editing = false;
+                                                    "
+                                                        class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </button>
+                                                    <button @click="newValue = originalValue; editing = false"
+                                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <!-- Valor nuevo con input para editar -->
+                                            <div x-data="{ 
+                                                editing: true, 
+                                                newValue: '',
+                                                valueKey: '{{ $staticValue['label'] }}'
+                                            }">
+                                                <div x-show="!editing && newValue" class="flex items-center justify-end space-x-2">
+                                                    <span class="text-gray-900 dark:text-white" x-text="'$' + parseFloat(newValue).toFixed(2)">
+                                                    </span>
+                                                    <button @click="editing = true"
+                                                        class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                                            </path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <div x-show="!editing && !newValue" class="text-gray-300 dark:text-gray-600">
+                                                    -
+                                                </div>
+                                                <div x-show="editing" class="flex items-center justify-end space-x-2">
+                                                    <input type="number" step="0.01" min="0" x-model="newValue" 
+                                                        @wire:addNewValue="newValue = $event.detail.value"
+                                                        placeholder="0.00"
+                                                        class="w-32 px-2 py-1 text-right border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                                    <button @click="$wire.addNewValue(valueKey, newValue); newValue = '';"
+                                                        :disabled="!newValue || newValue <= 0"
+                                                        class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </button>
+                                                    <button @click="newValue = ''; editing = false;"
+                                                        class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </td>
+
+                                    <!-- Sucursal -->
+                                    <td
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
+                                        <span class="text-gray-300 dark:text-gray-600">-</span>
+                                    </td>
+
+                                    <!-- Acciones -->
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                        @if($existingValue)
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button wire:click="deleteValue({{ $existingValue->id }})"
+                                                    class="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs font-medium rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                        </path>
+                                                    </svg>
+                                                    Eliminar
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
