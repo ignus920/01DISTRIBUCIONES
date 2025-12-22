@@ -169,6 +169,11 @@
                                                         <x-heroicon-o-eye class="w-6 h-6" />
                                                         Ver Detalle
                                                     </button>
+                                                    <button wire:click="viewReconciliations({{ $bx->id }})"
+                                                        class="w-full text-left px-4 py-2 text-sm text-purple-800 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center">
+                                                        <x-heroicon-o-document-check class="w-6 h-6" />
+                                                        Ver Reconciliaciones
+                                                    </button>
                                                     @if ($bx->status==1)
                                                     <button wire:click="openSalesFinishModal({{ $bx->id }})"
                                                         class="w-full text-left px-4 py-2 text-sm text-orange-800 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors flex items-center">
@@ -224,6 +229,8 @@
             <div class="lg:col-span-7 xl:col-span-7">
                 @if($showDetail)
                 @livewire('tenant.petty-cash.detail-petty-cash',['pettyCash_id'=>$pettyCash_id], key($pettyCash_id))
+                @elseif($showReconciliations)
+                @livewire('tenant.petty-cash.unreconciled-reconciliations',['pettyCash_id'=>$pettyCash_id], key($pettyCash_id . '-reconciliations'))
                 @else
                 <!-- Placeholder cuando no hay detalle seleccionado -->
                 <div
@@ -236,12 +243,14 @@
                             </path>
                         </svg>
                         <h3 class="text-xl font-semibold text-gray-500 dark:text-gray-400 mb-2">Selecciona una caja</h3>
-                        <p class="text-gray-400 dark:text-gray-500">Haz clic en "Ver Detalle" para ver los movimientos
-                            de una caja específica</p>
+                        <p class="text-gray-400 dark:text-gray-500">Haz clic en "Ver Detalle" o "Ver Reconciliaciones" para ver la información de una caja específica</p>
                     </div>
                 </div>
                 @endif
             </div>
+
+
+
         </div>
     </div>
 

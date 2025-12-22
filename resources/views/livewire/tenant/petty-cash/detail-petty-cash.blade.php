@@ -82,6 +82,20 @@
                     </div>
                 </div>
 
+                <!-- Pestañas -->
+                <div class="border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex gap-0">
+                        <button wire:click="switchTab('movements')"
+                            class="px-6 py-3 text-sm font-medium {{ $activeTab === 'movements' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300' }} transition-colors">
+                            Movimientos
+                        </button>
+                        <button wire:click="switchTab('reconciliations')"
+                            class="px-6 py-3 text-sm font-medium {{ $activeTab === 'reconciliations' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300' }} transition-colors">
+                            Reconciliaciones Pendientes
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Toolbar -->
                 <div class="p-6 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -144,6 +158,7 @@
                 </div>
 
                 <!-- Tabla -->
+                @if($activeTab === 'movements')
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-900">
@@ -275,6 +290,10 @@
                         </div>
                     </div>
                 </div>
+                @endif
+                </div>
+                @elseif($activeTab === 'reconciliations')
+                @livewire('tenant.petty-cash.unreconciled-reconciliations', ['pettyCash_id' => $pettyCash_id], key($pettyCash_id . '-reconciliations'))
                 @endif
             </div>
             {{--

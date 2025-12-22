@@ -4,7 +4,7 @@ namespace App\Models\Tenant\PettyCash;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Tenant\MethodPayments\VntMethodPayments;
+use App\Models\Tenant\MethodPayments\VntMethodPayMents;
 
 class VntDetailReconciliations extends Model
 {
@@ -28,6 +28,6 @@ class VntDetailReconciliations extends Model
     }
 
     public function methodPayments(){
-        return $this->belongsTo(VntMethodPayments::class, 'methodPaymentId', 'id');
+        return $this->belongsTo(VntMethodPayMents::class, 'methodPaymentId', 'id');
     }
 }
