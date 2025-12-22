@@ -74,12 +74,12 @@ new class extends Component
                 x-transition:leave="transition ease-in duration-150"
                 x-transition:leave-start="opacity-100 translate-x-0" x-transition:leave-end="opacity-0 translate-x-4"
                 class="ml-3">
-                Empresas
-            </span>
+                Dashboard
+            </span> 
             <!-- Tooltip -->
             <div x-show="tooltip" x-transition
                 class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                Empresas
+                Dashboard
             </div>
         </a>
 
@@ -314,10 +314,24 @@ new class extends Component
                     class="block rounded-md px-2 py-1 transition-colors duration-150 {{ request()->routeIs('tenant.parameters.zones') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Zonas
                 </a>
+                
                 <a href="{{ route('tenant.parameters.routes') }}" wire:navigate
                     class="block rounded-md px-2 py-1 transition-colors duration-150 {{ request()->routeIs('tenant.parameters.routes') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                     Rutas
                 </a>
+
+                  <a href="{{url('/inventory/categories')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
+
+
+                    <a href="{{url('/inventory/commands')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Comandas</a>
+                    <a href="{{url('/inventory/brands')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Marcas</a>
+                    <a href="{{url('/inventory/houses')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Casas</a>
+                    <a href="{{url('/inventory/units')}}" wire:navigate
+                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Unidades de Medida</a>
             </div>
             <!-- Submenú desplegable (para sidebar colapsado) -->
             <div x-show="sidebarCollapsed && tooltip" x-transition
@@ -380,19 +394,6 @@ new class extends Component
 
                     </a>
 
-
-                    <a href="{{url('/inventory/categories')}}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Categorías</a>
-
-
-                    <a href="{{url('/inventory/commands')}}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Comandas</a>
-                    <a href="{{url('/inventory/brands')}}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Marcas</a>
-                    <a href="{{url('/inventory/houses')}}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Casas</a>
-                    <a href="{{url('/inventory/units')}}" wire:navigate
-                        class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">Unidades de Medida</a>
                     <a href="{{ route('movements.movements') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Gestión movimientos
@@ -410,14 +411,7 @@ new class extends Component
                         class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
                         Ítems
                     </a>
-                    <a href="{{url('/inventory/brands')}}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Marcas</a>
-                    <a href="{{url('/inventory/commands')}}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Comandas</a>
-                    <a href="{{url('/inventory/units')}}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Unidades de Medida</a>
-                    <a href="{{url('/inventory/houses')}}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Casas</a>
+                    
                     <a href="{{ route('movements.movements') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Gestión movimientos
