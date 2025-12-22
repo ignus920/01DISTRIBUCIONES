@@ -152,14 +152,16 @@
                                             <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
 
                                             <!-- Opción Pagar -->
-                                            <button wire:click="showPayment({{ $quote->id }})"
-                                                    @click="open = false"
-                                                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 transition-colors duration-150">
-                                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
-                                                </svg>
-                                                Procesar Pago
-                                            </button>
+                                            @if($quote->status !== 'Pagado')
+                                                <button wire:click="showPayment({{ $quote->id }})"
+                                                        @click="open = false"
+                                                        class="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 transition-colors duration-150">
+                                                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                                                    </svg>
+                                                    Procesar Pago
+                                                </button>
+                                            @endif
                                         </div>
                                     </div>
                                 </td>
