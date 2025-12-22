@@ -16,6 +16,7 @@ use App\Models\Tenant\DeliveriesList\DisDeliveries;
 //Services
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\PDF;
 
 class Uploads extends Component
 {
@@ -251,12 +252,15 @@ class Uploads extends Component
                     //Registro en la tabla dis_deliveries
                     $dis_deliveries = DisDeliveries::create($dataDeliveries);
 
+
                     //Actualización registros en la tabla inv_remissions
-                    InvRemissions::whereHas('quote', function ($query) use ($deliveryListItem) {
-                        $query->where('userId', $deliveryListItem->salesman_id)
-                            ->whereDate('created_at', $deliveryListItem->sale_date);
-                    })->update(['delivery_id' => $dis_deliveries->id, 'deliveryDate' => $dis_deliveries->sale_date]);
+                    InvRemissions::where('userId', $deliveryListItem->salesman_id)
+                        ->whereDate('created_at', $deliveryListItem->sale_date)
+                        ->where('status', 'REGISTRADO')
+                        ->update(['delivery_id' => $dis_deliveries->id, 'deliveryDate' => $dis_deliveries->sale_date, 'status' => 'EN RECORRIDO']);
                 }
+
+                $this->clearListUpload();
                 // Si no hay faltantes, proceder con la lógica de confirmación
                 session()->flash('message', 'Cargue confirmado exitosamente.');
             } catch (\Exception $e) {
@@ -335,7 +339,52 @@ class Uploads extends Component
 
     public function printPreCharge()
     {
+        if (!$this->selectedDeliveryMan) {
+            session()->flash('error', 'Por favor selecciona un transportador primero');
+            return;
+        }
+
         try {
+            // Obtener items con la consulta SQL ordenados por categoría
+            $items = DB::table('dis_deliveries_list as dl')
+                ->join('inv_remissions as r', function ($join) {
+                    $join->on('dl.salesman_id', '=', 'r.userId')
+                        ->whereRaw('DATE(r.deliveryDate) = dl.sale_date');
+                })
+                ->join('inv_detail_remissions as dt', 'dt.remissionId', '=', 'r.id')
+                ->join('inv_items as i', 'i.id', '=', 'dt.itemId')
+                ->join('inv_items_store as its', 'i.id', '=', 'its.itemId')
+                ->join('inv_categories as c', 'i.categoryId', '=', 'c.id')
+                ->join('inv_items_store as ist', 'i.id', '=', 'ist.itemId')
+                ->where('dl.deliveryman_id', $this->selectedDeliveryMan)
+                ->select(
+                    'i.id as code',
+                    'c.name as category',
+                    'i.name as name_item',
+                    DB::raw('SUM(dt.quantity) as quantity'),
+                    'ist.stock_items_store as stockActual',
+                    DB::raw('SUM(dt.quantity) * dt.value as subtotal')
+                )
+                ->groupBy('c.id', 'c.name', 'i.id', 'i.name', 'dt.value', 'ist.stock_items_store')
+                ->orderBy('c.name')
+                ->orderBy('i.name')
+                ->get();
+
+            // Calcular el total
+            $total = collect($items)->sum('subtotal');
+
+            $cleanedItems = $this->cleanUtf8Data($items);
+            $cleanedTotal = $this->cleanString((string)$total);
+
+            $data = [
+                'items' => $cleanedItems,
+                'total' => $cleanedTotal,
+            ];
+
+            $pdf = PDF::loadView('tenant.uploads.pre-charge-pdf', $data);
+            return response()->streamDownload(function () use ($pdf) {
+                echo $pdf->stream();
+            }, 'pre-charge.pdf');
         } catch (\Exception $e) {
             Log::error($e);
             session()->flash('error', "Error al generar la impresión: " . $e->getMessage());
@@ -350,5 +399,42 @@ class Uploads extends Component
             'remissions' => $this->remissions,
             'scarceUnits' => $this->scarceUnits,
         ]);
+    }
+
+    private function cleanUtf8Data($data)
+    {
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                $data[$key] = $this->cleanUtf8Data($value);
+            }
+            return $data;
+        } elseif (is_object($data)) {
+            // Si es un objeto, convertirlo a array, verificando si tiene el método toArray
+            $dataArray = method_exists($data, 'toArray') ? $data->toArray() : (array) $data;
+            return $this->cleanUtf8Data($dataArray);
+        } elseif (is_string($data)) {
+            // Limpiar la cadena UTF-8
+            $cleaned = mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+            // Remover caracteres inválidos
+            $cleaned = preg_replace('/[^\x{0000}-\x{007F}]/u', '', $cleaned);
+            // Otra alternativa más agresiva
+            $cleaned = iconv('UTF-8', 'UTF-8//IGNORE//TRANSLIT', $data);
+            return $cleaned;
+        }
+        return $data;
+    }
+
+    private function cleanString($string)
+    {
+        // Primero intentar con iconv
+        $string = iconv('UTF-8', 'UTF-8//IGNORE', $string);
+
+        // Si aún hay problemas, usar regex para eliminar caracteres no UTF-8 válidos
+        $string = preg_replace('/[^\x{0000}-\x{007F}\x{00A0}-\x{00FF}]/u', '', $string);
+
+        // Convertir entidades HTML si es necesario
+        $string = html_entity_decode($string, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return $string;
     }
 }
