@@ -42,6 +42,8 @@ class ProductQuoter extends Component
     public $showObservations = false;
      // Nueva propiedad para la categoría seleccionada
     public $selectedCategory = '';
+    // Propiedad para filtrar por día de venta
+    public $selectedSaleDay = '';
 
     // Propiedades para edición de restock (TAT)
     public $editingRestockOrder = null;
@@ -168,6 +170,23 @@ class ProductQuoter extends Component
     public function getCategories()
     {
         return Category::where('status', 1)->get();
+    }
+
+    // Método para obtener los días de venta disponibles del vendedor
+    public function getSaleDays()
+    {
+        $this->ensureTenantConnection();
+        
+        $days = DB::select("
+            SELECT DISTINCT tr.sale_day
+            FROM tat_routes tr
+            WHERE tr.salesman_id = ?
+            ORDER BY tr.sale_day
+        ", [auth()->id()]);
+
+        return array_map(function($day) {
+            return $day->sale_day;
+        }, $days);
     }
 
     public function addToQuoter($productId, $selectedPrice, $priceLabel)
@@ -444,14 +463,37 @@ public function validateQuantity($index)
         return;
     }
 
-    $customer = VntCompany::select('id', 'businessName', 'firstName', 'lastName', 'identification', 'billingEmail')
-        ->where('identification', $this->customerSearch)
-        ->first();
+    $search = '%' . $this->customerSearch . '%';
+    $params = [auth()->id(), $search, $search, $search, $search, $search];
 
-    if ($customer) {
-        $this->selectedCustomer = $customer->toArray();
+    $customer = DB::select("
+        SELECT DISTINCT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+        FROM tat_routes tr
+        INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+        INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+        WHERE tr.salesman_id = ? AND (
+            vc.identification LIKE ? OR 
+            vc.businessName LIKE ? OR 
+            vc.firstName LIKE ? OR 
+            vc.lastName LIKE ? OR
+            tr.sale_day LIKE ?
+        )
+        LIMIT 1
+    ", $params);
 
-        $name = $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName);
+    if (!empty($customer)) {
+        $customer = (array) $customer[0];
+        $this->selectedCustomer = [
+            'id' => $customer['id'],
+            'businessName' => $customer['businessName'],
+            'firstName' => $customer['firstName'],
+            'lastName' => $customer['lastName'],
+            'identification' => $customer['identification'],
+            'billingEmail' => $customer['billingEmail'],
+            'sale_day' => $customer['sale_day'],
+        ];
+
+        $name = $customer['businessName'] ?: ($customer['firstName'] . ' ' . $customer['lastName']);
 
         $this->dispatch('show-toast', [
             'type' => 'success',
@@ -548,18 +590,26 @@ public function validateQuantity($index)
     {
         $this->ensureTenantConnection();
 
-        // Buscar el cliente recién creado
-        $customer = VntCompany::find($customerId);
+        // Buscar el cliente recién creado validando que pertenece a las rutas del vendedor
+        $customer = DB::select("
+            SELECT tr.salesman_id, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+            FROM tat_routes tr
+            INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+            INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+            WHERE tr.salesman_id = ? AND vc.id = ?
+            LIMIT 1
+        ", [auth()->id(), $customerId]);
 
-        if ($customer) {
+        if (!empty($customer)) {
+            $customer = (array) $customer[0];
             // Seleccionar el cliente recién creado
             $this->selectedCustomer = [
-                'id' => $customer->id,
-                'businessName' => $customer->businessName,
-                'firstName' => $customer->firstName,
-                'lastName' => $customer->lastName,
-                'identification' => $customer->identification,
-                'billingEmail' => $customer->billingEmail,
+                'id' => $customer['id'],
+                'businessName' => $customer['businessName'],
+                'firstName' => $customer['firstName'],
+                'lastName' => $customer['lastName'],
+                'identification' => $customer['identification'],
+                'billingEmail' => $customer['billingEmail'],
             ];
 
             // Limpiar estados del formulario de creación/edición
@@ -569,7 +619,7 @@ public function validateQuantity($index)
             $this->editingCustomerId = null;
 
             // Determinar el nombre a mostrar
-            $customerName = $customer->businessName ?: $customer->firstName . ' ' . $customer->lastName;
+            $customerName = $customer['businessName'] ?: $customer['firstName'] . ' ' . $customer['lastName'];
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
@@ -584,18 +634,26 @@ public function validateQuantity($index)
 
         // Verificar si es el cliente que está actualmente seleccionado
         if ($this->selectedCustomer && $this->selectedCustomer['id'] == $customerId) {
-            // Buscar el cliente actualizado
-            $customer = VntCompany::find($customerId);
+            // Buscar el cliente actualizado validando que pertenece a las rutas del vendedor
+            $customer = DB::select("
+                SELECT tr.salesman_id, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                FROM tat_routes tr
+                INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+                INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+                WHERE tr.salesman_id = ? AND vc.id = ?
+                LIMIT 1
+            ", [auth()->id(), $customerId]);
 
-            if ($customer) {
+            if (!empty($customer)) {
+                $customer = (array) $customer[0];
                 // Actualizar los datos del cliente seleccionado
                 $this->selectedCustomer = [
-                    'id' => $customer->id,
-                    'businessName' => $customer->businessName,
-                    'firstName' => $customer->firstName,
-                    'lastName' => $customer->lastName,
-                    'identification' => $customer->identification,
-                    'billingEmail' => $customer->billingEmail,
+                    'id' => $customer['id'],
+                    'businessName' => $customer['businessName'],
+                    'firstName' => $customer['firstName'],
+                    'lastName' => $customer['lastName'],
+                    'identification' => $customer['identification'],
+                    'billingEmail' => $customer['billingEmail'],
                 ];
 
                 // Limpiar estados del formulario de edición
@@ -603,7 +661,7 @@ public function validateQuantity($index)
                 $this->editingCustomerId = null;
 
                 // Determinar el nombre a mostrar
-                $customerName = $customer->businessName ?: $customer->firstName . ' ' . $customer->lastName;
+                $customerName = $customer['businessName'] ?: $customer['firstName'] . ' ' . $customer['lastName'];
 
                 $this->dispatch('show-toast', [
                     'type' => 'success',
@@ -1567,32 +1625,41 @@ public function validateQuantity($index)
     /**
      * Buscar clientes en tiempo real
      */
-    public function searchCustomersLive()
-    {
-        $this->ensureTenantConnection();
+public function searchCustomersLive()
+{
+    $this->ensureTenantConnection();
 
-        if (strlen($this->customerSearch) < 1) {
-            $this->customerSearchResults = [];
-            return;
-        }
-
-        $customers = VntCompany::select('id', 'businessName', 'firstName', 'lastName', 'identification', 'billingEmail')
-            ->where(function($query) {
-                $query->where('identification', 'like', '%' . $this->customerSearch . '%')
-                      ->orWhere('businessName', 'like', '%' . $this->customerSearch . '%')
-                      ->orWhere('firstName', 'like', '%' . $this->customerSearch . '%')
-                      ->orWhere('lastName', 'like', '%' . $this->customerSearch . '%');
-            })
-            ->get();
-
-        $this->customerSearchResults = $customers->map(function($customer) {
-            return [
-                'id' => $customer->id,
-                'identification' => $customer->identification,
-                'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName)
-            ];
-        })->toArray();
+    if (strlen($this->customerSearch) < 1) {
+        $this->customerSearchResults = [];
+        return;
     }
+
+    $search = '%' . $this->customerSearch . '%';
+    $params = [auth()->id(), $search, $search, $search, $search, $search];
+    
+    $customers = DB::select("
+        SELECT DISTINCT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+        FROM tat_routes tr
+        INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+        INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+        WHERE tr.salesman_id = ? AND (
+            vc.identification LIKE ? OR 
+            vc.businessName LIKE ? OR 
+            vc.firstName LIKE ? OR 
+            vc.lastName LIKE ? OR
+            tr.sale_day LIKE ?
+        )
+    ", $params);
+
+    $this->customerSearchResults = array_map(function($customer) {
+        return [
+            'id' => $customer->id,
+            'identification' => $customer->identification,
+            'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
+            'sale_day' => $customer->sale_day
+        ];
+    }, $customers);
+}
 
     /**
      * Seleccionar un cliente de los resultados
@@ -1601,18 +1668,49 @@ public function validateQuantity($index)
     {
         $this->ensureTenantConnection();
 
-        $customer = VntCompany::find($customerId);
+        // Validar que el cliente pertenece a las rutas del vendedor
+        $params = [auth()->id(), $customerId];
+        $whereSaleDay = '';
+        
+        // Si hay un día seleccionado, agregar filtro
+        if (!empty($this->selectedSaleDay)) {
+            $whereSaleDay = 'AND tr.sale_day = ?';
+            $params[] = $this->selectedSaleDay;
+        }
 
-        if ($customer) {
-            $this->selectedCustomer = $customer->toArray();
+        $customer = DB::select("
+            SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+            FROM tat_routes tr
+            INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+            INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+            WHERE tr.salesman_id = ? AND vc.id = ? $whereSaleDay
+            LIMIT 1
+        ", $params);
+
+        if (!empty($customer)) {
+            $customer = (array) $customer[0];
+            $this->selectedCustomer = [
+                'id' => $customer['id'],
+                'businessName' => $customer['businessName'],
+                'firstName' => $customer['firstName'],
+                'lastName' => $customer['lastName'],
+                'identification' => $customer['identification'],
+                'billingEmail' => $customer['billingEmail'],
+                'sale_day' => $customer['sale_day'],
+            ];
             $this->customerSearch = '';
             $this->customerSearchResults = [];
 
-            $name = $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName);
+            $name = $customer['businessName'] ?: ($customer['firstName'] . ' ' . $customer['lastName']);
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
                 'message' => 'Cliente seleccionado: ' . $name
+            ]);
+        } else {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Cliente no disponible en tus rutas asignadas'
             ]);
         }
     }

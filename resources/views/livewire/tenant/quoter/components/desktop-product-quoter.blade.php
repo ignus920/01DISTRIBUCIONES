@@ -630,7 +630,7 @@ $header = 'Seleccionar productos';
                         <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
                     </button>
                      @endif
-
+                    @if(auth()->user()->profile_id == 17)
                     <!-- Botón Confirmar Lista Preliminar (convierte Registrado a Confirmado) -->
                     <button wire:click="saveRestockRequest(true)"
                         wire:loading.attr="disabled"
@@ -646,10 +646,12 @@ $header = 'Seleccionar productos';
                             <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
 
+                    
                         <span wire:loading.remove wire:target="saveRestockRequest">Confirmar y Migrar Directamente</span>
+                    
                         <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
                     </button>
-                   
+                       @endif
                     @endif
 
                     @if($isEditingRestock)
