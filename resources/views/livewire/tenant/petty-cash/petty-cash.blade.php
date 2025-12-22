@@ -79,7 +79,7 @@
                     </div>
 
                     <!-- Tabla -->
-                    <div class="">
+                    <div class="relative overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
                                 <tr>
@@ -262,10 +262,16 @@
                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
                 <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        Crear Caja
-                    </h3>
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Crear Caja
+                        </h3>
+                    </div>
+                    <button wire:click="cancel"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <x-heroicon-o-x-mark class="w-6 h-6" />
+                    </button>
                 </div>
                 <!-- Form -->
                 <form wire:submit.prevent="save" class="p-6 space-y-6">
@@ -319,10 +325,7 @@
                         </h3>
                         <button type="button" wire:click="$set('showModalSalesFinish', false)"
                             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
+                            <x-heroicon-o-x-mark class="w-6 h-6" />
                         </button>
                     </div>
                 </div>

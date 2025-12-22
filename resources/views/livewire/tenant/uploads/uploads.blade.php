@@ -104,11 +104,11 @@
                                     @endif
                                 </div>
                             </div>
-                            <!-- Rutas -->
+                            <!-- Transportador -->
                             <div class="flex-1 flex items-center gap-3">
                                 <label
                                     class="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">Transportador:</label>
-                                <select wire:model.live="selectedRoute"
+                                <select wire:model.live="selectedDeliveryMan"
                                     class="w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="">-- Seleccione --</option>
                                     @foreach ($users as $rt)
@@ -135,14 +135,20 @@
                             </ul>
                         </div> --}}
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full pt-3">
-                            <button wire:click="showConfirmUploadModal"
-                                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Confirmar Cargue
-                            </button>
+                            <div class="flex-1">
+                                <button wire:click="showConfirmUploadModal"
+                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                    <x-heroicon-o-plus class="w-6 h-5 pr-2" />
+                                    Confirmar Cargue
+                                </button>
+                            </div>
+                            <div class="flex-1 flex items-center gap-3">
+                                <button wire:click="showConfirmUploadModal"
+                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                    <x-heroicon-o-eye class="w-6 h-5 pr-2" />
+                                    Previa del Cargue
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -363,18 +369,24 @@
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                 <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        Unidades faltantes
-                    </h3>
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Unidades faltantes
+                        </h3>
+                    </div>
+                    <button wire:click="closeAlertScares"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <x-heroicon-o-x-mark class="w-6 h-6" />
+                    </button>
                 </div>
 
                 <div class="space-y-6">
                     <div class="mb-3">
-                        <p class="px-3 pt-3">No hay productos suficientes</p>
+                        <p class="px-3 pt-3 text-gray-600 dark:text-gray-300">No hay productos suficientes</p>
                     </div>
                     <div
-                        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 px-6 pt-3">
+                        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 px-6 p-3">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
                                 <tr>
@@ -418,7 +430,7 @@
                         </table>
                     </div>
                     <div class="mb-3">
-                        <p class="px-3 pt-3">¿Desea agregar unidades de productos?</p>
+                        <p class="px-3 pt-3 text-gray-600 dark:text-gray-300">¿Desea agregar unidades de productos?</p>
                     </div>
                     <div
                         class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 px-4 pb-4 border-t border-gray-200 dark:border-gray-700">

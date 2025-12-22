@@ -38,7 +38,7 @@ class ManageItems extends Component
         'consumption-unit-changed' => 'onConsumptionUnitSelected',
         'category-changed' => 'onCategorySelected',
         'category-created' => 'refreshCategories',
-        //'invValuesItem-created' => 'refreshValuesItems',
+        'closeValuesModal' => 'closeValuesModal',
     ];
 
     // Propiedades para el formulario
@@ -256,7 +256,7 @@ class ManageItems extends Component
         $this->loadWarehouses();
 
         $items = Items::query()
-            ->with(['brand', 'principalImage', 'tax', 'purchasingUnit', 'consumptionUnit'])
+            ->with(['brand', 'principalImage', 'tax', 'purchasingUnit', 'consumptionUnit', 'invItemsStore'])
             ->when($this->search, function($query) {
                 $query->where('name', 'like', '%' . $this->search . '%')
                       ->orWhere('sku', 'like', '%' . $this->search . '%')
@@ -330,12 +330,18 @@ class ManageItems extends Component
         
         try{
             if ($this->item_id) { // Existing item
-                $item = Items::findOrFail($this->item_id);
-                $item->update($itemData);
-                session()->flash('message', 'Item actualizado correctamente.');
-                $this->showModal = false; // Close modal after update
-                $this->resetValidation(); // Clear validation errors for next open
-                $this->resetForm(); // Clear the form completely for next new item
+                $existsValue= InvValues::where('itemId', $this->item_id)->exists();
+                if(!$existsValue){
+                    $this->messageValues = 'Tiene que registrar al menos un valor.';
+                }else{
+                    $item = Items::findOrFail($this->item_id);
+                    $item->update($itemData);
+                    $this->clearTemporaryMessage();
+                    session()->flash('message', 'Item actualizado correctamente.');
+                    $this->showModal = false; // Close modal after update
+                    $this->resetValidation(); // Clear validation errors for next open
+                    $this->resetForm(); // Clear the form completely for next new item
+                }
             } else { // New item
                 $newItem=Items::create($itemData);
                 $item_id=$newItem->id;
@@ -363,16 +369,33 @@ class ManageItems extends Component
         session()->flash('message', 'Estado actualizado correctamente');
     }
 
-    public function openValuesModal(){
-        $this->showValuesModal=true;
+    public function openValuesModal($itemId){
+        $this->item_id = $itemId;
+        $this->showValuesModal = true;
+    }
+
+    public function closeValuesModal(){
+        $this->showValuesModal = false;
     }
 
     public function cancel()
-    {
-        $this->resetValidation();
-        $this->resetForm();
-        $this->showModal = false;
-        $this->confirmingItemDeletion = false;
+    {   
+        if($this->item_id){
+            $existsValue= InvValues::where('itemId', $this->item_id)->exists();
+            if(!$existsValue){
+                $this->messageValues = 'Tiene que registrar al menos un valor.';
+            }else{
+                $this->resetValidation();
+                $this->resetForm();
+                $this->showModal = false;
+                $this->confirmingItemDeletion = false;
+            }
+        }else{
+            $this->resetValidation();
+            $this->resetForm();
+            $this->showModal = false;
+            $this->confirmingItemDeletion = false;
+        }
     }
 
     public function onCategorySelected($value)
@@ -448,22 +471,20 @@ class ManageItems extends Component
     {
         $sessionTenant = $this->getTenantId();
         
-        // 1. Obtener los IDs de las bodegas que cumplen el criterio
-        $warehouseIds = UserTenant::query()
-            ->select('vc.warehouseId')
-            ->join('users as u', 'u.id', '=', 'user_tenants.user_id')
-            ->join('vnt_contacts as vc', 'vc.id', '=', 'u.contact_id')
-            ->where('user_tenants.tenant_id', $sessionTenant)
-            ->pluck('warehouseId') // Obtener solo los IDs de las bodegas
-            ->unique(); // Evitar IDs duplicados
+        // Obtener el tenant desde la base de datos usando el ID de sesión
+        $tenant = Tenant::find($sessionTenant);
 
-        // 2. Cargar las bodegas usando los IDs obtenidos
-        $this->warehouses = VntWarehouse::query()
-            ->whereIn('id', $warehouseIds) // Usamos el array de IDs
-            ->where('vnt_warehouses.status', true)
+        if(!$tenant || !$tenant->company_id){
+            $this->warehouses = collect([]);
+            return;
+        }
+
+        // Traer todos los almacenes que coincidan con ese company_id
+        $this->warehouses = VntWarehouse::where('companyId', $tenant->company_id)
+            ->where('status', true)
             ->with('company')
-            ->orderBy('vnt_warehouses.name')
-            ->get();
+           ->orderBy('name')
+           ->get();
     }
 
     private function getTenantId()
@@ -670,6 +691,7 @@ class ManageItems extends Component
     public function clearTemporaryMessage()
     {
         $this->temporaryErrorMessage = null;
+        $this->messageValues = '';
     }
 
     public function updatedInternalCode($value){

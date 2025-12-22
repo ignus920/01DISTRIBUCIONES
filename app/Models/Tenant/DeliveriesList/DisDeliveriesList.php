@@ -15,6 +15,7 @@ class DisDeliveriesList extends Model
         'id',
         'sale_date',
         'salesman_id',
+        'deliveryman_id',
         'user_id',
         'created_at',
         'updated_at'
