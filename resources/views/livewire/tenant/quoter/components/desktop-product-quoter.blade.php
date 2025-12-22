@@ -717,6 +717,24 @@ $header = 'Seleccionar productos';
                 }
             });
         });
+
+        Livewire.on('confirm-load-order', (data) => {
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                title: 'Orden Existente',
+                text: payload.message,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, cargar orden',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                   Livewire.find('{{ $this->getId() }}').call('loadRestockForEditing', payload.orderNumber);
+                }
+            });
+        });
     });
 
     // Variables para navegación por teclado en búsqueda de clientes (Desktop)

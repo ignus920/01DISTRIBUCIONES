@@ -192,15 +192,13 @@ class ProductQuoter extends Component
     public function addToQuoter($productId, $selectedPrice, $priceLabel)
     {
         // Validar si el producto ya está confirmado (Perfil 17)
-        $warningMessage = $this->checkConfirmedProductStatus($productId);
+        $confirmedItem = $this->checkConfirmedProductStatus($productId);
         
-        if ($warningMessage) {
-            // Si hay advertencia, pedir confirmación al usuario
-            $this->dispatch('confirm-add-duplicate', [
-                'message' => $warningMessage,
-                'productId' => $productId,
-                'selectedPrice' => $selectedPrice,
-                'priceLabel' => $priceLabel
+        if ($confirmedItem) {
+            // Si existe en una orden confirmada, ofrecer cargar esa orden
+            $this->dispatch('confirm-load-order', [
+                'orderNumber' => $confirmedItem->order_number,
+                'message' => "Este producto ya se encuentra en la orden confirmada #{$confirmedItem->order_number}. ¿Desea cargar esa orden para editarla?"
             ]);
             return;
         }
@@ -1583,6 +1581,10 @@ public function validateQuantity($index)
      * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
      * Retorna mensaje de advertencia si existe, o null si pasa la validación.
      */
+    /**
+     * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
+     * Retorna el objeto TatRestockList si existe, o null si pasa la validación.
+     */
     protected function checkConfirmedProductStatus($productId)
     {
         // Solo aplica para perfil 17
@@ -1598,16 +1600,10 @@ public function validateQuantity($index)
         }
 
         // Buscar en la tabla de restock si existe confirmado
-        $confirmedItem = TatRestockList::where('company_id', $companyId)
+        return TatRestockList::where('company_id', $companyId)
             ->where('itemId', $productId)
             ->where('status', 'Confirmado')
             ->first();
-
-        if ($confirmedItem) {
-            return "Este producto ya está confirmado con {$confirmedItem->quantity_request} unidades en la orden #{$confirmedItem->order_number}";
-        }
-        
-        return null; // Pasa la validación
     }
 
     /**
