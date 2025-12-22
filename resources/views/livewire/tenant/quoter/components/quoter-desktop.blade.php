@@ -330,8 +330,160 @@
             </div>
         </div>
         @endif
+
+
     </div>
-</div>
+
+    <!-- Modal de Detalles -->
+    @if($showDetailsModal && $selectedQuote)
+    <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" wire:click="cerrarDetalles"></div>
+
+            <!-- Modal panel -->
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                
+                <!-- Modal Header -->
+                <div class="bg-white dark:bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4 border-b border-gray-200 dark:border-slate-700">
+                    <div class="sm:flex sm:items-start justify-between">
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="modal-title">
+                                Detalles de Cotización #{{ $selectedQuote->consecutive }}
+                            </h3>
+                            <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                                Fecha: {{ $selectedQuote->created_at->format('d/m/Y H:i') }} | 
+                                Estado: <span class="font-semibold">{{ $selectedQuote->status }}</span>
+                            </p>
+                        </div>
+                        <button type="button" wire:click="cerrarDetalles" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                            <span class="sr-only">Cerrar</span>
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="px-4 py-5 sm:p-6 overflow-y-auto max-h-[60vh]">
+                    <!-- Info Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <!-- Cliente -->
+                        <div class="bg-gray-50 dark:bg-slate-700/50 p-4 rounded-lg">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Información del Cliente</h4>
+                            @if($selectedQuote->customer)
+                                <div class="space-y-2 text-sm">
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Nombre:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer_name }}</span>
+                                    </p>
+                                    @if($selectedQuote->customer->identification)
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Identificación:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->identification }}</span>
+                                    </p>
+                                    @endif
+                                    @if($selectedQuote->customer->billingEmail)
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Email:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->billingEmail }}</span>
+                                    </p>
+                                    @endif
+                                    @if($selectedQuote->customer->phone)
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Teléfono:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->phone }}</span>
+                                    </p>
+                                    @endif
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-500 italic">Cliente mostrador / No registrado</p>
+                            @endif
+                        </div>
+
+                        <!-- Sucursal / Info Adicional -->
+                        <div class="bg-gray-50 dark:bg-slate-700/50 p-4 rounded-lg">
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Detalles Generales</h4>
+                            <div class="space-y-2 text-sm">
+                                <p class="flex justify-between">
+                                    <span class="text-gray-500 dark:text-slate-400">Tipo:</span>
+                                    <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->typeQuote }}</span>
+                                </p>
+                                @if($selectedQuote->warehouse)
+                                <p class="flex justify-between">
+                                    <span class="text-gray-500 dark:text-slate-400">Sucursal:</span>
+                                    <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->warehouse->name }}</span>
+                                </p>
+                                @endif
+                                @if($selectedQuote->observations)
+                                <div class="mt-2 pt-2 border-t border-gray-200 dark:border-slate-600">
+                                    <span class="text-gray-500 dark:text-slate-400 block mb-1">Observaciones:</span>
+                                    <p class="text-gray-700 dark:text-slate-300 italic">{{ $selectedQuote->observations }}</p>
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Items -->
+                    <div class="overflow-x-auto border rounded-lg border-gray-200 dark:border-slate-700">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                            <thead class="bg-gray-50 dark:bg-slate-700">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Producto</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Cant.</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Precio Unit.</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                                @forelse($selectedQuote->detalles as $detalle)
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-200">
+                                        {{ $detalle->item ? $detalle->item->name : 'Item no encontrado' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400 text-right">
+                                        {{ number_format($detalle->quantity, 2) }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400 text-right">
+                                        ${{ number_format($detalle->value, 2) }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white text-right">
+                                        ${{ number_format($detalle->quantity * $detalle->value, 2) }}
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-slate-400">
+                                        No hay detalles disponibles
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                            <tfoot class="bg-gray-50 dark:bg-slate-700">
+                                <tr>
+                                    <td colspan="3" class="px-6 py-4 text-right text-sm font-bold text-gray-900 dark:text-white">Total General:</td>
+                                    <td class="px-6 py-4 text-right text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                        ${{ number_format($selectedQuote->total ?? 0, 2) }}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="bg-gray-50 dark:bg-slate-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" wire:click="cerrarDetalles" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 {{-- Script de impresión inline para asegurar funcionamiento en producción --}}
