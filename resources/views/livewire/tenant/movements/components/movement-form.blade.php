@@ -237,47 +237,48 @@
                             <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
                                 <h4 class="font-medium text-gray-900 dark:text-white mb-4">Agregar productos</h4>
 
-                                <div class="grid grid-cols-3 gap-4 mb-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                                     <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item <span class="text-red-500">*</span></label>
                                         @livewire('selects.generic-select', [
                                             'selectedValue' => $detailForm['itemId'],
                                             'items' => $this->items,
                                             'name' => 'detailForm.itemId',
                                             'placeholder' => 'Seleccionar',
-                                            'label' => 'Item',
+                                            'label' => '',
                                             'required' => true,
-                                            'showLabel' => true,
-                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                            'showLabel' => false,
+                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
                                             'eventName' => 'itemSelected',
                                             'displayField' => 'name',
                                             'valueField' => 'id',
                                             'searchFields' => ['name', 'sku']
                                         ], key('item-select-' . now()->timestamp))
+                                        @error('detailForm.itemId') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad
-                                            *</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad <span class="text-red-500">*</span></label>
                                         <input type="number" step="0.01" wire:model.defer="detailForm.quantity"
                                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
-                                        @error('detailForm.quantity') <span class="text-red-500 text-sm mt-1">{{
-                                            $message }}</span> @enderror
+                                        @error('detailForm.quantity') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unidad <span class="text-red-500">*</span></label>
                                         @livewire('selects.generic-select', [
                                             'selectedValue' => $detailForm['unitMeasurementId'],
                                             'items' => $this->unitMeasurements,
                                             'name' => 'detailForm.unitMeasurementId',
                                             'placeholder' => 'Seleccionar',
-                                            'label' => 'Unidad',
+                                            'label' => '',
                                             'required' => true,
-                                            'showLabel' => true,
-                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                            'showLabel' => false,
+                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
                                             'eventName' => 'unitMeasurementSelected',
                                             'displayField' => 'description',
                                             'valueField' => 'id',
                                             'searchFields' => ['description']
                                         ], key('unit-select-' . now()->timestamp))
+                                        @error('detailForm.unitMeasurementId') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
 

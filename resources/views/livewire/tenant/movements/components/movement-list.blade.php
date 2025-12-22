@@ -178,7 +178,7 @@
     <!-- Pagination -->
     @if($movements->hasPages())
         <div class="mt-4">
-            {{ $movements->links() }}
+            <x-responsive-pagination :paginator="$movements" />
         </div>
     @endif
 
