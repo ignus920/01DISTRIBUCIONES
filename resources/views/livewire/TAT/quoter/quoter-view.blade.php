@@ -189,7 +189,7 @@
                                         ${{ number_format($product['price'], 0, '.', '.') }}
                                     </div>
                                     @if($canSelect)
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 hidden lg:block">
                                             ↵ Enter para agregar
                                         </div>
                                     @endif
@@ -200,7 +200,10 @@
                         <!-- Footer con navegación -->
                         <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                             <div class="text-xs text-gray-600 dark:text-gray-400 text-center">
-                                Use ↑↓ para navegar • Enter para seleccionar • Esc para cerrar
+                                <!-- Instrucciones para desktop -->
+                                <span class="hidden lg:inline">Use ↑↓ para navegar • Enter para seleccionar • Esc para cerrar</span>
+                                <!-- Instrucciones para móvil -->
+                                <span class="lg:hidden">Toque un producto para agregarlo al carrito</span>
                             </div>
                         </div>
                     </div>
