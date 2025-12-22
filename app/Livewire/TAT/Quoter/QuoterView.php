@@ -168,66 +168,98 @@ class QuoterView extends Component
     }
 
     /**
-     * Actualizar resultados de búsqueda
+     * Actualizar resultados de búsqueda - OPTIMIZADO
      */
     public function updatedCurrentSearch()
     {
-        $this->selectedIndex = -1; // Reset selected index when search changes
+        $this->selectedIndex = -1;
 
-        Log::info('Búsqueda actualizada', [
-            'search' => $this->currentSearch,
-            'length' => strlen($this->currentSearch),
-            'companyId' => $this->companyId
-        ]);
-
-        // Debug: Ver algunos productos disponibles
-        $allProducts = TatItems::query()
-            ->byCompany($this->companyId)
-            ->active()
-            ->where('stock', '>', 0)
-            ->take(5)
-            ->get(['name', 'sku', 'stock']);
-
-        Log::info('Productos disponibles (muestra)', [
-            'products' => $allProducts->toArray()
-        ]);
-
-        if (strlen($this->currentSearch) >= 1) {
-            $query = TatItems::query()
-                ->byCompany($this->companyId)
-                ->active()
-                ->where(function ($q) {
-                    $q->whereRaw('LOWER(name) like ?', ['%' . strtolower($this->currentSearch) . '%'])
-                      ->orWhereRaw('LOWER(sku) like ?', ['%' . strtolower($this->currentSearch) . '%']);
-                })
-                ->orderByRaw('CASE WHEN stock > 0 THEN 0 ELSE 1 END') // Productos con stock primero
-                ->orderBy('stock', 'desc'); // Ordenar por stock descendente
-
-            // Obtener el SQL y parámetros para debug
-            $sql = $query->toSql();
-            $bindings = $query->getBindings();
-
-            Log::info('Query SQL', [
-                'sql' => $sql,
-                'bindings' => $bindings
-            ]);
-
-            $results = $query->get(); // SIN LÍMITE - Obtener TODOS los resultados
-
-            Log::info('Resultados encontrados', [
-                'total_results' => $results->count(),
-                'results' => $results->take(5)->pluck('name')->toArray()
-            ]);
-
-            // TODOS los resultados en dropdown principal
-            $this->searchResults = $results->toArray();
-
-            // No usar resultados adicionales
-            $this->additionalSuggestions = [];
-        } else {
+        // Solo buscar si tiene mínimo 2 caracteres
+        if (strlen($this->currentSearch) < 2) {
             $this->searchResults = [];
-            $this->additionalSuggestions = [];
+            return;
         }
+
+        $searchTerm = trim($this->currentSearch);
+
+        try {
+            // Búsqueda FULLTEXT optimizada para MySQL
+            $query = TatItems::query()
+                ->select([
+                    'id', 'name', 'sku', 'price', 'stock',
+                    'taxId', 'categoryId'
+                ])
+                ->byCompany($this->companyId)
+                ->active();
+
+            // Si el término tiene más de 3 caracteres, usar FULLTEXT
+            if (strlen($searchTerm) >= 3) {
+                $query->whereRaw(
+                    "MATCH(name, sku) AGAINST(? IN BOOLEAN MODE)",
+                    ['+' . $searchTerm . '*']
+                );
+            } else {
+                // Para términos cortos usar LIKE optimizado
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'LIKE', $searchTerm . '%')
+                      ->orWhere('sku', 'LIKE', $searchTerm . '%');
+                });
+            }
+
+            // Ordenamiento optimizado: stock > 0 primero, luego por relevancia
+            $results = $query
+                ->orderByRaw('CASE WHEN stock > 0 THEN 0 ELSE 1 END')
+                ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$searchTerm . '%'])
+                ->orderBy('stock', 'desc')
+                ->limit(15) // Límite para performance
+                ->get();
+
+            // Mapear resultados con indicadores de stock
+            $this->searchResults = $results->map(function ($item) {
+                $stockLevel = $this->getStockLevel($item->stock);
+
+                return [
+                    'id' => $item->id,
+                    'name' => $item->display_name,
+                    'sku' => $item->sku,
+                    'price' => $item->price,
+                    'stock' => $item->stock,
+                    'stock_level' => $stockLevel,
+                    'stock_color' => $this->getStockColor($stockLevel),
+                    'tax_percentage' => $item->tax ? $item->tax->percentage : 0
+                ];
+            })->toArray();
+
+        } catch (\Exception $e) {
+            Log::error('Error en búsqueda de productos', [
+                'error' => $e->getMessage(),
+                'search' => $searchTerm,
+                'company_id' => $this->companyId
+            ]);
+            $this->searchResults = [];
+        }
+    }
+
+    /**
+     * Determinar nivel de stock
+     */
+    private function getStockLevel($stock)
+    {
+        if ($stock <= 0) return 'agotado';
+        if ($stock <= 5) return 'bajo';
+        return 'disponible';
+    }
+
+    /**
+     * Obtener color según nivel de stock
+     */
+    private function getStockColor($level)
+    {
+        return match($level) {
+            'disponible' => 'text-green-600 dark:text-green-400',
+            'bajo' => 'text-yellow-600 dark:text-yellow-400',
+            'agotado' => 'text-red-600 dark:text-red-400'
+        };
     }
 
     /**
@@ -296,6 +328,37 @@ class QuoterView extends Component
         $this->searchResults = [];
         $this->additionalSuggestions = [];
         $this->selectedIndex = -1;
+    }
+
+    /**
+     * Búsqueda rápida - agregar primer resultado directamente
+     */
+    public function quickSearch($searchTerm)
+    {
+        if (strlen($searchTerm) < 2) return;
+
+        try {
+            $product = TatItems::query()
+                ->select(['id', 'name', 'sku', 'stock'])
+                ->byCompany($this->companyId)
+                ->active()
+                ->where('stock', '>', 0)
+                ->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'LIKE', $searchTerm . '%')
+                      ->orWhere('sku', 'LIKE', $searchTerm . '%')
+                      ->orWhere('name', 'LIKE', '%' . $searchTerm . '%');
+                })
+                ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$searchTerm . '%'])
+                ->first();
+
+            if ($product) {
+                $this->selectProduct($product->id);
+            } else {
+                session()->flash('warning', 'No se encontró ningún producto con ese término.');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error en quickSearch', ['error' => $e->getMessage(), 'term' => $searchTerm]);
+        }
     }
 
     /**

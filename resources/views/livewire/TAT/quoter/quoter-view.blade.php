@@ -91,49 +91,136 @@
 
         <!-- Input de búsqueda de productos - Ahora debajo del cliente -->
         <div class="space-y-1 mt-3">
-            <!-- Siempre mostrar un input activo para nueva búsqueda -->
-            <div class="relative">
-                <input type="text"
-                       wire:model.live.debounce.150ms="currentSearch"
-                       placeholder="Buscar producto... (Use ↑↓ para navegar, Enter para seleccionar)"
-                       class="w-full px-3 py-2 lg:px-4 lg:py-3 text-sm lg:text-base bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm"
-                       autocomplete="off"
-                       id="product-search-input"
-                       onkeydown="handleProductSearchKeydown(event)"
+            <!-- Input de búsqueda optimizado -->
+            <div class="relative" x-data="{ isLoading: false }">
+                <!-- Input principal con indicador de carga -->
+                <div class="relative">
+                    <input type="text"
+                           wire:model.live.debounce.250ms="currentSearch"
+                           placeholder="Buscar por nombre o SKU (mín. 2 caracteres)..."
+                           class="w-full px-3 py-2 lg:px-4 lg:py-3 text-sm lg:text-base bg-white dark:bg-gray-700 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-sm transition-all duration-200"
+                           autocomplete="off"
+                           id="product-search-input"
+                           onkeydown="handleProductSearchKeydown(event)"
+                           wire:loading.class="border-blue-400"
+                           wire:target="updatedCurrentSearch">
 
-                <!-- Dropdown de resultados mejorado -->
-                @if(!empty($currentSearch) && count($searchResults) > 0)
-                    <div id="productSearchResults" class="absolute z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-60 overflow-y-auto mt-1">
+                    <!-- Spinner de carga -->
+                    <div wire:loading wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg class="animate-spin h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+
+                    <!-- Icono de búsqueda cuando no está cargando -->
+                    <div wire:loading.remove wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Dropdown de resultados mejorado con indicadores de stock -->
+                @if(strlen($currentSearch) >= 2 && count($searchResults) > 0)
+                    <div id="productSearchResults"
+                         class="absolute z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-72 overflow-y-auto mt-1"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 transform scale-95"
+                         x-transition:enter-end="opacity-100 transform scale-100">
+
+                        <!-- Header con count -->
+                        <div class="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-700">
+                            <span class="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                                {{ count($searchResults) }} producto{{ count($searchResults) !== 1 ? 's' : '' }} encontrado{{ count($searchResults) !== 1 ? 's' : '' }}
+                            </span>
+                        </div>
+
                         @foreach($searchResults as $index => $product)
                             @php
                                 $hasStock = $product['stock'] > 0;
                                 $isSelected = $selectedIndex === $index;
+                                $stockLevel = $product['stock_level'] ?? 'disponible';
                             @endphp
-                            <div class="product-result px-3 py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-colors duration-75
+                            <div class="product-result px-3 py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-all duration-150
                                         {{ $hasStock ? 'cursor-pointer' : 'cursor-not-allowed opacity-60' }}
                                         {{ $isSelected && $hasStock ? 'bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-500 dark:ring-blue-400' : '' }}
                                         {{ $hasStock && !$isSelected ? 'hover:bg-blue-50 dark:hover:bg-gray-700' : '' }}
-                                        {{ !$hasStock ? 'bg-red-50 dark:bg-red-900/20' : '' }}"
+                                        {{ $stockLevel === 'agotado' ? 'bg-red-50 dark:bg-red-900/20' : '' }}
+                                        {{ $stockLevel === 'bajo' ? 'bg-yellow-50 dark:bg-yellow-900/20' : '' }}"
                                  data-product-id="{{ $product['id'] }}"
                                  data-index="{{ $index }}"
                                  data-has-stock="{{ $hasStock ? 'true' : 'false' }}"
                                  {{ $hasStock ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}>
-                                <div class="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-1 {{ !$hasStock ? 'line-through' : '' }}">
-                                    {{ $product['name'] }}
+
+                                <!-- Nombre del producto -->
+                                <div class="flex items-center justify-between mb-1">
+                                    <div class="font-semibold text-gray-800 dark:text-gray-200 text-sm {{ $stockLevel === 'agotado' ? 'line-through' : '' }}">
+                                        {{ $product['name'] }}
+                                    </div>
+                                    <!-- Badge de estado de stock -->
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium
+                                        {{ $stockLevel === 'disponible' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : '' }}
+                                        {{ $stockLevel === 'bajo' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' : '' }}
+                                        {{ $stockLevel === 'agotado' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' : '' }}">
+                                        @if($stockLevel === 'disponible')
+                                            ✓ Disponible
+                                        @elseif($stockLevel === 'bajo')
+                                            ⚠ Stock Bajo
+                                        @else
+                                            ✗ Agotado
+                                        @endif
+                                    </span>
                                 </div>
-                                <div class="flex justify-between items-center text-xs">
-                                    <span class="text-gray-600 dark:text-gray-400">SKU: {{ $product['sku'] ?? 'N/A' }}</span>
+
+                                <!-- Info del producto -->
+                                <div class="flex justify-between items-center text-xs mb-2">
+                                    <span class="text-gray-600 dark:text-gray-400 font-mono">SKU: {{ $product['sku'] ?? 'N/A' }}</span>
+                                    <span class="{{ $product['stock_color'] ?? 'text-gray-600' }} font-medium">
+                                        Stock: {{ number_format($product['stock'], 0) }}
+                                    </span>
+                                </div>
+
+                                <!-- Precio -->
+                                <div class="flex justify-between items-center">
+                                    <div class="text-blue-600 dark:text-blue-400 font-bold text-sm">
+                                        ${{ number_format($product['price'], 0, '.', '.') }}
+                                    </div>
                                     @if($hasStock)
-                                        <span class="text-green-600 dark:text-green-400 font-medium">Stock: {{ number_format($product['stock'], 0) }}</span>
-                                    @else
-                                        <span class="text-red-600 dark:text-red-400 font-medium">Sin Stock</span>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            ↵ Enter para agregar
+                                        </div>
                                     @endif
-                                </div>
-                                <div class="text-blue-600 dark:text-blue-400 font-bold text-sm mt-1">
-                                    ${{ number_format($product['price'], 0, '.', '.') }}
                                 </div>
                             </div>
                         @endforeach
+
+                        <!-- Footer con navegación -->
+                        <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                            <div class="text-xs text-gray-600 dark:text-gray-400 text-center">
+                                Use ↑↓ para navegar • Enter para seleccionar • Esc para cerrar
+                            </div>
+                        </div>
+                    </div>
+
+                @elseif(strlen($currentSearch) >= 2)
+                    <!-- Estado sin resultados -->
+                    <div class="absolute z-50 w-full bg-white dark:bg-gray-800 border-2 border-yellow-500 dark:border-yellow-600 rounded-lg shadow-xl mt-1 p-4">
+                        <div class="text-center text-gray-600 dark:text-gray-400">
+                            <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-3-3v6m-9 1V5a2 2 0 012-2h.05A2 2 0 016 2h12a2 2 0 011.95 2.05H20a2 2 0 012 2v14a2 2 0 01-2 2H4a2 2 0 01-2-2z"></path>
+                            </svg>
+                            <p class="text-sm font-medium mb-1">No se encontraron productos</p>
+                            <p class="text-xs">Intenta con otro término de búsqueda</p>
+                        </div>
+                    </div>
+
+                @elseif(strlen($currentSearch) >= 1 && strlen($currentSearch) < 2)
+                    <!-- Mensaje de mínimo caracteres -->
+                    <div class="absolute z-50 w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-600 rounded-lg shadow-lg mt-1 p-3">
+                        <div class="text-center text-blue-700 dark:text-blue-300 text-sm">
+                            Escriba al menos 2 caracteres para buscar
+                        </div>
                     </div>
                 @endif
             </div>
@@ -569,12 +656,21 @@
     // Variables para navegación por teclado en búsqueda de productos
     let selectedProductIndex = -1;
     let productResults = [];
+    let searchTimeout = null;
 
-    // Función para manejar navegación por teclado en búsqueda de productos (optimizada)
+    // Función mejorada para manejar navegación por teclado en búsqueda de productos
     function handleProductSearchKeydown(event) {
         const resultsContainer = document.getElementById('productSearchResults');
 
-        if (!resultsContainer) return;
+        if (!resultsContainer) {
+            // Si no hay dropdown pero presiona Enter, hacer búsqueda directa
+            if (event.key === 'Enter' && event.target.value.trim().length >= 2) {
+                event.preventDefault();
+                const searchTerm = event.target.value.trim();
+                Livewire.find('{{ $this->getId() }}').call('quickSearch', searchTerm);
+            }
+            return;
+        }
 
         productResults = Array.from(resultsContainer.querySelectorAll('.product-result'));
 
@@ -590,42 +686,59 @@
         switch(event.key) {
             case 'ArrowDown':
                 event.preventDefault();
-                // Encontrar el siguiente producto disponible
-                let nextIndex = -1;
-                for (let i = selectedProductIndex + 1; i < productResults.length; i++) {
-                    if (productResults[i].dataset.hasStock === 'true') {
-                        nextIndex = i;
-                        break;
+                // Auto-seleccionar el primer elemento si no hay selección
+                if (selectedProductIndex === -1) {
+                    selectedProductIndex = productResults.findIndex(result =>
+                        result.dataset.hasStock === 'true'
+                    );
+                } else {
+                    // Encontrar el siguiente producto disponible
+                    let nextIndex = -1;
+                    for (let i = selectedProductIndex + 1; i < productResults.length; i++) {
+                        if (productResults[i].dataset.hasStock === 'true') {
+                            nextIndex = i;
+                            break;
+                        }
                     }
+                    if (nextIndex === -1) {
+                        // Si llegamos al final, ir al primer producto disponible
+                        nextIndex = productResults.findIndex(result => result.dataset.hasStock === 'true');
+                    }
+                    selectedProductIndex = nextIndex;
                 }
-                if (nextIndex === -1) {
-                    // Si llegamos al final, ir al primer producto disponible
-                    nextIndex = productResults.findIndex(result => result.dataset.hasStock === 'true');
-                }
-                selectedProductIndex = nextIndex;
                 updateProductSelection();
                 break;
 
             case 'ArrowUp':
                 event.preventDefault();
-                // Encontrar el producto anterior disponible
-                let prevIndex = -1;
-                for (let i = selectedProductIndex - 1; i >= 0; i--) {
-                    if (productResults[i].dataset.hasStock === 'true') {
-                        prevIndex = i;
-                        break;
-                    }
-                }
-                if (prevIndex === -1) {
-                    // Si llegamos al inicio, ir al último producto disponible
+                if (selectedProductIndex === -1) {
+                    // Si no hay selección, ir al último elemento
                     for (let i = productResults.length - 1; i >= 0; i--) {
+                        if (productResults[i].dataset.hasStock === 'true') {
+                            selectedProductIndex = i;
+                            break;
+                        }
+                    }
+                } else {
+                    // Encontrar el producto anterior disponible
+                    let prevIndex = -1;
+                    for (let i = selectedProductIndex - 1; i >= 0; i--) {
                         if (productResults[i].dataset.hasStock === 'true') {
                             prevIndex = i;
                             break;
                         }
                     }
+                    if (prevIndex === -1) {
+                        // Si llegamos al inicio, ir al último producto disponible
+                        for (let i = productResults.length - 1; i >= 0; i--) {
+                            if (productResults[i].dataset.hasStock === 'true') {
+                                prevIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    selectedProductIndex = prevIndex;
                 }
-                selectedProductIndex = prevIndex;
                 updateProductSelection();
                 break;
 
@@ -634,7 +747,15 @@
                 if (selectedProductIndex >= 0 && productResults[selectedProductIndex] &&
                     productResults[selectedProductIndex].dataset.hasStock === 'true') {
                     const productId = productResults[selectedProductIndex].dataset.productId;
+                    // Mostrar feedback visual
+                    productResults[selectedProductIndex].classList.add('bg-green-100', 'dark:bg-green-900/50');
+
                     // Disparar el evento de Livewire para seleccionar producto
+                    Livewire.find('{{ $this->getId() }}').call('selectProduct', productId);
+                } else if (availableProducts.length === 1) {
+                    // Si solo hay un resultado disponible, seleccionarlo automáticamente
+                    const productId = availableProducts[0].dataset.productId;
+                    availableProducts[0].classList.add('bg-green-100', 'dark:bg-green-900/50');
                     Livewire.find('{{ $this->getId() }}').call('selectProduct', productId);
                 }
                 break;
@@ -643,27 +764,69 @@
                 event.preventDefault();
                 selectedProductIndex = -1;
                 updateProductSelection();
-                // Limpiar búsqueda
+                // Limpiar búsqueda y enfocar input
+                Livewire.find('{{ $this->getId() }}').call('clearSearch');
+                setTimeout(() => {
+                    const input = document.getElementById('product-search-input');
+                    if (input) input.focus();
+                }, 100);
+                break;
+
+            case 'Tab':
+                // Permitir navegación con Tab pero cerrar dropdown
+                selectedProductIndex = -1;
                 Livewire.find('{{ $this->getId() }}').call('clearSearch');
                 break;
         }
     }
 
-    // Función para actualizar la selección visual de productos (optimizada)
+    // Función mejorada para actualizar la selección visual de productos
     function updateProductSelection() {
         productResults.forEach((result, index) => {
             result.classList.remove('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
 
             if (index === selectedProductIndex && result.dataset.hasStock === 'true') {
                 result.classList.add('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
-                // Scroll hacia el elemento seleccionado si está fuera de vista
-                result.scrollIntoView({
-                    block: 'nearest',
-                    behavior: 'smooth'
-                });
+
+                // Scroll suave hacia el elemento seleccionado
+                const container = result.closest('#productSearchResults');
+                if (container) {
+                    const containerTop = container.scrollTop;
+                    const containerBottom = containerTop + container.clientHeight;
+                    const elementTop = result.offsetTop;
+                    const elementBottom = elementTop + result.offsetHeight;
+
+                    if (elementTop < containerTop) {
+                        container.scrollTop = elementTop;
+                    } else if (elementBottom > containerBottom) {
+                        container.scrollTop = elementBottom - container.clientHeight;
+                    }
+                }
             }
         });
     }
+
+    // Funciones adicionales para mejorar la UX
+    function resetProductSelection() {
+        selectedProductIndex = -1;
+        productResults = [];
+    }
+
+    // Auto-focus en el input después de seleccionar producto
+    document.addEventListener('livewire:updated', () => {
+        resetProductSelection();
+
+        // Si no hay resultados y el input tiene foco, mantenerlo
+        const input = document.getElementById('product-search-input');
+        const resultsContainer = document.getElementById('productSearchResults');
+
+        if (input && !resultsContainer && document.activeElement === input) {
+            // El input ya está enfocado, no hacer nada
+        } else if (input && !resultsContainer) {
+            // Auto-focus después de limpiar resultados
+            setTimeout(() => input.focus(), 100);
+        }
+    });
 </script>
 @endpush
 </div>
