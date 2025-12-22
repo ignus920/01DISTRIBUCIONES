@@ -139,19 +139,21 @@
                         @foreach($searchResults as $index => $product)
                             @php
                                 $hasStock = $product['stock'] > 0;
+                                $canSelect = $hasStock || ($companyConfig && $companyConfig->canSellWithoutStock());
                                 $isSelected = $selectedIndex === $index;
                                 $stockLevel = $product['stock_level'] ?? 'disponible';
                             @endphp
                             <div class="product-result px-3 py-3 border-b border-gray-200 dark:border-gray-700 last:border-b-0 transition-all duration-150
-                                        {{ $hasStock ? 'cursor-pointer' : 'cursor-not-allowed opacity-60' }}
-                                        {{ $isSelected && $hasStock ? 'bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-500 dark:ring-blue-400' : '' }}
-                                        {{ $hasStock && !$isSelected ? 'hover:bg-blue-50 dark:hover:bg-gray-700' : '' }}
-                                        {{ $stockLevel === 'agotado' ? 'bg-red-50 dark:bg-red-900/20' : '' }}
+                                        {{ $canSelect ? 'cursor-pointer' : 'cursor-not-allowed opacity-60' }}
+                                        {{ $isSelected && $canSelect ? 'bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-500 dark:ring-blue-400' : '' }}
+                                        {{ $canSelect && !$isSelected ? 'hover:bg-blue-50 dark:hover:bg-gray-700' : '' }}
+                                        {{ $stockLevel === 'agotado' && !$canSelect ? 'bg-red-50 dark:bg-red-900/20' : '' }}
                                         {{ $stockLevel === 'bajo' ? 'bg-yellow-50 dark:bg-yellow-900/20' : '' }}"
                                  data-product-id="{{ $product['id'] }}"
                                  data-index="{{ $index }}"
                                  data-has-stock="{{ $hasStock ? 'true' : 'false' }}"
-                                 {{ $hasStock ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}>
+                                 data-can-select="{{ $canSelect ? 'true' : 'false' }}"
+                                 {{ $canSelect ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}>
 
                                 <!-- Nombre del producto -->
                                 <div class="flex items-center justify-between mb-1">
@@ -186,8 +188,8 @@
                                     <div class="text-blue-600 dark:text-blue-400 font-bold text-sm">
                                         ${{ number_format($product['price'], 0, '.', '.') }}
                                     </div>
-                                    @if($hasStock)
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                    @if($canSelect)
+                                        <div class="text-xs text-gray-500 dark:text-gray-400 hidden lg:block">
                                             ↵ Enter para agregar
                                         </div>
                                     @endif
@@ -198,7 +200,10 @@
                         <!-- Footer con navegación -->
                         <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                             <div class="text-xs text-gray-600 dark:text-gray-400 text-center">
-                                Use ↑↓ para navegar • Enter para seleccionar • Esc para cerrar
+                                <!-- Instrucciones para desktop -->
+                                <span class="hidden lg:inline">Use ↑↓ para navegar • Enter para seleccionar • Esc para cerrar</span>
+                                <!-- Instrucciones para móvil -->
+                                <span class="lg:hidden">Toque un producto para agregarlo al carrito</span>
                             </div>
                         </div>
                     </div>
@@ -257,14 +262,24 @@
                         {{ $item['tax_name'] ?? 'N/A' }}
                     </div>
 
-                    <!-- Precio Unitario Editable -->
+                    <!-- Precio Unitario -->
                     <div class="text-center">
-                        <input type="number"
-                               value="{{ number_format($item['price'], 0, '.', '') }}"
-                               wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
-                               class="w-28 text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600"
-                               min="0"
-                               step="1">
+                        @if($companyConfig && $companyConfig->allowsPriceChange())
+                            <!-- Precio editable -->
+                            <input type="number"
+                                   value="{{ number_format($item['price'], 0, '.', '') }}"
+                                   wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
+                                   class="w-28 text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600"
+                                   min="0"
+                                   step="1"
+                                   title="Precio editable">
+                        @else
+                            <!-- Precio solo lectura -->
+                            <div class="w-28 mx-auto text-center bg-gray-100 dark:bg-gray-600 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-semibold"
+                                 title="Precio fijo - No editable">
+                                ${{ number_format($item['price'], 0, '.', '.') }}
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Cantidad -->
@@ -315,12 +330,22 @@
                             <!-- Precio (35% del espacio) -->
                             <div class="flex-[0.40]">
                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1">Precio</div>
-                                <input type="number"
-                                       value="{{ number_format($item['price'], 0, '.', '') }}"
-                                       wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
-                                       class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm font-semibold"
-                                       min="0"
-                                       step="1">
+                                @if($companyConfig && $companyConfig->allowsPriceChange())
+                                    <!-- Precio editable -->
+                                    <input type="number"
+                                           value="{{ number_format($item['price'], 0, '.', '') }}"
+                                           wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
+                                           class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm font-semibold"
+                                           min="0"
+                                           step="1"
+                                           title="Precio editable">
+                                @else
+                                    <!-- Precio solo lectura -->
+                                    <div class="w-full text-center bg-gray-100 dark:bg-gray-600 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-sm font-semibold"
+                                         title="Precio fijo - No editable">
+                                        ${{ number_format($item['price'], 0, '.', '.') }}
+                                    </div>
+                                @endif
                             </div>
 
                             <!-- Cantidad (20% del espacio) -->
@@ -676,9 +701,9 @@
 
         if (productResults.length === 0) return;
 
-        // Filtrar solo productos con stock para navegación
+        // Filtrar solo productos seleccionables para navegación
         const availableProducts = productResults.filter(result =>
-            result.dataset.hasStock === 'true'
+            result.dataset.canSelect === 'true'
         );
 
         if (availableProducts.length === 0) return;
@@ -689,20 +714,20 @@
                 // Auto-seleccionar el primer elemento si no hay selección
                 if (selectedProductIndex === -1) {
                     selectedProductIndex = productResults.findIndex(result =>
-                        result.dataset.hasStock === 'true'
+                        result.dataset.canSelect === 'true'
                     );
                 } else {
                     // Encontrar el siguiente producto disponible
                     let nextIndex = -1;
                     for (let i = selectedProductIndex + 1; i < productResults.length; i++) {
-                        if (productResults[i].dataset.hasStock === 'true') {
+                        if (productResults[i].dataset.canSelect === 'true') {
                             nextIndex = i;
                             break;
                         }
                     }
                     if (nextIndex === -1) {
                         // Si llegamos al final, ir al primer producto disponible
-                        nextIndex = productResults.findIndex(result => result.dataset.hasStock === 'true');
+                        nextIndex = productResults.findIndex(result => result.dataset.canSelect === 'true');
                     }
                     selectedProductIndex = nextIndex;
                 }
@@ -714,7 +739,7 @@
                 if (selectedProductIndex === -1) {
                     // Si no hay selección, ir al último elemento
                     for (let i = productResults.length - 1; i >= 0; i--) {
-                        if (productResults[i].dataset.hasStock === 'true') {
+                        if (productResults[i].dataset.canSelect === 'true') {
                             selectedProductIndex = i;
                             break;
                         }
@@ -723,7 +748,7 @@
                     // Encontrar el producto anterior disponible
                     let prevIndex = -1;
                     for (let i = selectedProductIndex - 1; i >= 0; i--) {
-                        if (productResults[i].dataset.hasStock === 'true') {
+                        if (productResults[i].dataset.canSelect === 'true') {
                             prevIndex = i;
                             break;
                         }
@@ -731,7 +756,7 @@
                     if (prevIndex === -1) {
                         // Si llegamos al inicio, ir al último producto disponible
                         for (let i = productResults.length - 1; i >= 0; i--) {
-                            if (productResults[i].dataset.hasStock === 'true') {
+                            if (productResults[i].dataset.canSelect === 'true') {
                                 prevIndex = i;
                                 break;
                             }
@@ -745,7 +770,7 @@
             case 'Enter':
                 event.preventDefault();
                 if (selectedProductIndex >= 0 && productResults[selectedProductIndex] &&
-                    productResults[selectedProductIndex].dataset.hasStock === 'true') {
+                    productResults[selectedProductIndex].dataset.canSelect === 'true') {
                     const productId = productResults[selectedProductIndex].dataset.productId;
                     // Mostrar feedback visual
                     productResults[selectedProductIndex].classList.add('bg-green-100', 'dark:bg-green-900/50');
@@ -785,7 +810,7 @@
         productResults.forEach((result, index) => {
             result.classList.remove('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
 
-            if (index === selectedProductIndex && result.dataset.hasStock === 'true') {
+            if (index === selectedProductIndex && result.dataset.canSelect === 'true') {
                 result.classList.add('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
 
                 // Scroll suave hacia el elemento seleccionado

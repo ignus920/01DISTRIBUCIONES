@@ -16,6 +16,10 @@ class SalesList extends Component
     public $perPage = 10;
     public $companyId;
 
+    // Propiedades para el modal de detalles
+    public $showDetailModal = false;
+    public $selectedQuote = null;
+
     protected $paginationTheme = 'tailwind';
 
     public function mount()
@@ -51,6 +55,51 @@ class SalesList extends Component
     {
         $this->resetPage();
     }
+
+    /**
+     * Mostrar modal de detalles de la venta
+     */
+    public function showDetails($quoteId)
+    {
+        $this->selectedQuote = Quote::with(['customer', 'items.item', 'user'])
+            ->where('id', $quoteId)
+            ->where('company_id', $this->companyId)
+            ->first();
+
+        if ($this->selectedQuote) {
+            $this->showDetailModal = true;
+        }
+    }
+
+    /**
+     * Cerrar modal de detalles
+     */
+    public function closeDetailModal()
+    {
+        $this->showDetailModal = false;
+        $this->selectedQuote = null;
+    }
+
+    /**
+     * Redirigir al sistema de pagos
+     */
+    public function showPayment($quoteId)
+    {
+        $quote = Quote::where('id', $quoteId)
+            ->where('company_id', $this->companyId)
+            ->first();
+
+        if ($quote) {
+            // Redirigir a la ruta de pagos con parámetro de origen
+            return redirect()->route('tenant.payment.quote', [
+                'quoteId' => $quoteId,
+                'from' => 'sales-list'
+            ]);
+        } else {
+            session()->flash('error', 'No se encontró la cotización.');
+        }
+    }
+
 
     public function render()
 {

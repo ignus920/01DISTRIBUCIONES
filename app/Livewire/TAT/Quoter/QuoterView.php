@@ -8,6 +8,7 @@ use App\Models\TAT\Items\TatItems;
 use App\Models\TAT\Quoter\Quote;
 use App\Models\TAT\Quoter\QuoteItem;
 use App\Models\TAT\Customer\Customer as TatCustomer;
+use App\Models\TAT\Company\TatCompanyConfig;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,6 +25,9 @@ class QuoterView extends Component
     public $total = 0;
     public $companyId;
     public $selectedIndex = -1;
+
+    // Propiedades para configuración de empresa
+    public $companyConfig = null;
 
     // Propiedades para cliente
     public $selectedCustomer = null;
@@ -61,6 +65,9 @@ class QuoterView extends Component
             return redirect()->route('tenant.dashboard');
         }
 
+        // Cargar configuración de la empresa
+        $this->loadCompanyConfig();
+
         $this->loadCartFromSession();
         $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
         $this->calculateTotal();
@@ -94,13 +101,13 @@ class QuoterView extends Component
             $quantity = (int)$quantity;
             $quantity = max(1, $quantity); // Mínimo 1
 
-            // 2. Validar Stock
+            // 2. Validar Stock (solo si no se permite vender sin saldo)
             $item = $this->cartItems[$index];
             $stock = $item['stock'];
 
-            if ($quantity > $stock) {
+            if (!$this->companyConfig->canSellWithoutStock() && $quantity > $stock) {
                 $quantity = $stock;
-                
+
                 // Emitir alerta
                 $this->dispatch('swal:warning', [
                     'title' => 'Stock Insuficiente',
@@ -139,6 +146,37 @@ class QuoterView extends Component
         }
 
         return null;
+    }
+
+    /**
+     * Cargar configuración de la empresa
+     */
+    protected function loadCompanyConfig()
+    {
+        if (!$this->companyId) {
+            return;
+        }
+
+        try {
+            $this->companyConfig = TatCompanyConfig::getForCompany($this->companyId);
+
+            Log::info('Configuración de empresa cargada', [
+                'company_id' => $this->companyId,
+                'vender_sin_saldo' => $this->companyConfig->vender_sin_saldo,
+                'permitir_cambio_precio' => $this->companyConfig->permitir_cambio_precio
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error cargando configuración de empresa', [
+                'company_id' => $this->companyId,
+                'error' => $e->getMessage()
+            ]);
+
+            // Crear configuración por defecto en caso de error
+            $this->companyConfig = new TatCompanyConfig([
+                'vender_sin_saldo' => false,
+                'permitir_cambio_precio' => false
+            ]);
+        }
     }
 
     /**
@@ -366,10 +404,15 @@ class QuoterView extends Component
      */
     public function selectProduct($productId)
     {
-        // Verificar que el producto tenga stock antes de agregarlo
         $product = TatItems::find($productId);
 
-        if (!$product || $product->stock <= 0) {
+        if (!$product) {
+            session()->flash('error', 'Producto no encontrado.');
+            return;
+        }
+
+        // Verificar stock solo si no se permite vender sin saldo
+        if (!$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
             session()->flash('error', 'No se puede agregar un producto sin stock.');
             return;
         }
@@ -400,8 +443,14 @@ class QuoterView extends Component
             'connection' => $product ? $product->getConnectionName() : 'unknown'
         ]);
 
-        if (!$product || !$product->hasStock()) {
-            session()->flash('error', 'Producto no disponible o sin stock.');
+        if (!$product) {
+            session()->flash('error', 'Producto no disponible.');
+            return;
+        }
+
+        // Verificar stock solo si no se permite vender sin saldo
+        if (!$this->companyConfig->canSellWithoutStock() && !$product->hasStock()) {
+            session()->flash('error', 'Producto sin stock.');
             return;
         }
 
@@ -411,9 +460,10 @@ class QuoterView extends Component
 
         if ($existingItemIndex !== false) {
             // Si ya existe, incrementar cantidad
-            // Verificamos stock antes de incrementar
             $newQuantity = $this->cartItems[$existingItemIndex]['quantity'] + 1;
-             if ($newQuantity > $product->stock) {
+
+            // Verificar stock solo si no se permite vender sin saldo
+            if (!$this->companyConfig->canSellWithoutStock() && $newQuantity > $product->stock) {
                  $this->dispatch('swal:warning', [
                     'title' => 'Stock Insuficiente',
                     'text' => "No puedes agregar más de {$product->stock} unidades.",
@@ -493,6 +543,12 @@ class QuoterView extends Component
      */
     public function updatePrice($productId, $newPrice)
     {
+        // Verificar si se permite cambiar precios
+        if (!$this->companyConfig->allowsPriceChange()) {
+            session()->flash('error', 'No tiene permisos para modificar precios.');
+            return;
+        }
+
         $newPrice = max(0, (float)$newPrice);
 
         $itemIndex = collect($this->cartItems)->search(function ($item) use ($productId) {
@@ -507,6 +563,13 @@ class QuoterView extends Component
 
             $this->calculateTotal();
             $this->saveCartToSession();
+
+            Log::info('Precio actualizado por usuario', [
+                'product_id' => $productId,
+                'new_price' => $newPrice,
+                'user_id' => Auth::id(),
+                'company_id' => $this->companyId
+            ]);
         }
     }
 
@@ -844,9 +907,18 @@ class QuoterView extends Component
         }
     }
 
+    /**
+     * Obtener configuración de empresa como propiedad computed
+     */
+    public function getCompanyConfigProperty()
+    {
+        return $this->companyConfig;
+    }
+
     public function render()
     {
-        return view('livewire.TAT.quoter.quoter-view')
-            ->layout('layouts.app');
+        return view('livewire.TAT.quoter.quoter-view', [
+            'companyConfig' => $this->companyConfig
+        ])->layout('layouts.app');
     }
 }

@@ -31,11 +31,28 @@
                 </div>
             </div>
 
+            
+
             <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg border border-gray-200 dark:border-gray-700">
                 <div class="max-w-xl">
                     <livewire:profile.delete-user-form />
                 </div>
             </div>
+
+
+
+
+            <!-- Configuración de Empresa TAT (solo para usuarios con perfil TAT) -->
+            @if(auth()->user() && in_array(auth()->user()->profile_id, [1, 17]))
+                <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div class="max-w-4xl">
+                        <livewire:TAT.company.company-config-manager />
+                    </div>
+                </div>
+            @endif
+
+
+
         </div>
     </div>
 </x-app-layout>

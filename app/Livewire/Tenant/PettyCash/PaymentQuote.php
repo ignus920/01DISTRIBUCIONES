@@ -26,6 +26,9 @@ class PaymentQuote extends Component
     public $quoteTaxes;
     public $quoteTotal;
 
+    // Parámetro para saber desde dónde se abrió el componente
+    public $fromPage = null;
+
     // Datos de anticipos
     public $advances = [];
     public $totalAdvances = 0;
@@ -98,12 +101,15 @@ class PaymentQuote extends Component
         return new \App\Models\Tenant\PettyCash\VntDetailPettyCash();
     }
 
-    public function mount($quoteId = null)
+    public function mount($quoteId = null, $from = null)
     {
         // Asegurar conexión tenant
         $this->ensureTenantConnection();
 
         $this->quoteId = $quoteId ? (int) $quoteId : 1;
+
+        // Capturar desde dónde se abrió (URL parameter)
+        $this->fromPage = $from ?: request('from');
 
         // Cargar datos de la cotización
         $this->loadQuoteData();
@@ -460,8 +466,14 @@ class PaymentQuote extends Component
                 'records' => $recordsCreated
             ]);
             
-            session()->flash('message', 'Pago registrado correctamente. Redirigiendo a nueva venta...');
-            return redirect()->route('tenant.tat.quoter.index');
+            // Redirigir según desde dónde se abrió
+            if ($this->fromPage === 'sales-list') {
+                session()->flash('success', 'Pago registrado correctamente.');
+                return redirect()->route('tenant.tat.sales.list');
+            } else {
+                session()->flash('message', 'Pago registrado correctamente. Redirigiendo a nueva venta...');
+                return redirect()->route('tenant.tat.quoter.index');
+            }
              
         } catch (\Exception $e) {
             Log::error('Error guardando pago: ' . $e->getMessage());
@@ -500,7 +512,12 @@ class PaymentQuote extends Component
 
             if (!$quote) {
                 session()->flash('error', 'No se pudo encontrar la cotización.');
-                return redirect()->route('tenant.tat.quoter.index');
+                // Redirigir según desde dónde se abrió
+                if ($this->fromPage === 'sales-list') {
+                    return redirect()->route('tenant.tat.sales.list');
+                } else {
+                    return redirect()->route('tenant.tat.quoter.index');
+                }
             }
 
             // Preparar datos del carrito para restaurar
@@ -543,9 +560,16 @@ class PaymentQuote extends Component
                 'quoter_restored' => true
             ]);
 
-            // Redirigir al quoter
-            return redirect()->route('tenant.tat.quoter.index')
-                            ->with('success', 'Venta restaurada. Puede continuar agregando productos.');
+            // Redirigir según desde dónde se abrió
+            if ($this->fromPage === 'sales-list') {
+                // Si vino de la lista de ventas, regresar allí
+                return redirect()->route('tenant.tat.sales.list')
+                                ->with('info', 'Pago cancelado. Regresando a la lista de ventas.');
+            } else {
+                // Si vino del flujo normal, regresar al quoter con datos restaurados
+                return redirect()->route('tenant.tat.quoter.index')
+                                ->with('success', 'Venta restaurada. Puede continuar agregando productos.');
+            }
 
         } catch (\Exception $e) {
             Log::error('Error al cancelar pago', [
@@ -554,7 +578,12 @@ class PaymentQuote extends Component
             ]);
 
             session()->flash('error', 'Error al restaurar la venta: ' . $e->getMessage());
-            return redirect()->route('tenant.tat.quoter.index');
+            // Redirigir según desde dónde se abrió
+            if ($this->fromPage === 'sales-list') {
+                return redirect()->route('tenant.tat.sales.list');
+            } else {
+                return redirect()->route('tenant.tat.quoter.index');
+            }
         }
     }
 
