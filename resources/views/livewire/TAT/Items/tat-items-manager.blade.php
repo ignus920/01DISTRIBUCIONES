@@ -295,6 +295,84 @@
                 </div>
 
                 <form wire:submit="save" class="px-6 py-4 space-y-4">
+                    <!-- Sección de Imagen Principal -->
+                    <div class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
+                        <div class="flex items-start gap-4">
+                            <div class="flex-shrink-0">
+                                <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Imagen Principal</h4>
+                                
+                                <div class="flex items-start gap-4">
+                                    <!-- Preview de la imagen -->
+                                    <div class="flex-shrink-0">
+                                        @if($image)
+                                            <!-- Nueva imagen temporal -->
+                                            <img src="{{ $image->temporaryUrl() }}" alt="Preview" class="w-24 h-24 object-cover rounded-lg border-2 border-indigo-500 dark:border-indigo-400">
+                                        @elseif($existingImage)
+                                            <!-- Imagen existente -->
+                                            <img src="{{ asset('storage/' . $existingImage) }}" alt="Imagen actual" class="w-24 h-24 object-cover rounded-lg border-2 border-gray-300 dark:border-gray-600">
+                                        @else
+                                            <!-- Placeholder -->
+                                            <div class="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
+                                                <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                </svg>
+                                            </div>
+                                        @endif
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">Principal</p>
+                                    </div>
+
+                                    <!-- Botones de acción -->
+                                    <div class="flex-1">
+                                        <div class="space-y-2">
+                                            <!-- Botón para seleccionar archivo -->
+                                            <label class="block">
+                                                <span class="sr-only">Seleccionar archivo</span>
+                                                <input 
+                                                    type="file" 
+                                                    wire:model="image" 
+                                                    accept="image/*"
+                                                    class="block w-full text-sm text-gray-500 dark:text-gray-400
+                                                        file:mr-4 file:py-2 file:px-4
+                                                        file:rounded-md file:border-0
+                                                        file:text-sm file:font-semibold
+                                                        file:bg-indigo-50 file:text-indigo-700
+                                                        dark:file:bg-indigo-900/30 dark:file:text-indigo-400
+                                                        hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50
+                                                        file:cursor-pointer cursor-pointer
+                                                        border border-gray-300 dark:border-gray-600 rounded-md
+                                                        focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                            </label>
+                                            
+                                            @if($image || $existingImage)
+                                                <button 
+                                                    type="button"
+                                                    wire:click="deleteImage"
+                                                    class="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
+                                                >
+                                                    Eliminar imagen principal
+                                                </button>
+                                            @endif
+
+                                            @error('image')
+                                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                                            @enderror
+
+                                            <div wire:loading wire:target="image" class="text-sm text-indigo-600 dark:text-indigo-400">
+                                                Cargando imagen...
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- SKU -->
                         <div>

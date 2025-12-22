@@ -4,6 +4,7 @@ namespace App\Livewire\TAT\Items;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 use App\Models\TAT\Items\TatItems;
 use App\Models\TAT\Categories\TatCategories;
 use App\Models\Central\CnfTaxes;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class TatItemsManager extends Component
 {
-    use WithPagination;
+    use WithPagination, WithFileUploads;
 
     // Propiedades del formulario
     public $item_id = null;
@@ -28,6 +29,9 @@ class TatItemsManager extends Component
     public $cost = 0;
     public $price = 0;
     public $status = 1;
+    public $img_path = '';
+    public $image = null; // Para la nueva imagen
+    public $existingImage = null; // Para mostrar la imagen actual
 
     // Propiedades de la tabla
     public $search = '';
@@ -59,6 +63,7 @@ class TatItemsManager extends Component
             'cost' => 'required|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'status' => 'required|in:0,1',
+            'image' => 'nullable|image|max:2048', // Max 2MB
         ];
     }
 
@@ -78,6 +83,8 @@ class TatItemsManager extends Component
             'price.required' => 'El precio es obligatorio',
             'price.numeric' => 'El precio debe ser un número',
             'price.min' => 'El precio no puede ser negativo',
+            'image.image' => 'El archivo debe ser una imagen',
+            'image.max' => 'La imagen no puede ser mayor a 2MB',
         ];
     }
 
@@ -162,6 +169,8 @@ class TatItemsManager extends Component
         $this->cost = $item->cost;
         $this->price = $item->price;
         $this->status = $item->status;
+        $this->img_path = $item->img_path;
+        $this->existingImage = $item->img_path;
 
         $this->editMode = true;
         $this->showModal = true;
@@ -175,6 +184,21 @@ class TatItemsManager extends Component
 
             $this->validate();
 
+            // Manejar la carga de imagen
+            $imagePath = $this->img_path ?: ''; // Asegurar que siempre tenga un valor
+            if ($this->image) {
+                // Eliminar imagen anterior si existe
+                if ($this->editMode && $this->img_path && \Storage::disk('public')->exists($this->img_path)) {
+                    \Storage::disk('public')->delete($this->img_path);
+                }
+                
+                // Guardar nueva imagen
+                $imagePath = $this->image->store('items', 'public');
+            } elseif (!$this->editMode) {
+                // Si estamos creando un nuevo item sin imagen, usar cadena vacía
+                $imagePath = '';
+            }
+
             $itemData = [
                 'item_father_id' => 0,
                 'company_id' => $this->company_id,
@@ -186,6 +210,7 @@ class TatItemsManager extends Component
                 'cost' => $this->cost,
                 'price' => $this->price,
                 'status' => $this->status,
+                'img_path' => $imagePath,
             ];
 
             if ($this->editMode && $this->item_id) {
@@ -211,6 +236,40 @@ class TatItemsManager extends Component
             Log::error('Item save failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    public function deleteImage()
+    {
+        try {
+            if ($this->editMode && $this->item_id) {
+                $item = TatItems::findOrFail($this->item_id);
+                
+                // Eliminar archivo físico
+                if ($item->img_path && \Storage::disk('public')->exists($item->img_path)) {
+                    \Storage::disk('public')->delete($item->img_path);
+                }
+                
+                // Actualizar base de datos
+                $item->update(['img_path' => '']);
+                
+                // Limpiar propiedades
+                $this->img_path = '';
+                $this->existingImage = null;
+                $this->image = null;
+                
+                $this->successMessage = 'Imagen eliminada exitosamente';
+            } else {
+                // Solo limpiar la imagen temporal si estamos creando
+                $this->image = null;
+                $this->existingImage = null;
+            }
+        } catch (\Exception $e) {
+            $this->errorMessage = 'Error al eliminar la imagen: ' . $e->getMessage();
+            Log::error('Image deletion failed', [
+                'item_id' => $this->item_id,
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -277,6 +336,9 @@ class TatItemsManager extends Component
         $this->cost = 0;
         $this->price = 0;
         $this->status = 1;
+        $this->img_path = '';
+        $this->image = null;
+        $this->existingImage = null;
         $this->editMode = false;
     }
 

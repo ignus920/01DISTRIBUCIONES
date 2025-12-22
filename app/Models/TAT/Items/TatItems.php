@@ -23,6 +23,7 @@ class TatItems extends Model
         'taxId',
         'categoryId',
         'stock',
+        'img_path',
         'cost',
         'price',
         'status',
