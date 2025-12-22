@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class VntQuote extends Model
 {
     protected $connection = 'tenant';
-    protected $table = 'tat_quotes';
+    protected $table = 'vnt_quotes';
 
     protected $fillable = [
         'consecutive',
@@ -22,7 +22,10 @@ class VntQuote extends Model
         'warehouseId',
         'userId',
         'observations',
-        'branchId'
+        'branchId',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
 
     protected $casts = [
@@ -39,7 +42,7 @@ class VntQuote extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\TAT\Customer\Customer::class, 'customerId');
+        return $this->belongsTo(VntContacts::class, 'customerId');
     }
 
     public function warehouse(): BelongsTo

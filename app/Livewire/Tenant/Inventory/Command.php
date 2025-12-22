@@ -34,6 +34,7 @@ class Command extends Component
         'name.required' => 'El nombre de la marca es obligatorio',
         'name.min' => 'El nombre de la marca debe tener al menos 3 caracteres',
         'name.regex' => 'El nombre de la casa solo debe contener letras y espacios',
+        'print_path.required' => 'La ruta de impresión es obligatoria',
     ];
 
     public function resetForm()

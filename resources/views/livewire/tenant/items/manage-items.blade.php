@@ -109,7 +109,7 @@
             </div>
 
             <!-- Tabla -->
-            <div class="overflow-x-auto">
+            <div class="relative overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -151,7 +151,7 @@
                                 Marca</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Inventoriable</th>
+                                Stock</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Unidad de compra</th>
@@ -192,7 +192,17 @@
                                 {{ $it->brand->name ?? 'SIN MARCA' }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->inventoriable }}
+                                @if($it->inventoriable == 1)
+                                @if($it->invItemsStore->isNotEmpty())
+                                @foreach($item->invItemsStore as $store)
+                                {{ $store->stock_items_store }}
+                                @endforeach
+                                @else
+                                <p>Sin stock</p>
+                                @endif
+                                @else
+                                No maneja inventario
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $it->purchasingUnit->description ?? 'N/A' }}
@@ -219,7 +229,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium overflow-visible">
                                 <!-- Menú de tres puntos con Alpine.js -->
                                 <div x-data="{ open: false }" @click.outside="open = false"
                                     class="relative inline-block text-left">
@@ -238,7 +248,7 @@
                                         x-transition:leave="transition ease-in duration-75"
                                         x-transition:leave-start="transform opacity-100 scale-100"
                                         x-transition:leave-end="transform opacity-0 scale-95" @click="open = false"
-                                        class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
+                                        class="fixed sm:absolute right-0 mt-1 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
                                         style="display: none;">
 
                                         <div class="py-1" role="menu" aria-orientation="vertical">
@@ -259,7 +269,7 @@
                                                 </svg>
                                                 Ubicaciones
                                             </button> --}}
-                                            {{-- <button wire:click="openValuesModal({{ $it->id }})"
+                                            <button wire:click="openValuesModal({{ $it->id }})"
                                                 class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
                                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                                     stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -267,7 +277,7 @@
                                                         d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                                 Valores
-                                            </button> --}}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -296,7 +306,8 @@
 
             <!-- Paginación -->
             @if($items->hasPages())
-            <div class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+            <div
+                class="overflow-x-auto bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
                 <div class="flex items-center justify-between">
                     <div class="text-sm text-gray-700 dark:text-gray-300">
                         Mostrando {{ $items->firstItem() }} a {{ $items->lastItem() }} de {{ $items->total() }}
@@ -328,10 +339,16 @@
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                 <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        {{ $item_id ? 'Editar Item' : 'Crear Item' }}
-                    </h3>
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $item_id ? 'Editar Item' : 'Crear Item' }}
+                        </h3>
+                    </div>
+                    <button wire:click="cancel"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <x-heroicon-o-x-mark class="w-6 h-6" />
+                    </button>
                 </div>
 
                 <!-- Form -->
@@ -605,34 +622,7 @@
                             <span class="font-medium">{{$temporaryErrorMessage}}</span>
                         </div>
                         @endif
-                        <!-- Mensajes -->
-                        @if ($messageValues)
-                        <div x-data="{ showAlert: true }" x-show="showAlert"
-                            x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 transform scale-90"
-                            x-transition:enter-end="opacity-100 transform scale-100"
-                            class="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                            <div class="flex items-start">
-                                <svg class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0"
-                                    fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                                <div class="flex-1">
-                                    <p class="text-sm text-green-700 dark:text-green-400">{{ $messageValues }}</p>
-                                </div>
-                                <button type="button" @click="showAlert = false"
-                                    class="ml-3 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors">
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        @endif
+
                         <!--Botón-->
                         <div class="flex justify-end">
                             <button type="button" wire:click="SaveValueItem" wire:loading.attr="disabled"
@@ -667,7 +657,29 @@
                         key('image-upload-'.$item_id))
                         @endif
 
-
+                        <!-- Mensajes -->
+                        @if ($messageValues)
+                        <div x-data="{ showAlert: true }" x-show="showAlert"
+                            x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0 transform scale-90"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <div class="flex items-start">
+                                <x-heroicon-o-exclamation-triangle class="w-6 h-6 text-red-700" />
+                                <div class="flex-1">
+                                    <p class="text-sm text-red-700 dark:text-red-400">{{ $messageValues }}</p>
+                                </div>
+                                <button type="button" @click="showAlert = false"
+                                    class="ml-3 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        @endif
                         <div
                             class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button type="button" wire:click="cancel"

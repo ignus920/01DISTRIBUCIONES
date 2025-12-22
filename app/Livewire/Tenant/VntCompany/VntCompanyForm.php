@@ -128,6 +128,11 @@ class VntCompanyForm extends Component
     public $routeId = '';
     // Propiedad para el barrio
     public $district = '';
+    
+    // Propiedades para mostrar credenciales del usuario creado
+    public $showUserCredentials = false;
+    public $userCredentialsEmail = '';
+    public $userCredentialsPassword = '12345678';
 
 
     public function boot(
@@ -546,7 +551,16 @@ class VntCompanyForm extends Component
             }
 
             Log::info('Save completed successfully, resetting form');
-            $this->resetForm();
+            
+            // Solo resetear si no se creó un usuario (para mostrar las credenciales)
+            if (!($this->createUser && $this->showUserCredentials)) {
+                $this->resetForm();
+            } else {
+                // Resetear solo los campos del formulario, pero mantener las credenciales
+                $this->resetFormExceptCredentials();
+            }
+            
+            // Siempre cerrar el modal
             $this->showModal = false;
         } catch (\Exception $e) {
             Log::error('Error in save method', [
@@ -702,6 +716,88 @@ class VntCompanyForm extends Component
         // Reset vendedor y ruta
         $this->vntUserId = '';
         $this->routeId = '';
+        
+        // Reset user credentials display
+        $this->showUserCredentials = false;
+        $this->userCredentialsEmail = '';
+        $this->userCredentialsPassword = '12345678';
+
+        $this->resetErrorBag();
+        $this->resetValidation();
+    }
+
+    /**
+     * Resetear formulario excepto las credenciales del usuario
+     * Se usa cuando se crea un usuario para mantener visible la información de credenciales
+     */
+    private function resetFormExceptCredentials()
+    {
+        $this->editingId = null;
+        $this->businessName = '';
+        $this->firstName = '';
+        $this->billingEmail = '';
+        $this->identification = '';
+        $this->integrationDataId = '';
+        $this->lastName = '';
+        $this->secondLastName = '';
+        $this->checkDigit = '';
+        $this->status = 1; // Default to active for new records
+        $this->secondName = '';
+        $this->typeIdentificationId = '';
+        $this->typePerson = '';
+        $this->code_ciiu = '';
+        $this->regimeId = '';
+        // Asignar por defecto la responsabilidad fiscal 'Ninguna' si existe
+        try {
+            $this->fiscalResponsabilityId = CnfFiscalResponsability::where('description', 'Ninguna')->value('id') ?? '';
+        } catch (\Exception $e) {
+            $this->fiscalResponsabilityId = '';
+        }
+        $this->verification_digit = '';
+        $this->business_phone = '';
+        $this->personal_phone = '';
+        $this->positionId = 1; // Posición por defecto
+        
+        // Reset real-time validation properties
+        $this->identificationExists = false;
+        $this->validatingIdentification = false;
+        
+        // Reset warehouse fields e inicializar con una sucursal por defecto
+        $this->warehouses = [];
+        $this->initializeDefaultWarehouse();
+        $this->warehouseName = '';
+        $this->warehouseAddress = '';
+        $this->warehousePostcode = '';
+        $this->warehouseCityId = '';
+        $this->district = '';
+        $this->warehouseIsMain = false;
+        $this->canAddMoreWarehouses = false;
+        
+        // Reset IDs
+        $this->mainWarehouseId = null;
+        $this->mainContactId = null;
+        
+        // Reset control de visualización
+        $this->showNaturalPersonFields = false;
+
+        // Reset form validation state
+        $this->formHasErrors = false;
+
+        // Reset create user checkbox
+        $this->createUser = false;
+        
+        // Reset existing user check
+        $this->hasExistingUser = false;
+        $this->existingUserEmail = '';
+
+        // Reset vendedor y ruta
+        $this->vntUserId = '';
+        $this->routeId = '';
+        
+        // NO resetear las credenciales del usuario - mantenerlas visibles
+        // $this->showUserCredentials = false;
+        // $this->userCredentialsEmail = '';
+        // $this->userCredentialsPassword = '12345678';
 
         $this->resetErrorBag();
         $this->resetValidation();
@@ -714,9 +810,24 @@ class VntCompanyForm extends Component
 
         // Resetear el formulario
         $this->resetForm();
+        
+        // Resetear las credenciales del usuario
+        $this->showUserCredentials = false;
+        $this->userCredentialsEmail = '';
+        $this->userCredentialsPassword = '12345678';
 
         // Emitir evento para notificar al componente padre que se canceló
         $this->dispatch('customer-form-cancelled');
+    }
+
+    /**
+     * Limpiar las credenciales del usuario después de 20 segundos
+     */
+    public function clearUserCredentials()
+    {
+        $this->showUserCredentials = false;
+        $this->userCredentialsEmail = '';
+        $this->userCredentialsPassword = '12345678';
     }
 
     /**
@@ -1313,6 +1424,11 @@ class VntCompanyForm extends Component
 
         // Crear el usuario
         $newUser = User::create($userData);
+        
+        // Guardar las credenciales para mostrar en el modal
+        $this->userCredentialsEmail = $this->billingEmail;
+        $this->userCredentialsPassword = '12345678';
+        $this->showUserCredentials = true;
         
         Log::info('Usuario creado exitosamente', [
             'user_id' => $newUser->id,

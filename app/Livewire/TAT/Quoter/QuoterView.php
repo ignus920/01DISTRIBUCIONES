@@ -8,6 +8,7 @@ use App\Models\TAT\Items\TatItems;
 use App\Models\TAT\Quoter\Quote;
 use App\Models\TAT\Quoter\QuoteItem;
 use App\Models\TAT\Customer\Customer as TatCustomer;
+use App\Models\TAT\Company\TatCompanyConfig;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,6 +25,9 @@ class QuoterView extends Component
     public $total = 0;
     public $companyId;
     public $selectedIndex = -1;
+
+    // Propiedades para configuración de empresa
+    public $companyConfig = null;
 
     // Propiedades para cliente
     public $selectedCustomer = null;
@@ -61,9 +65,17 @@ class QuoterView extends Component
             return redirect()->route('tenant.dashboard');
         }
 
+        // Cargar configuración de la empresa
+        $this->loadCompanyConfig();
+
         $this->loadCartFromSession();
+        $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
         $this->calculateTotal();
-        $this->loadDefaultCustomer();
+
+        // Solo cargar cliente por defecto si no hay uno restaurado
+        if (!$this->selectedCustomer) {
+            $this->loadDefaultCustomer();
+        }
 
         Log::info('QuoterView mounted successfully', [
             'companyId' => $this->companyId,
@@ -89,13 +101,13 @@ class QuoterView extends Component
             $quantity = (int)$quantity;
             $quantity = max(1, $quantity); // Mínimo 1
 
-            // 2. Validar Stock
+            // 2. Validar Stock (solo si no se permite vender sin saldo)
             $item = $this->cartItems[$index];
             $stock = $item['stock'];
 
-            if ($quantity > $stock) {
+            if (!$this->companyConfig->canSellWithoutStock() && $quantity > $stock) {
                 $quantity = $stock;
-                
+
                 // Emitir alerta
                 $this->dispatch('swal:warning', [
                     'title' => 'Stock Insuficiente',
@@ -105,7 +117,9 @@ class QuoterView extends Component
 
             // 3. Aplicar valor corregido
             $this->cartItems[$index]['quantity'] = $quantity;
-            $this->cartItems[$index]['subtotal'] = $quantity * $this->cartItems[$index]['price'];
+            $baseSubtotal = $quantity * $this->cartItems[$index]['price'];
+            $taxAmount = $baseSubtotal * ($this->cartItems[$index]['tax_percentage'] / 100);
+            $this->cartItems[$index]['subtotal'] = $baseSubtotal + $taxAmount;
             
             $this->calculateTotal();
             $this->saveCartToSession();
@@ -135,6 +149,37 @@ class QuoterView extends Component
     }
 
     /**
+     * Cargar configuración de la empresa
+     */
+    protected function loadCompanyConfig()
+    {
+        if (!$this->companyId) {
+            return;
+        }
+
+        try {
+            $this->companyConfig = TatCompanyConfig::getForCompany($this->companyId);
+
+            Log::info('Configuración de empresa cargada', [
+                'company_id' => $this->companyId,
+                'vender_sin_saldo' => $this->companyConfig->vender_sin_saldo,
+                'permitir_cambio_precio' => $this->companyConfig->permitir_cambio_precio
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error cargando configuración de empresa', [
+                'company_id' => $this->companyId,
+                'error' => $e->getMessage()
+            ]);
+
+            // Crear configuración por defecto en caso de error
+            $this->companyConfig = new TatCompanyConfig([
+                'vender_sin_saldo' => false,
+                'permitir_cambio_precio' => false
+            ]);
+        }
+    }
+
+    /**
      * Cargar productos disponibles con filtro de búsqueda
      */
     public function getAvailableProductsProperty()
@@ -161,66 +206,98 @@ class QuoterView extends Component
     }
 
     /**
-     * Actualizar resultados de búsqueda
+     * Actualizar resultados de búsqueda - OPTIMIZADO
      */
     public function updatedCurrentSearch()
     {
-        $this->selectedIndex = -1; // Reset selected index when search changes
+        $this->selectedIndex = -1;
 
-        Log::info('Búsqueda actualizada', [
-            'search' => $this->currentSearch,
-            'length' => strlen($this->currentSearch),
-            'companyId' => $this->companyId
-        ]);
-
-        // Debug: Ver algunos productos disponibles
-        $allProducts = TatItems::query()
-            ->byCompany($this->companyId)
-            ->active()
-            ->where('stock', '>', 0)
-            ->take(5)
-            ->get(['name', 'sku', 'stock']);
-
-        Log::info('Productos disponibles (muestra)', [
-            'products' => $allProducts->toArray()
-        ]);
-
-        if (strlen($this->currentSearch) >= 1) {
-            $query = TatItems::query()
-                ->byCompany($this->companyId)
-                ->active()
-                ->where(function ($q) {
-                    $q->whereRaw('LOWER(name) like ?', ['%' . strtolower($this->currentSearch) . '%'])
-                      ->orWhereRaw('LOWER(sku) like ?', ['%' . strtolower($this->currentSearch) . '%']);
-                })
-                ->orderByRaw('CASE WHEN stock > 0 THEN 0 ELSE 1 END') // Productos con stock primero
-                ->orderBy('stock', 'desc'); // Ordenar por stock descendente
-
-            // Obtener el SQL y parámetros para debug
-            $sql = $query->toSql();
-            $bindings = $query->getBindings();
-
-            Log::info('Query SQL', [
-                'sql' => $sql,
-                'bindings' => $bindings
-            ]);
-
-            $results = $query->take(20)->get();
-
-            Log::info('Resultados encontrados', [
-                'total_results' => $results->count(),
-                'results' => $results->take(3)->pluck('name')->toArray()
-            ]);
-
-            // Primeros 3 resultados en dropdown principal
-            $this->searchResults = $results->take(3)->toArray();
-
-            // Resultados adicionales como sugerencias
-            $this->additionalSuggestions = $results->skip(3)->take(4)->toArray();
-        } else {
+        // Solo buscar si tiene mínimo 2 caracteres
+        if (strlen($this->currentSearch) < 2) {
             $this->searchResults = [];
-            $this->additionalSuggestions = [];
+            return;
         }
+
+        $searchTerm = trim($this->currentSearch);
+
+        try {
+            // Búsqueda FULLTEXT optimizada para MySQL
+            $query = TatItems::query()
+                ->select([
+                    'id', 'name', 'sku', 'price', 'stock',
+                    'taxId', 'categoryId'
+                ])
+                ->byCompany($this->companyId)
+                ->active();
+
+            // Si el término tiene más de 3 caracteres, usar FULLTEXT
+            if (strlen($searchTerm) >= 3) {
+                $query->whereRaw(
+                    "MATCH(name, sku) AGAINST(? IN BOOLEAN MODE)",
+                    ['+' . $searchTerm . '*']
+                );
+            } else {
+                // Para términos cortos usar LIKE optimizado
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'LIKE', $searchTerm . '%')
+                      ->orWhere('sku', 'LIKE', $searchTerm . '%');
+                });
+            }
+
+            // Ordenamiento optimizado: stock > 0 primero, luego por relevancia
+            $results = $query
+                ->orderByRaw('CASE WHEN stock > 0 THEN 0 ELSE 1 END')
+                ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$searchTerm . '%'])
+                ->orderBy('stock', 'desc')
+                ->limit(15) // Límite para performance
+                ->get();
+
+            // Mapear resultados con indicadores de stock
+            $this->searchResults = $results->map(function ($item) {
+                $stockLevel = $this->getStockLevel($item->stock);
+
+                return [
+                    'id' => $item->id,
+                    'name' => $item->display_name,
+                    'sku' => $item->sku,
+                    'price' => $item->price,
+                    'stock' => $item->stock,
+                    'stock_level' => $stockLevel,
+                    'stock_color' => $this->getStockColor($stockLevel),
+                    'tax_percentage' => $item->tax ? $item->tax->percentage : 0
+                ];
+            })->toArray();
+
+        } catch (\Exception $e) {
+            Log::error('Error en búsqueda de productos', [
+                'error' => $e->getMessage(),
+                'search' => $searchTerm,
+                'company_id' => $this->companyId
+            ]);
+            $this->searchResults = [];
+        }
+    }
+
+    /**
+     * Determinar nivel de stock
+     */
+    private function getStockLevel($stock)
+    {
+        if ($stock <= 0) return 'agotado';
+        if ($stock <= 5) return 'bajo';
+        return 'disponible';
+    }
+
+    /**
+     * Obtener color según nivel de stock
+     */
+    private function getStockColor($level)
+    {
+        return match($level) {
+            'disponible' => 'text-green-600 dark:text-green-400',
+            'bajo' => 'text-yellow-600 dark:text-yellow-400',
+            'agotado' => 'text-red-600 dark:text-red-400'
+        };
     }
 
     /**
@@ -292,14 +369,50 @@ class QuoterView extends Component
     }
 
     /**
+     * Búsqueda rápida - agregar primer resultado directamente
+     */
+    public function quickSearch($searchTerm)
+    {
+        if (strlen($searchTerm) < 2) return;
+
+        try {
+            $product = TatItems::query()
+                ->select(['id', 'name', 'sku', 'stock'])
+                ->byCompany($this->companyId)
+                ->active()
+                ->where('stock', '>', 0)
+                ->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'LIKE', $searchTerm . '%')
+                      ->orWhere('sku', 'LIKE', $searchTerm . '%')
+                      ->orWhere('name', 'LIKE', '%' . $searchTerm . '%');
+                })
+                ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [$searchTerm . '%'])
+                ->first();
+
+            if ($product) {
+                $this->selectProduct($product->id);
+            } else {
+                session()->flash('warning', 'No se encontró ningún producto con ese término.');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error en quickSearch', ['error' => $e->getMessage(), 'term' => $searchTerm]);
+        }
+    }
+
+    /**
      * Seleccionar producto desde la búsqueda
      */
     public function selectProduct($productId)
     {
-        // Verificar que el producto tenga stock antes de agregarlo
         $product = TatItems::find($productId);
 
-        if (!$product || $product->stock <= 0) {
+        if (!$product) {
+            session()->flash('error', 'Producto no encontrado.');
+            return;
+        }
+
+        // Verificar stock solo si no se permite vender sin saldo
+        if (!$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
             session()->flash('error', 'No se puede agregar un producto sin stock.');
             return;
         }
@@ -330,8 +443,14 @@ class QuoterView extends Component
             'connection' => $product ? $product->getConnectionName() : 'unknown'
         ]);
 
-        if (!$product || !$product->hasStock()) {
-            session()->flash('error', 'Producto no disponible o sin stock.');
+        if (!$product) {
+            session()->flash('error', 'Producto no disponible.');
+            return;
+        }
+
+        // Verificar stock solo si no se permite vender sin saldo
+        if (!$this->companyConfig->canSellWithoutStock() && !$product->hasStock()) {
+            session()->flash('error', 'Producto sin stock.');
             return;
         }
 
@@ -341,9 +460,10 @@ class QuoterView extends Component
 
         if ($existingItemIndex !== false) {
             // Si ya existe, incrementar cantidad
-            // Verificamos stock antes de incrementar
             $newQuantity = $this->cartItems[$existingItemIndex]['quantity'] + 1;
-             if ($newQuantity > $product->stock) {
+
+            // Verificar stock solo si no se permite vender sin saldo
+            if (!$this->companyConfig->canSellWithoutStock() && $newQuantity > $product->stock) {
                  $this->dispatch('swal:warning', [
                     'title' => 'Stock Insuficiente',
                     'text' => "No puedes agregar más de {$product->stock} unidades.",
@@ -352,20 +472,26 @@ class QuoterView extends Component
              }
 
             $this->cartItems[$existingItemIndex]['quantity'] = $newQuantity;
-            $this->cartItems[$existingItemIndex]['subtotal'] =
-                $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
+            $baseSubtotal = $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
+            $taxAmount = $baseSubtotal * ($this->cartItems[$existingItemIndex]['tax_percentage'] / 100);
+            $this->cartItems[$existingItemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
         } else {
             // Agregar nuevo item
+            $basePrice = $product->price;
+            $taxPercentage = $product->tax ? $product->tax->percentage : 0;
+            $taxAmount = $basePrice * ($taxPercentage / 100);
+            $subtotalWithTax = $basePrice + $taxAmount;
+
             $this->cartItems[] = [
                 'id' => $product->id,
                 'name' => $product->name,
                 'sku' => $product->sku,
                 'price' => $product->price,
                 'quantity' => 1,
-                'subtotal' => $product->price,
+                'subtotal' => $subtotalWithTax,
                 'stock' => $product->stock,
                 'tax_name' => $product->tax ? $product->tax->name : 'N/A',
-                'tax_percentage' => $product->tax ? $product->tax->percentage : 0
+                'tax_percentage' => $taxPercentage
             ];
         }
 
@@ -403,7 +529,9 @@ class QuoterView extends Component
 
             // Actualizar cantidad y subtotal
             $this->cartItems[$itemIndex]['quantity'] = $quantity;
-            $this->cartItems[$itemIndex]['subtotal'] = $quantity * $this->cartItems[$itemIndex]['price'];
+            $baseSubtotal = $quantity * $this->cartItems[$itemIndex]['price'];
+            $taxAmount = $baseSubtotal * ($this->cartItems[$itemIndex]['tax_percentage'] / 100);
+            $this->cartItems[$itemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
 
             $this->calculateTotal();
             $this->saveCartToSession();
@@ -415,6 +543,12 @@ class QuoterView extends Component
      */
     public function updatePrice($productId, $newPrice)
     {
+        // Verificar si se permite cambiar precios
+        if (!$this->companyConfig->allowsPriceChange()) {
+            session()->flash('error', 'No tiene permisos para modificar precios.');
+            return;
+        }
+
         $newPrice = max(0, (float)$newPrice);
 
         $itemIndex = collect($this->cartItems)->search(function ($item) use ($productId) {
@@ -423,11 +557,19 @@ class QuoterView extends Component
 
         if ($itemIndex !== false) {
             $this->cartItems[$itemIndex]['price'] = $newPrice;
-            $this->cartItems[$itemIndex]['subtotal'] =
-                $this->cartItems[$itemIndex]['quantity'] * $newPrice;
+            $baseSubtotal = $this->cartItems[$itemIndex]['quantity'] * $newPrice;
+            $taxAmount = $baseSubtotal * ($this->cartItems[$itemIndex]['tax_percentage'] / 100);
+            $this->cartItems[$itemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
 
             $this->calculateTotal();
             $this->saveCartToSession();
+
+            Log::info('Precio actualizado por usuario', [
+                'product_id' => $productId,
+                'new_price' => $newPrice,
+                'user_id' => Auth::id(),
+                'company_id' => $this->companyId
+            ]);
         }
     }
 
@@ -485,6 +627,30 @@ class QuoterView extends Component
     }
 
     /**
+     * Verificar si hay una caja abierta para el usuario actual
+     */
+    protected function checkActivePettyCash()
+    {
+        try {
+            // Verificar si hay una caja abierta (status = 1)
+            $activePettyCash = DB::table('tat_petty_cash')
+                ->join('tat_company_petty_cash', 'tat_petty_cash.id', '=', 'tat_company_petty_cash.petty_cash_id')
+                ->where('tat_petty_cash.status', 1)
+                ->where('tat_company_petty_cash.company_id', $this->companyId)
+                ->select('tat_petty_cash.*')
+                ->first();
+
+            return $activePettyCash !== null;
+        } catch (\Exception $e) {
+            Log::error('Error verificando caja abierta', [
+                'error' => $e->getMessage(),
+                'company_id' => $this->companyId
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Guardar cotización/venta
      */
     public function saveQuote()
@@ -499,17 +665,27 @@ class QuoterView extends Component
             return;
         }
 
-        // Validar stock antes de proceder
-        $stockErrors = [];
-        foreach ($this->cartItems as $item) {
-            $product = TatItems::find($item['id']);
-            if (!$product) {
-                $stockErrors[] = "Producto {$item['name']} no encontrado";
-                continue;
-            }
+        // Validar que haya una caja abierta
+        if (!$this->checkActivePettyCash()) {
+            $this->dispatch('swal:no-petty-cash');
+            return;
+        }
 
-            if ($product->stock < $item['quantity']) {
-                $stockErrors[] = "Stock insuficiente para {$item['name']} (Disponible: {$product->stock}, Requerido: {$item['quantity']})";
+        // Validar stock antes de proceder (solo si NO está permitida la venta sin saldo)
+        $allowNoStock = $this->companyConfig->vender_sin_saldo ?? false;
+        $stockErrors = [];
+
+        if (!$allowNoStock) {
+            foreach ($this->cartItems as $item) {
+                $product = TatItems::find($item['id']);
+                if (!$product) {
+                    $stockErrors[] = "Producto {$item['name']} no encontrado";
+                    continue;
+                }
+
+                if ($product->stock < $item['quantity']) {
+                    $stockErrors[] = "Stock insuficiente para {$item['name']} (Disponible: {$product->stock}, Requerido: {$item['quantity']})";
+                }
             }
         }
 
@@ -651,14 +827,19 @@ class QuoterView extends Component
     public function updatedCustomerSearch()
     {
         if (strlen($this->customerSearch) >= 1) {
-            $this->customerSearchResults = TatCustomer::where('company_id', $this->companyId)
+            $this->customerSearchResults = TatCustomer::where(function ($companyQuery) {
+                    // Buscar en la empresa actual O en clientes globales (company_id = 0)
+                    $companyQuery->where('company_id', $this->companyId)
+                                 ->orWhere('company_id', 0);
+                })
                 ->where(function ($query) {
                     $query->where('identification', 'like', '%' . $this->customerSearch . '%')
                           ->orWhere('businessName', 'like', '%' . $this->customerSearch . '%')
                           ->orWhere('firstName', 'like', '%' . $this->customerSearch . '%')
                           ->orWhere('lastName', 'like', '%' . $this->customerSearch . '%');
                 })
-                ->take(5)
+                ->orderBy('company_id', 'desc') // Primero los de la empresa, luego los globales
+                ->take(10) // Aumenté el límite para mostrar más resultados
                 ->get()
                 ->map(function ($customer) {
                     return [
@@ -732,9 +913,46 @@ class QuoterView extends Component
         $this->closeCustomerModal();
     }
 
+    /**
+     * Cargar datos restaurados desde un pago cancelado
+     */
+    protected function loadRestoredData()
+    {
+        if (session('quoter_restored')) {
+            // Cargar carrito restaurado
+            $restoredCart = session('quoter_cart', []);
+            if (!empty($restoredCart)) {
+                $this->cartItems = $restoredCart;
+            }
+
+            // Cargar cliente restaurado
+            $restoredCustomer = session('quoter_customer');
+            if ($restoredCustomer) {
+                $this->selectedCustomer = $restoredCustomer;
+            }
+
+            // Limpiar las sesiones de restauración
+            session()->forget(['quoter_restored', 'quoter_customer']);
+
+            Log::info('Datos restaurados desde pago cancelado', [
+                'cartItems' => count($this->cartItems),
+                'customer' => $this->selectedCustomer ? $this->selectedCustomer['identification'] : null
+            ]);
+        }
+    }
+
+    /**
+     * Obtener configuración de empresa como propiedad computed
+     */
+    public function getCompanyConfigProperty()
+    {
+        return $this->companyConfig;
+    }
+
     public function render()
     {
-        return view('livewire.TAT.quoter.quoter-view')
-            ->layout('layouts.app');
+        return view('livewire.TAT.quoter.quoter-view', [
+            'companyConfig' => $this->companyConfig
+        ])->layout('layouts.app');
     }
 }

@@ -57,7 +57,7 @@
                         <!--Suma de ingresos-->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SUMA
-                                INGRESOS</label>
+                                INGRESOS </label>
                             <input type="text" readonly
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 value="{{ number_format($this->resumen['ingresos'],2) }}">
@@ -110,9 +110,8 @@
                                     class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="5">5</option>
                                     <option value="10">10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
+                                    <option value="15">15</option>
+                                    <option value="20">20</option>
                                 </select>
                             </div>
 
@@ -130,7 +129,7 @@
                         </div>
                         <!--Agregar movimiento (Si aplica)-->
                         @if($this->canDoMovement())
-                        <div>
+                        <div class="">
                             <button wire:click="createMovement"
                                 class="inline-flex justify-center items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,10 +228,15 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center  text-sm font-medium">
                                     <div class="content-center">
+                                        @if($this->getStatusPettyCash()==1)
                                         <button wire:click="deleteMovement({{ $dt->id }})"
                                             class="w-full text-left px-4 py-2 text-sm text-red-800 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
                                             <x-heroicon-o-x-mark class="w-6 h-6" />
                                         </button>
+                                        @else
+                                        <span
+                                            class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 italic">No disponible</span>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -283,8 +287,9 @@
             x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
             x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0">
+
             <div class="relative min-h-screen flex items-center justify-center p-4">
-                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-2xl mx-2 md:mx-auto max-h-[90vh] overflow-y-auto"
                     x-transition:enter="ease-out duration-300"
                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
@@ -293,10 +298,17 @@
                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                     <!-- Header -->
-                    <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Crear Movimiento
-                        </h3>
+                    <div
+                        class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                Crear Movimiento
+                            </h3>
+                        </div>
+                        <button wire:click="cancel"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <x-heroicon-o-x-mark class="w-6 h-6" />
+                        </button>
                     </div>
 
                     <!-- Alert de Errores de Validación -->
@@ -337,8 +349,8 @@
                     @endif
 
                     <!-- Form -->
-                    <form wire:submit="save" class="p-6 space-y-6">
-                        <div class="space-y-6">
+                    <form wire:submit="save" class="p-4 md:p-6 space-y-4 md:space-y-6">
+                        <div class="space-y-4 md:space-y-6">
                             <!-- Campo Nombre -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

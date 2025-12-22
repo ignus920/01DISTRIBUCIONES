@@ -173,7 +173,6 @@
         </div>
 
         <div class="report-info">
-            <div><strong>Empresa: {{$infoCashier['company_name']}}</strong></div><br>
             <div><strong>Sucursal: {{$infoCashier['warehouse_name']}}</strong></div><br>
             <div><strong>Cajero: {{$infoCashier['user_name']}}</strong></div><br>
             <div><strong>Cierre:</strong> {{ $date ?? 'N/A' }} {{ $time ?? '' }}</div><br>
