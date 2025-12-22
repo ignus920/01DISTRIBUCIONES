@@ -1,0 +1,10 @@
+- 1. Agregar índice FULLTEXT para búsqueda rápida de texto
+ALTER TABLE tat_items ADD FULLTEXT fulltext_search (name, sku);
+
+-- 2. Índices compuestos para consultas comunes
+ALTER TABLE tat_items ADD INDEX idx_company_status_stock (company_id, status, stock);
+ALTER TABLE tat_items ADD INDEX idx_name_search (name);
+ALTER TABLE tat_items ADD INDEX idx_sku_search (sku);
+
+-- 3. Índice para ordenamiento por stock (productos con stock primero)
+ALTER TABLE tat_items ADD INDEX idx_stock_desc (stock DESC);
