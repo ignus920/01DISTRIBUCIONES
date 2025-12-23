@@ -211,16 +211,8 @@
 
             <!-- Paginación -->
             @if($categories->hasPages())
-            <div class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
-                <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-700 dark:text-gray-300">
-                        Mostrando {{ $categories->firstItem() }} a {{ $categories->lastItem() }} de {{
-                        $categories->total() }} resultados
-                    </div>
-                    <div>
-                        {{ $categories->links() }}
-                    </div>
-                </div>
+            <div class="bg-white dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+                <x-responsive-pagination :paginator="$categories" />
             </div>
             @endif
         </div>

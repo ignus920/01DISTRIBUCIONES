@@ -1,26 +1,26 @@
 <!-- Wrapper con padding y background -->
-<div class="p-6 bg-gray-50 dark:bg-slate-900 min-h-screen transition-colors">
+<div class="p-3 sm:p-6 bg-gray-50 dark:bg-slate-900 min-h-screen transition-colors">
     <!-- Header Card -->
-    <div class="bg-white dark:bg-slate-800 rounded-lg p-6 mb-6 border border-gray-200 dark:border-slate-700 transition-colors">
-        <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Solicitudes de Reabastecimiento</h1>
+    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 sm:p-6 mb-6 border border-gray-200 dark:border-slate-700 transition-colors">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+            <div class="flex-1">
+                <h1 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Solicitudes de Reabastecimiento</h1>
                 <p class="text-gray-600 dark:text-slate-400 text-sm mt-1">Gestión de pedidos realizados a la distribuidora</p>
             </div>
-            <div class="flex items-center space-x-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 <a href="{{ route('tenant.tat.receive.orders') }}"
-                   class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm font-medium flex items-center transition-colors">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   class="bg-green-500 hover:bg-green-600 text-white px-3 sm:px-4 py-2 rounded text-sm font-medium flex items-center justify-center transition-colors">
+                    <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
                     </svg>
-                    Recibir Pedidos
+                    <span class="truncate">Recibir Pedidos</span>
                 </a>
                 <button wire:click="createNewRestock"
-                        class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded text-sm font-medium flex items-center transition-colors">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded text-sm font-medium flex items-center justify-center transition-colors">
+                    <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
-                    Nueva Solicitud
+                    <span class="truncate">Nueva Solicitud</span>
                 </button>
             </div>
         </div>

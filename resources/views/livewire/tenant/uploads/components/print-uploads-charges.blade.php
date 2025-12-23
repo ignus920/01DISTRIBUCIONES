@@ -1,7 +1,6 @@
 <div class="p-6">
     <div class="mb-6 flex justify-between items-center">
         <div>
-            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Reporte de Cargues</h2>
             <p class="text-sm text-gray-600 dark:text-gray-400">Lista de entregas</p>
         </div>
         
@@ -22,7 +21,8 @@
     </div>
 
     @if($deliveries->count() > 0)
-        <div class="overflow-x-auto shadow-md rounded-lg">
+        <!-- Desktop View -->
+        <div class="hidden md:block overflow-x-auto shadow-md rounded-lg">
             <table class="min-w-full bg-white dark:bg-gray-800">
                 <thead class="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                     <tr>
@@ -44,7 +44,6 @@
                                #{{ $delivery->id }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-
                               <div class="flex gap-2">
                                     <a href="{{ route('tenant.uploads.print-detail', $delivery->id) }}" 
                                        target="_blank"
@@ -73,9 +72,51 @@
             </table>
         </div>
 
+        <!-- Mobile View -->
+        <div class="md:hidden space-y-4">
+            @foreach($deliveries as $delivery)
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
+                    <!-- Delivery ID -->
+                    <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider font-medium">Cargue</p>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">#{{ $delivery->id }}</p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider font-medium mb-3">Opciones</p>
+                        <div class="flex flex-col gap-2">
+                            <a href="{{ route('tenant.uploads.print-detail', $delivery->id) }}" 
+                               target="_blank"
+                               class="w-full inline-flex items-center justify-center px-3 py-2 bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white text-sm font-medium rounded transition">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                </svg>
+                                Ventas Cargue
+                            </a>
+                            <a href="{{ route('tenant.uploads.print-orders', $delivery->id) }}" 
+                               target="_blank"
+                               class="w-full inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded transition">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                </svg>
+                                Pedidos Cargues
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Date -->
+                    <div>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider font-medium">Fecha</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ \Carbon\Carbon::parse($delivery->sale_date)->format('d/m/Y') }}</p>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
         <!-- Paginación -->
         <div class="mt-4">
-            {{ $deliveries->links() }}
+            <x-responsive-pagination :paginator="$deliveries" />
         </div>
     @else
         <div class="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 p-4">

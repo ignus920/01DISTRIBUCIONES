@@ -30,6 +30,7 @@ class PettyCash extends Component
     public $pettyCash_id;
     public $base;
     public $showDetail = false;
+    public $showReconciliations = false;
     public $showModalSalesFinish = false;
     //public $warehouseId; // Added for dynamic warehouse selection
     public $paymentCounts = [];
@@ -225,6 +226,14 @@ class PettyCash extends Component
     {
         $this->pettyCash_id = $pettyCash_id;
         $this->showDetail = true;
+        $this->showReconciliations = false;
+    }
+
+    public function viewReconciliations($pettyCash_id)
+    {
+        $this->pettyCash_id = $pettyCash_id;
+        $this->showReconciliations = true;
+        $this->showDetail = false;
     }
 
     public function openSalesFinishModal($pettyCash_id)

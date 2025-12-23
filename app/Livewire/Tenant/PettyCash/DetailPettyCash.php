@@ -31,6 +31,7 @@ class DetailPettyCash extends Component
     public $valueDetail;
     public $observations;
     public $itsOk;
+    public $activeTab = 'movements'; // 'movements' o 'reconciliations'
 
     //Propiedades para la tabla
     public $showModalMovement = false;
@@ -460,6 +461,11 @@ class DetailPettyCash extends Component
         $this->resetValidation();
         $this->resetForm();
         $this->showModalMovement = false;
+    }
+
+    public function switchTab($tab)
+    {
+        $this->activeTab = $tab;
     }
 
     public function getPettyCashModel()
