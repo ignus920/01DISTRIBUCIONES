@@ -255,13 +255,13 @@ new class extends Component
             <div x-show="sidebarCollapsed && tooltip" x-transition
                 class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
-                <!-- <a href="{{ route('customers.customers') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Clientes</a> -->
+                <a href="{{ route('customers.customers') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Clientes</a>
                 <a href="{{ route('users.users') }}"
                     class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Usuarios</a>
 
-                    <a href="{{ route('tenant.vnt-customers') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes Distribuidor (TAT)</a>
+                    <!-- <a href="{{ route('tenant.vnt-customers') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes Distribuidor (TAT)</a> -->
             </div>
         </div>
         @endif
