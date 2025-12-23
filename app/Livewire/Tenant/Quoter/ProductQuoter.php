@@ -831,8 +831,8 @@ public function validateQuantity($index)
             foreach ($this->quoterItems as $item) {
                 VntDetailQuote::create([
                     'quantity' => $item['quantity'],
-                    'tax' => 0,
-                    'value' => $item['price'],
+                    'tax_percentage' => 0,
+                    'price' => $item['price'],
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
                     'description' => $item['name'],
@@ -1298,8 +1298,8 @@ public function validateQuantity($index)
                 try {
                     $detail = VntDetailQuote::create([
                         'quantity' => $restockItem->quantity_request,
-                        'tax' => $productData['tax'] ?? 0,
-                        'value' => $productData['price'] ?? 0,
+                        'tax_percentage' => $productData['tax'] ?? 0,
+                        'price' => $productData['price'] ?? 0,
                         'quoteId' => $quote->id,
                         'itemId' => $restockItem->itemId,
                         'description' => $productData['name'] ?? 'Producto TAT',
