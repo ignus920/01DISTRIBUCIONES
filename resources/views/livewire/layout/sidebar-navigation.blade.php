@@ -353,7 +353,7 @@ new class extends Component
 
 
             <!-- Inventario (menú con subitems) -->
-            @if(auth()->user()->profile_id != 17)
+            @if(auth()->user()->profile_id != 17 && auth()->user()->profile_id != 4)
             <div x-data="{ tooltip: false, open: false }" class="w-full">
                 <!-- Botón principal -->
                 <div class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
@@ -425,7 +425,7 @@ new class extends Component
 
 
             <!-- Caja -->
-            @if(auth()->user()->profile_id != 17)
+            @if(auth()->user()->profile_id != 17 && auth()->user()->profile_id != 4)
             <a href="{{ route('petty-cash.petty-cash') }}" wire:navigate
                 class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 {{ request()->routeIs('petty-cash.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400' }}"
                 :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
@@ -453,7 +453,7 @@ new class extends Component
             @endif
 
             <!-- Cargue de pedidos -->
-            @if(auth()->user()->profile_id != 17)
+            @if(auth()->user()->profile_id != 17 && auth()->user()->profile_id != 4)
             <a href="{{ route('tenant.uploads.uploads') }}" wire:navigate
                 class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 {{ request()->routeIs('tenant.uploads.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-indigo-600 dark:hover:text-indigo-400' }}"
                 :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
