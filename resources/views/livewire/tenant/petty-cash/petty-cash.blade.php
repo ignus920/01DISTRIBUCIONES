@@ -166,18 +166,18 @@
                                                 <div class="py-1" role="menu" aria-orientation="vertical">
                                                     <button wire:click="viewDetail({{ $bx->id }})"
                                                         class="w-full text-left px-4 py-2 text-sm text-blue-800 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center">
-                                                        <x-heroicon-o-eye class="w-6 h-6" />
+                                                        <x-heroicon-o-eye class="w-6 h-6 mr-1" />
                                                         Ver Detalle
                                                     </button>
                                                     <button wire:click="viewReconciliations({{ $bx->id }})"
                                                         class="w-full text-left px-4 py-2 text-sm text-purple-800 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors flex items-center">
-                                                        <x-heroicon-o-document-check class="w-6 h-6" />
-                                                        Ver Reconciliaciones
+                                                        <x-heroicon-o-document-check class="w-6 h-6 mr-1" />
+                                                        Reconciliaciones
                                                     </button>
                                                     @if ($bx->status==1)
                                                     <button wire:click="openSalesFinishModal({{ $bx->id }})"
                                                         class="w-full text-left px-4 py-2 text-sm text-orange-800 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors flex items-center">
-                                                        <x-heroicon-o-lock-closed class="w-6 h-6" />
+                                                        <x-heroicon-o-lock-closed class="w-6 h-6 mr-1" />
                                                         Arqueo/Cerrar
                                                     </button>
                                                     @endif
