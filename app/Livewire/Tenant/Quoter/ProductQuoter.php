@@ -584,22 +584,57 @@ public function validateQuantity($index)
         $this->editingCustomerId = null;
     }
 
-    public function onCustomerCreated($customerId)
+    public function onCustomerCreated($customerId = null)
     {
+        Log::info('🎯 onCustomerCreated llamado', [
+            'customerId' => $customerId,
+            'user_id' => auth()->id()
+        ]);
+
         $this->ensureTenantConnection();
 
-        // Buscar el cliente recién creado validando que pertenece a las rutas del vendedor
-        $customer = DB::select("
-            SELECT tr.salesman_id, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
-            FROM tat_routes tr
-            INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
-            INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
-            WHERE tr.salesman_id = ? AND vc.id = ?
-            LIMIT 1
-        ", [auth()->id(), $customerId]);
+        // Buscar el cliente recién creado aplicando la misma lógica que searchCustomersLive()
+        $customer = null;
 
-        if (!empty($customer)) {
-            $customer = (array) $customer[0];
+        // Si es vendedor (perfil 4), buscar solo en sus rutas asignadas
+        if (auth()->user()->profile_id == 4) {
+            $customers = DB::select("
+                SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                FROM tat_routes tr
+                INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+                INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+                WHERE tr.salesman_id = ? AND vc.id = ?
+                LIMIT 1
+            ", [auth()->id(), $customerId]);
+        } else {
+            // Para administradores u otros perfiles, buscar directamente en vnt_companies
+            $customers = DB::select("
+                SELECT
+                    NULL as salesman_id,
+                    NULL as sale_day,
+                    vc.id as company_id,
+                    vc.businessName,
+                    vc.billingEmail,
+                    vc.firstName,
+                    vc.lastName,
+                    vc.identification,
+                    vc.id
+                FROM vnt_companies vc
+                WHERE vc.id = ? AND vc.status = 1 AND vc.deleted_at IS NULL
+                LIMIT 1
+            ", [$customerId]);
+        }
+
+        Log::info('🔍 Búsqueda de cliente recién creado', [
+            'perfil_usuario' => auth()->user()->profile_id,
+            'vendedor_id' => auth()->id(),
+            'cliente_id' => $customerId,
+            'clientes_encontrados' => count($customers ?? []),
+            'datos_cliente' => !empty($customers) ? (array) $customers[0] : null
+        ]);
+
+        if (!empty($customers)) {
+            $customer = (array) $customers[0];
             // Seleccionar el cliente recién creado
             $this->selectedCustomer = [
                 'id' => $customer['id'],
@@ -619,14 +654,32 @@ public function validateQuantity($index)
             // Determinar el nombre a mostrar
             $customerName = $customer['businessName'] ?: $customer['firstName'] . ' ' . $customer['lastName'];
 
+            Log::info('✅ Cliente seleccionado exitosamente y modal cerrado', [
+                'cliente_id' => $customer['id'],
+                'cliente_nombre' => $customerName,
+                'modal_cerrado' => $this->showCreateCustomerForm,
+                'campos_limpiados' => [
+                    'showCreateCustomerForm' => $this->showCreateCustomerForm,
+                    'showCreateCustomerButton' => $this->showCreateCustomerButton,
+                    'customerSearch' => $this->customerSearch,
+                    'editingCustomerId' => $this->editingCustomerId
+                ]
+            ]);
+
             $this->dispatch('show-toast', [
                 'type' => 'success',
                 'message' => 'Cliente creado y seleccionado: ' . $customerName
             ]);
+        } else {
+            Log::warning('❌ Cliente recién creado NO encontrado', [
+                'cliente_id' => $customerId,
+                'perfil_usuario' => auth()->user()->profile_id,
+                'vendedor_id' => auth()->id()
+            ]);
         }
     }
 
-    public function onCustomerUpdated($customerId)
+    public function onCustomerUpdated($customerId = null)
     {
         $this->ensureTenantConnection();
 
