@@ -898,10 +898,12 @@ public function validateQuantity($index)
                 'message' => 'Cotización #' . $quote->consecutive . ' actualizada exitosamente'
             ]);
 
-            // Opcional: limpiar después de actualizar
-            // $this->clearQuoter();
-            // $this->isEditing = false;
-            // $this->editingQuoteId = null;
+            // Redirigir a la página de cotizaciones según el tipo de vista
+            $routeName = $this->viewType === 'mobile'
+                ? 'tenant.quoter.mobile'
+                : 'tenant.quoter.desktop';
+
+            return redirect()->route($routeName);
 
         } catch (\Exception $e) {
             $this->dispatch('show-toast', [
