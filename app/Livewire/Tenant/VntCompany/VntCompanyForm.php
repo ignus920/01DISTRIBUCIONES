@@ -160,10 +160,11 @@ class VntCompanyForm extends Component
     protected function rules()
     {
         return $this->validationService->getValidationRules(
-            $this->typePerson, 
+            $this->typePerson,
             $this->editingId,
             $this->typeIdentificationId ? (int) $this->typeIdentificationId : null,
-            true // Incluir reglas de warehouse y contacto
+            true, // Incluir reglas de warehouse y contacto
+            $this->reusable // Modo reusable para formulario simplificado
         );
     }
 
@@ -230,11 +231,20 @@ class VntCompanyForm extends Component
 
    public function render()
    {
-     return view('livewire.tenant.vnt-company.components.vnt-company-form', [
-        'items' => $this->items, // Se cachea automáticamente entre renders
-        'sortField' => $this->sortField,
-        'sortDirection' => $this->sortDirection
-    ]);
+        // Si es reusable y hay un companyId, cargar para edición
+        if ($this->reusable && $this->companyId && !$this->editingId) {
+            $this->edit($this->companyId);
+        }
+        // Si es reusable y no hay companyId, abrir modal de creación
+        elseif ($this->reusable && !$this->companyId && !$this->showModal) {
+            $this->showModal = true;
+        }
+
+        return view('livewire.tenant.vnt-company.components.vnt-company-form', [
+            'items' => $this->items, // Se cachea automáticamente entre renders
+            'sortField' => $this->sortField,
+            'sortDirection' => $this->sortDirection
+        ]);
    }
 
     public function create()

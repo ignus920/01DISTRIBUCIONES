@@ -10,12 +10,13 @@ class CompanyValidationService
      * Obtener reglas de validación dinámicas
      */
     public function getValidationRules(
-        string $typePerson = '', 
-        ?int $editingId = null, 
+        string $typePerson = '',
+        ?int $editingId = null,
         ?int $typeIdentificationId = null,
-        bool $includeWarehouseAndContact = false
+        bool $includeWarehouseAndContact = false,
+        bool $isReusable = false
     ): array {
-        $baseRules = $this->getBaseRules($editingId, $typeIdentificationId);
+        $baseRules = $this->getBaseRules($editingId, $typeIdentificationId, $isReusable);
         
         // Aplicar reglas según tipo de persona
         $rules = match ($typePerson) {
@@ -151,7 +152,7 @@ class CompanyValidationService
     /**
      * Obtener reglas base de validación
      */
-    private function getBaseRules(?int $editingId = null, ?int $typeIdentificationId = null): array
+    private function getBaseRules(?int $editingId = null, ?int $typeIdentificationId = null, bool $isReusable = false): array
     {
         // Regla de identificación con validación de formato
         $identificationRule = 'required|string|min:5|max:15|regex:/^[0-9]+$/|unique:vnt_companies,identification';
@@ -192,7 +193,7 @@ class CompanyValidationService
             'verification_digit' => $verificationDigitRule,
             // 'vntUserId' => 'nullable|integer|exists:users,id', // Campo no existe en la tabla
             'routeId' => 'nullable|integer|exists:tat_routes,id',
-            'district' => 'required|string|min:3|max:100',
+            'district' => $isReusable ? 'nullable|string|min:3|max:100' : 'required|string|min:3|max:100',
             'warehouses' => 'array',
             // 'warehouses.*.name' => 'required|string|max:255',
             'warehouses.*.address' => 'required|string|max:255',
