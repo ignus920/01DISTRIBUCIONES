@@ -372,12 +372,7 @@ $header = 'Seleccionar productos';
                             <div class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
                                 <div class="p-3 text-sm text-gray-500 dark:text-gray-400">
                                     <div class="mb-2">No se encontraron clientes</div>
-                                    <button
-                                        wire:click="openCustomerModal"
-                                        class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs transition-colors"
-                                    >
-                                        Crear nuevo cliente
-                                    </button>
+                                    
                                 </div>
                             </div>
                         @endif
