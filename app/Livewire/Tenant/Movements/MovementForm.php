@@ -164,6 +164,7 @@ class MovementForm extends Component
     {
         $this->showDetailsModal = false;
         $this->movementDetails = [];
+        $this->clearMessages();
     }
 
     /**
@@ -180,11 +181,13 @@ class MovementForm extends Component
             
             if (!$movement) {
                 $this->errorMessage = 'Movimiento no encontrado';
+                $this->dispatch('annulMovementFailed', message: $this->errorMessage);
                 return;
             }
 
             if ($movement->status === 0) {
                 $this->errorMessage = 'Este movimiento ya está anulado';
+                $this->dispatch('annulMovementFailed', message: $this->errorMessage);
                 return;
             }
 
@@ -197,6 +200,7 @@ class MovementForm extends Component
                 if (!$itemStore) {
                     DB::connection('tenant')->rollBack();
                     $this->errorMessage = 'No se encontró el registro de inventario para el item';
+                    $this->dispatch('annulMovementFailed', message: $this->errorMessage);
                     return;
                 }
 
@@ -211,6 +215,7 @@ class MovementForm extends Component
                     if ($itemStore->stock_items_store < $quantityInConsumptionUnit) {
                         DB::connection('tenant')->rollBack();
                         $this->errorMessage = 'No hay suficiente stock para anular este movimiento de entrada';
+                        $this->dispatch('annulMovementFailed', message: $this->errorMessage);
                         return;
                     }
                     
@@ -231,6 +236,9 @@ class MovementForm extends Component
             
             $this->successMessage = 'Movimiento anulado correctamente y el inventario ha sido actualizado';
             
+            // Dispatch success event
+            $this->dispatch('annulMovementSuccess', message: $this->successMessage);
+            
             // Close details modal and refresh list
             $this->closeDetailsModal();
             $this->dispatch('refreshMovements', type: $this->movementType);
@@ -242,6 +250,7 @@ class MovementForm extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             $this->errorMessage = 'Error al anular el movimiento: ' . $e->getMessage();
+            $this->dispatch('annulMovementFailed', message: $this->errorMessage);
         }
     }
     
