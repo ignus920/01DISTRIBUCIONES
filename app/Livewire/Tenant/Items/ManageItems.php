@@ -131,11 +131,21 @@ class ManageItems extends Component
         'category_id' => 'required',
         'name' => 'required|min:3',
         'type' => 'required',
-        'internal_code' => 'nullable|string',
-        'brandId' => 'nullable|integer',
+        'internal_code' => 'required|string',
+        'brandId' => 'required|integer',
         'houseId' => 'nullable|integer',
         'purchase_unit' => 'nullable|integer',
         'consumption_unit' => 'nullable|integer',
+    ];
+
+    protected $messages = [
+        'category_id.required' => 'La categoría es obligatoria',
+        'name.required' => 'El nombre del item es obligatorio',
+        'name.min' => 'El nombre del item debe tener al menos 3 caracteres',
+        'type.required' => 'El tipo de item es obligatorio',
+        'internal_code.required' => 'El código interno es obligatorio',
+        'brandId.required' => 'La marca es obligatoria',
+
     ];
 
 
@@ -347,17 +357,17 @@ class ManageItems extends Component
                     $this->resetForm(); // Clear the form completely for next new item
                 }
             } else { // New item
-                $newItem = Items::create($itemData);
-                $item_id = $newItem->id;
-
                 // Guardar los valores temporales si existen
                 if (!empty($this->tempValues)) {
+                    $newItem = Items::create($itemData);
+                    $item_id = $newItem->id;
                     $this->saveTemporaryValues($item_id);
+                    session()->flash('message', 'Item creado correctamente.');
+                    $this->resetValidation(); // Clear validation for current submission
+                    $this->edit($item_id); // Load new item into the form (sets showModal=true, disabled=true)
+                } else {
+                    $this->messageValues = 'Tiene que registrar al menos un valor.';
                 }
-
-                session()->flash('message', 'Item creado correctamente.');
-                $this->resetValidation(); // Clear validation for current submission
-                $this->edit($item_id); // Load new item into the form (sets showModal=true, disabled=true)
             }
         } catch (\Exception $e) {
             Log::error('Error al guardar item: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
@@ -831,7 +841,7 @@ class ManageItems extends Component
         $exists = DB::table("{$centralDbName}.users", 'u')
             ->join("{$centralDbName}.usr_profile_merchant as upm", 'upm.profile_id', '=', 'u.profile_id')
             ->where('u.id', $userId)
-            ->where('upm.merchant_type_id', 5)
+            ->where('upm.merchant_type_id', 4)
             ->exists(); // Check if any record exists
 
         $this->showCommand = $exists; // Set showCommand based on the existence check

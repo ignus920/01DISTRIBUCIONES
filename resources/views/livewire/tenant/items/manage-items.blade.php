@@ -229,10 +229,10 @@
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium overflow-visible">
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium overflow-visible z-auto">
                                 <!-- Menú de tres puntos con Alpine.js -->
                                 <div x-data="{ open: false }" @click.outside="open = false"
-                                    class="relative inline-block text-left">
+                                    class="relative inline-block text-left z-auto">
                                     <button @click="open = !open"
                                         class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
                                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -248,7 +248,7 @@
                                         x-transition:leave="transition ease-in duration-75"
                                         x-transition:leave-start="transform opacity-100 scale-100"
                                         x-transition:leave-end="transform opacity-0 scale-95" @click="open = false"
-                                        class="fixed sm:absolute right-0 mt-1 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
+                                        class="fixed sm:absolute right-0 mt-1 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-auto"
                                         style="display: none;">
 
                                         <div class="py-1" role="menu" aria-orientation="vertical">
@@ -269,11 +269,11 @@
                                                 </svg>
                                                 Ubicaciones
                                             </button> --}}
-                                            <button wire:click="openValuesModal({{ $it->id }})"
+                                            {{-- <button wire:click="openValuesModal({{ $it->id }})"
                                                 class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
                                                 <x-heroicon-o-currency-dollar class="w-6 h-6" />
                                                 Valores
-                                            </button>
+                                            </button> --}}
                                         </div>
                                     </div>
                                 </div>
@@ -361,9 +361,9 @@
                         focus:ring-indigo-500 focus:border-indigo-500'
                         ])
 
-                        <div class="mb-3">
+                        <div class="mb-3 ">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre
-                                *</label>
+                                <span class="text-red-500">*</span></label>
                             <input wire:model="name" type="text" id="name"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Ingrese nombre del producto">
@@ -373,7 +373,7 @@
                         <div class="mb-3 grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Código
-                                    interno</label>
+                                    interno <span class="text-red-500">*</span></label>
                                 <input wire:model.live.debounce.400ms="internal_code" type="text" id="internal_code"
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     placeholder="Ingrese el código interno">
@@ -402,31 +402,31 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
-                            <select wire:model="type" {{ $disabled ? 'disabled' : '' }}
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">-- Seleccione --</option>
-                                @foreach($types as $k => $v)
-                                <option value="{{ $k }}">{{ $v }}</option>
-                                @endforeach
-                            </select>
-                            @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label
+                        <div class="mb-3 grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo <span class="text-red-500">*</span></label>
+                                <select wire:model="type" {{ $disabled ? 'disabled' : '' }}
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">-- Seleccione --</option>
+                                    @foreach($types as $k => $v)
+                                    <option value="{{ $k }}">{{ $v }}</option>
+                                    @endforeach
+                                </select>
+                                @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label
                                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Impuesto</label>
-                            <select wire:model="tax"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">-- Seleccione --</option>
-                                @foreach($this->taxes as $tax)
-                                <option value="{{ $tax->id }}">{{ $tax->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                <select wire:model="tax"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">-- Seleccione --</option>
+                                    @foreach($this->taxes as $tax)
+                                    <option value="{{ $tax->id }}">{{ $tax->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
                         </div>
-
                         @if($showCommand)
                         @livewire('tenant.items.command', [
                         'commandId' => $commandId,
@@ -710,7 +710,7 @@
                             x-transition:enter-end="opacity-100 transform scale-100"
                             class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                             <div class="flex items-start">
-                                <x-heroicon-o-exclamation-triangle class="w-6 h-6 text-red-700" />
+                                <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-700" />
                                 <div class="flex-1">
                                     <p class="text-sm text-red-700 dark:text-red-400">{{ $messageValues }}</p>
                                 </div>
