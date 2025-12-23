@@ -128,7 +128,7 @@
                 </div>
                 <div class="ml-3">
                     <p class="text-sm text-yellow-700 dark:text-yellow-400">
-                        No se encontraron entregas registradas.
+                        No se encontraron cargues confirmados.
                     </p>
                 </div>
             </div>
