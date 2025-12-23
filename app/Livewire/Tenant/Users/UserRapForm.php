@@ -587,9 +587,7 @@ class UserRapForm extends Component
         $sessionTenant = $this->getTenantId();
 
         return User::query()
-            ->whereHas('tenants', function ($query) use ($sessionTenant) {
-                $query->where('tenants.id', $sessionTenant);
-            })
+           
             ->with(['profile', 'contact.warehouse.company'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {

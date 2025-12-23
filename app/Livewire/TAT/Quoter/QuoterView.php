@@ -671,17 +671,21 @@ class QuoterView extends Component
             return;
         }
 
-        // Validar stock antes de proceder
+        // Validar stock antes de proceder (solo si NO está permitida la venta sin saldo)
+        $allowNoStock = $this->companyConfig->vender_sin_saldo ?? false;
         $stockErrors = [];
-        foreach ($this->cartItems as $item) {
-            $product = TatItems::find($item['id']);
-            if (!$product) {
-                $stockErrors[] = "Producto {$item['name']} no encontrado";
-                continue;
-            }
 
-            if ($product->stock < $item['quantity']) {
-                $stockErrors[] = "Stock insuficiente para {$item['name']} (Disponible: {$product->stock}, Requerido: {$item['quantity']})";
+        if (!$allowNoStock) {
+            foreach ($this->cartItems as $item) {
+                $product = TatItems::find($item['id']);
+                if (!$product) {
+                    $stockErrors[] = "Producto {$item['name']} no encontrado";
+                    continue;
+                }
+
+                if ($product->stock < $item['quantity']) {
+                    $stockErrors[] = "Stock insuficiente para {$item['name']} (Disponible: {$product->stock}, Requerido: {$item['quantity']})";
+                }
             }
         }
 

@@ -237,47 +237,48 @@
                             <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
                                 <h4 class="font-medium text-gray-900 dark:text-white mb-4">Agregar productos</h4>
 
-                                <div class="grid grid-cols-3 gap-4 mb-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                                     <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item <span class="text-red-500">*</span></label>
                                         @livewire('selects.generic-select', [
                                             'selectedValue' => $detailForm['itemId'],
                                             'items' => $this->items,
                                             'name' => 'detailForm.itemId',
                                             'placeholder' => 'Seleccionar',
-                                            'label' => 'Item',
+                                            'label' => '',
                                             'required' => true,
-                                            'showLabel' => true,
-                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                            'showLabel' => false,
+                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
                                             'eventName' => 'itemSelected',
                                             'displayField' => 'name',
                                             'valueField' => 'id',
                                             'searchFields' => ['name', 'sku']
                                         ], key('item-select-' . now()->timestamp))
+                                        @error('detailForm.itemId') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad
-                                            *</label>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad <span class="text-red-500">*</span></label>
                                         <input type="number" step="0.01" wire:model.defer="detailForm.quantity"
                                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
-                                        @error('detailForm.quantity') <span class="text-red-500 text-sm mt-1">{{
-                                            $message }}</span> @enderror
+                                        @error('detailForm.quantity') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Unidad <span class="text-red-500">*</span></label>
                                         @livewire('selects.generic-select', [
                                             'selectedValue' => $detailForm['unitMeasurementId'],
                                             'items' => $this->unitMeasurements,
                                             'name' => 'detailForm.unitMeasurementId',
                                             'placeholder' => 'Seleccionar',
-                                            'label' => 'Unidad',
+                                            'label' => '',
                                             'required' => true,
-                                            'showLabel' => true,
-                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                            'showLabel' => false,
+                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
                                             'eventName' => 'unitMeasurementSelected',
                                             'displayField' => 'description',
                                             'valueField' => 'id',
                                             'searchFields' => ['description']
                                         ], key('unit-select-' . now()->timestamp))
+                                        @error('detailForm.unitMeasurementId') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
 
@@ -415,6 +416,33 @@
                     </button>
                 </div>
 
+                <!-- Messages -->
+                @if($successMessage)
+                <div class="px-6 pt-4">
+                    <div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <p class="text-sm text-green-700 dark:text-green-400">{{ $successMessage }}</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                @if($errorMessage)
+                <div class="px-6 pt-4">
+                    <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                            <p class="text-sm text-red-700 dark:text-red-400">{{ $errorMessage }}</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Información del Movimiento -->
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                     <div class="grid grid-cols-2 gap-4">
@@ -529,7 +557,7 @@
                         </button>
                     @endif
                 </div>
-                <button wire:click="closeDetailsModal"
+                <button wire:click="closeDetailsModal" @click="Swal.close()"
                     class="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm font-medium">
                     Cerrar
                 </button>
@@ -1369,6 +1397,83 @@
                       }
                   }
               });
+          });
+
+          // Escuchar el evento de anulación exitosa
+          Livewire.on('annulMovementSuccess', (event) => {
+              const data = event[0];
+              const isDarkMode = document.documentElement.classList.contains('dark') || 
+                                localStorage.getItem('darkMode') === 'true';
+              
+              const backgroundColor = isDarkMode ? '#1f2937' : '#ffffff';
+              const textColor = isDarkMode ? '#f9fafb' : '#111827';
+              const borderColor = isDarkMode ? '#374151' : '#e5e7eb';
+              
+              Swal.fire({
+                  title: '¡Movimiento Anulado!',
+                  text: data.message,
+                  icon: 'success',
+                  iconColor: '#10b981',
+                  confirmButtonText: 'Aceptar',
+                  confirmButtonColor: '#10b981',
+                  background: backgroundColor,
+                  color: textColor,
+                  timer: 3000,
+                  timerProgressBar: true,
+                  allowOutsideClick: true,
+                  allowEscapeKey: true,
+                  customClass: {
+                      popup: isDarkMode ? 'swal2-dark' : 'swal2-light',
+                      confirmButton: 'focus:ring-2 focus:ring-offset-2'
+                  },
+                  didOpen: () => {
+                      const popup = Swal.getPopup();
+                      if (isDarkMode && popup) {
+                          popup.style.border = `1px solid ${borderColor}`;
+                          popup.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3)';
+                      }
+                  }
+              });
+          });
+
+          // Escuchar el evento de error en anulación
+          Livewire.on('annulMovementFailed', (event) => {
+              const data = event[0];
+              const isDarkMode = document.documentElement.classList.contains('dark') || 
+                                localStorage.getItem('darkMode') === 'true';
+              
+              const backgroundColor = isDarkMode ? '#1f2937' : '#ffffff';
+              const textColor = isDarkMode ? '#f9fafb' : '#111827';
+              const borderColor = isDarkMode ? '#374151' : '#e5e7eb';
+              
+              Swal.fire({
+                  title: 'Error al Anular',
+                  text: data.message,
+                  icon: 'error',
+                  iconColor: '#ef4444',
+                  confirmButtonText: 'Aceptar',
+                  confirmButtonColor: '#ef4444',
+                  background: backgroundColor,
+                  color: textColor,
+                  allowOutsideClick: true,
+                  allowEscapeKey: true,
+                  customClass: {
+                      popup: isDarkMode ? 'swal2-dark' : 'swal2-light',
+                      confirmButton: 'focus:ring-2 focus:ring-offset-2'
+                  },
+                  didOpen: () => {
+                      const popup = Swal.getPopup();
+                      if (isDarkMode && popup) {
+                          popup.style.border = `1px solid ${borderColor}`;
+                          popup.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3)';
+                      }
+                  }
+              });
+          });
+
+          // Escuchar cuando se cierra el modal de detalles para cerrar el SweetAlert
+          Livewire.on('closeDetailsModal', () => {
+              Swal.close();
           });
       });
   </script>

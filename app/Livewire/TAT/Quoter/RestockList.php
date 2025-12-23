@@ -100,23 +100,36 @@ class RestockList extends Component
 }
 
 
+    protected function getRouteName($isMobile)
+    {
+        return $isMobile ? 'tenant.quoter.products.mobile' : 'tenant.quoter.products.desktop';
+    }
+
     public function editConfirmedRestock($orderNumber)
     {
         $this->selectedOrderNumber = $orderNumber;
+        
+        $agent = new \Jenssegers\Agent\Agent();
+        $routeName = $this->getRouteName($agent->isMobile());
 
-        // Redirigir al ProductQuoter Desktop con el parámetro restockOrder
-        return $this->redirect(route('tenant.quoter.products.desktop', ['restockOrder' => $this->selectedOrderNumber]));
+        return $this->redirect(route($routeName, ['restockOrder' => $this->selectedOrderNumber]));
     }
 
     public function editPreliminaryRestock()
     {
+        $agent = new \Jenssegers\Agent\Agent();
+        $routeName = $this->getRouteName($agent->isMobile());
+
         return $this->redirect(
-            route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
+            route($routeName, ['editPreliminary' => 'true'])
         );
     }
 
     public function createNewRestock()
     {
+        $agent = new \Jenssegers\Agent\Agent();
+        $routeName = $this->getRouteName($agent->isMobile());
+
         // Verificar si ya existe una lista preliminar para esta empresa
         $existingPreliminary = TatRestockList::where('company_id', $this->companyId)
             ->where('status', 'Registrado')
@@ -126,12 +139,12 @@ class RestockList extends Component
         if ($existingPreliminary) {
             // Si ya existe lista preliminar, redirigir a editarla
             return $this->redirect(
-                route('tenant.quoter.products.desktop', ['editPreliminary' => 'true'])
+                route($routeName, ['editPreliminary' => 'true'])
             );
         } else {
             // Si no existe lista preliminar, crear nueva
             return $this->redirect(
-                route('tenant.quoter.products.desktop')
+                route($routeName)
             );
         }
     }

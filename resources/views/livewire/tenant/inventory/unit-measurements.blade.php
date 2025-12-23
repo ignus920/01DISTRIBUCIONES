@@ -5,7 +5,7 @@
             class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Parámetros Unodades de Medida</h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Parámetros unidades de Medida</h1>
                     <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de registros</p>
                 </div>
                 <button wire:click="create"
@@ -34,8 +34,8 @@
         <!-- DataTable Card -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <!-- Toolbar -->
-            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <!-- Búsqueda -->
                     <div class="flex-1 max-w-md">
                         <div class="relative">
@@ -52,7 +52,7 @@
                     </div>
 
                     <!-- Controles -->
-                    <div class="flex items-center gap-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <!-- Registros por página -->
                         <div class="flex items-center gap-2">
                             <label class="text-sm text-gray-700 dark:text-gray-300">Mostrar:</label>
@@ -65,32 +65,49 @@
                                 <option value="100">100</option>
                             </select>
                         </div>
-                        <!-- Botones de exportar -->
-                        <div class="flex items-center gap-2">
-                            <button wire:click="exportExcel"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
+                        <!-- Botones de exportar (responsive: icon-only en móviles, full en sm+) -->
+                        <div class="flex items-center gap-2 overflow-x-auto">
+                            <!-- Excel: icon only mobile -->
+                            <button wire:click="exportExcel" title="Exportar a Excel"
+                                class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 sm:hidden">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm6 10V6h6v8h-6z"></path>
+                                </svg>
+                            </button>
+                            <!-- Excel: full on sm+ -->
+                            <button wire:click="exportExcel" class="hidden sm:inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                        d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm6 10V6h6v8h-6z">
-                                    </path>
+                                    <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm6 10V6h6v8h-6z"></path>
                                 </svg>
                                 Excel
                             </button>
-                            <button wire:click="exportPdf"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
+
+                            <!-- PDF: icon only mobile -->
+                            <button wire:click="exportPdf" title="Exportar a PDF"
+                                class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 sm:hidden">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z"></path>
+                                </svg>
+                            </button>
+                            <!-- PDF: full on sm+ -->
+                            <button wire:click="exportPdf" class="hidden sm:inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                        d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z">
-                                    </path>
+                                    <path d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z"></path>
                                 </svg>
                                 PDF
                             </button>
-                            <button wire:click="exportCsv"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
+
+                            <!-- CSV: icon only mobile -->
+                            <button wire:click="exportCsv" title="Exportar a CSV"
+                                class="inline-flex items-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 sm:hidden">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L4.414 10H17a1 1 0 100-2H4.414l1.879-1.293z"></path>
+                                </svg>
+                            </button>
+                            <!-- CSV: full on sm+ -->
+                            <button wire:click="exportCsv" class="hidden sm:inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                        d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L4.414 10H17a1 1 0 100-2H4.414l1.879-1.293z">
-                                    </path>
+                                    <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L4.414 10H17a1 1 0 100-2H4.414l1.879-1.293z"></path>
                                 </svg>
                                 CSV
                             </button>
@@ -222,14 +239,18 @@
 
             <!-- Paginación -->
             @if($units->hasPages())
-            <div class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
-                <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-700 dark:text-gray-300">
+            <div class="bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div class="text-sm text-gray-700 dark:text-gray-300 text-center sm:text-left">
                         Mostrando {{ $units->firstItem() }} a {{ $units->lastItem() }} de {{ $units->total() }}
                         resultados
                     </div>
-                    <div>
-                        {{ $units->links() }}
+                    <div class="w-full sm:w-auto">
+                        <div class="mt-2 sm:mt-0 flex justify-center sm:justify-end">
+                            <div class="inline-block overflow-x-auto -mx-2 px-2">
+                                {{ $units->links() }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

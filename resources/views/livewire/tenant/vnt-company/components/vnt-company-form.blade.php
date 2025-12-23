@@ -43,14 +43,74 @@
             </div>
 
             <!-- Mensajes -->
-            @if (session()->has('message'))
-            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg mb-6">
+            @if (session()->has('message') || $showUserCredentials)
+            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg mb-6"
+                x-data="{ 
+                    showCredentials: @json($showUserCredentials),
+                    timeoutId: null,
+                    init() {
+                        if (this.showCredentials) {
+                            this.timeoutId = setTimeout(() => {
+                                @this.call('clearUserCredentials');
+                            }, 20000);
+                        }
+                    },
+                    closeAlert() {
+                        if (this.timeoutId) {
+                            clearTimeout(this.timeoutId);
+                        }
+                        @this.call('clearUserCredentials');
+                    }
+                }"
+                x-init="init()">
+                @if ($showUserCredentials)
+                <!-- Credenciales del Usuario Creado -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <span class="font-semibold">✓ Usuario Creado Exitosamente</span>
+                        </div>
+                        <button type="button"
+                            @click="closeAlert()"
+                            class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="ml-8 space-y-2">
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded border border-green-200 dark:border-green-800">
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Correo de Acceso:</p>
+                            <p class="text-sm font-mono text-gray-900 dark:text-white break-all">{{ $userCredentialsEmail }}</p>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 p-3 rounded border border-green-200 dark:border-green-800">
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Contraseña Temporal:</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-mono text-gray-900 dark:text-white flex-1">{{ $userCredentialsPassword }}</p>
+                                <button type="button"
+                                    @click="navigator.clipboard.writeText('{{ $userCredentialsPassword }}')"
+                                    class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-green-700 dark:text-green-400">
+                            <strong>Nota:</strong> El usuario debe cambiar la contraseña en su primer acceso. Esta información desaparecerá en 20 segundos.
+                        </p>
+                    </div>
+                </div>
+                @elseif (session()->has('message'))
+                <!-- Mensaje de sesión -->
                 <div class="flex items-center">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    {{ session('message') }}
+                    {{ session('message') }} 
                 </div>
+                @endif
             </div>
             @endif
 
@@ -278,15 +338,8 @@
 
                 <!-- Paginación -->
                 @if($items->hasPages())
-                <div class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
-                    <div class="flex items-center justify-between">
-                        <div class="text-sm text-gray-700 dark:text-gray-300">
-                            Mostrando {{ $items->firstItem() }} a {{ $items->lastItem() }} de {{ $items->total() }} resultados
-                        </div>
-                        <div>
-                            {{ $items->links() }}
-                        </div>
-                    </div>
+                <div class="bg-white dark:bg-gray-800 px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+                    <x-responsive-pagination :paginator="$items" />
                 </div>
                 @endif
             </div>
@@ -736,6 +789,44 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Credenciales del Usuario Creado -->
+                        @if($showUserCredentials)
+                        <div class="md:col-span-2">
+                            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                                <div class="flex items-start gap-3">
+                                    <svg class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                    <div class="flex-1">
+                                        <h4 class="text-sm font-semibold text-green-800 dark:text-green-300 mb-3">
+                                            ✓ Usuario Creado Exitosamente
+                                        </h4>
+                                        <div class="space-y-2">
+                                            <div class="bg-white dark:bg-gray-800 p-3 rounded border border-green-200 dark:border-green-800">
+                                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Correo de Acceso:</p>
+                                                <p class="text-sm font-mono text-gray-900 dark:text-white break-all">{{ $userCredentialsEmail }}</p>
+                                            </div>
+                                            <div class="bg-white dark:bg-gray-800 p-3 rounded border border-green-200 dark:border-green-800">
+                                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Contraseña Temporal:</p>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-sm font-mono text-gray-900 dark:text-white flex-1">{{ $userCredentialsPassword }}</p>
+                                                    <button type="button"
+                                                        @click="navigator.clipboard.writeText('{{ $userCredentialsPassword }}')"
+                                                        class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                                        Copiar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-green-700 dark:text-green-400 mt-2">
+                                                <strong>Nota:</strong> El usuario debe cambiar la contraseña en su primer acceso.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                         <!-- Actions -->
                         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button type="button"
@@ -1105,6 +1196,22 @@
                             @endif
                         </div>
 
+                        @livewire('selects.route-sales-day', [
+                         'name' => 'routeId',
+                         'label' => 'Ruta',
+                         'required' => false,
+                         'placeholder' => 'Seleccione una ruta (opcional)',
+                         'routeId' => $routeId ?? ''
+                        ])
+                            
+                          <!-- district -->
+                        <div>
+                            <label for="district" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Barrio</label>
+                            <input wire:model="district" type="text" id="district"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="ej: Galan" required>
+                            @error('district') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
                         <!-- Teléfono Empresarial -->
                         <div>
                             <label for="business_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Teléfono Empresarial</label>
@@ -1202,6 +1309,44 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Credenciales del Usuario Creado -->
+                        @if($showUserCredentials)
+                        <div class="md:col-span-2">
+                            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                                <div class="flex items-start gap-3">
+                                    <svg class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                    <div class="flex-1">
+                                        <h4 class="text-sm font-semibold text-green-800 dark:text-green-300 mb-3">
+                                            ✓ Usuario Creado Exitosamente
+                                        </h4>
+                                        <div class="space-y-2">
+                                            <div class="bg-white dark:bg-gray-800 p-3 rounded border border-green-200 dark:border-green-800">
+                                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Correo de Acceso:</p>
+                                                <p class="text-sm font-mono text-gray-900 dark:text-white break-all">{{ $userCredentialsEmail }}</p>
+                                            </div>
+                                            <div class="bg-white dark:bg-gray-800 p-3 rounded border border-green-200 dark:border-green-800">
+                                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-1">Contraseña Temporal:</p>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-sm font-mono text-gray-900 dark:text-white flex-1">{{ $userCredentialsPassword }}</p>
+                                                    <button type="button"
+                                                        @click="navigator.clipboard.writeText('{{ $userCredentialsPassword }}')"
+                                                        class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                                        Copiar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-green-700 dark:text-green-400 mt-2">
+                                                <strong>Nota:</strong> El usuario debe cambiar la contraseña en su primer acceso.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                         <!-- Actions -->
                         <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button type="button"

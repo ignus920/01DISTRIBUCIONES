@@ -97,9 +97,6 @@
                             <div class="text-sm text-gray-900 dark:text-white">
                                 {{ $movement->date->format('d/m/Y') }}
                             </div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">
-                                {{ $movement->date->format('H:i') }}
-                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900 dark:text-white">
@@ -178,7 +175,7 @@
     <!-- Pagination -->
     @if($movements->hasPages())
         <div class="mt-4">
-            {{ $movements->links() }}
+            <x-responsive-pagination :paginator="$movements" />
         </div>
     @endif
 

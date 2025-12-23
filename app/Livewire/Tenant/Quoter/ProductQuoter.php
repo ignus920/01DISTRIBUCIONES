@@ -192,15 +192,13 @@ class ProductQuoter extends Component
     public function addToQuoter($productId, $selectedPrice, $priceLabel)
     {
         // Validar si el producto ya está confirmado (Perfil 17)
-        $warningMessage = $this->checkConfirmedProductStatus($productId);
+        $confirmedItem = $this->checkConfirmedProductStatus($productId);
         
-        if ($warningMessage) {
-            // Si hay advertencia, pedir confirmación al usuario
-            $this->dispatch('confirm-add-duplicate', [
-                'message' => $warningMessage,
-                'productId' => $productId,
-                'selectedPrice' => $selectedPrice,
-                'priceLabel' => $priceLabel
+        if ($confirmedItem) {
+            // Si existe en una orden confirmada, ofrecer cargar esa orden
+            $this->dispatch('confirm-load-order', [
+                'orderNumber' => $confirmedItem->order_number,
+                'message' => "Este producto ya se encuentra en la orden confirmada #{$confirmedItem->order_number}. ¿Desea cargar esa orden para editarla?"
             ]);
             return;
         }
@@ -586,22 +584,57 @@ public function validateQuantity($index)
         $this->editingCustomerId = null;
     }
 
-    public function onCustomerCreated($customerId)
+    public function onCustomerCreated($customerId = null)
     {
+        Log::info('🎯 onCustomerCreated llamado', [
+            'customerId' => $customerId,
+            'user_id' => auth()->id()
+        ]);
+
         $this->ensureTenantConnection();
 
-        // Buscar el cliente recién creado validando que pertenece a las rutas del vendedor
-        $customer = DB::select("
-            SELECT tr.salesman_id, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
-            FROM tat_routes tr
-            INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
-            INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
-            WHERE tr.salesman_id = ? AND vc.id = ?
-            LIMIT 1
-        ", [auth()->id(), $customerId]);
+        // Buscar el cliente recién creado aplicando la misma lógica que searchCustomersLive()
+        $customer = null;
 
-        if (!empty($customer)) {
-            $customer = (array) $customer[0];
+        // Si es vendedor (perfil 4), buscar solo en sus rutas asignadas
+        if (auth()->user()->profile_id == 4) {
+            $customers = DB::select("
+                SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                FROM tat_routes tr
+                INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+                INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+                WHERE tr.salesman_id = ? AND vc.id = ?
+                LIMIT 1
+            ", [auth()->id(), $customerId]);
+        } else {
+            // Para administradores u otros perfiles, buscar directamente en vnt_companies
+            $customers = DB::select("
+                SELECT
+                    NULL as salesman_id,
+                    NULL as sale_day,
+                    vc.id as company_id,
+                    vc.businessName,
+                    vc.billingEmail,
+                    vc.firstName,
+                    vc.lastName,
+                    vc.identification,
+                    vc.id
+                FROM vnt_companies vc
+                WHERE vc.id = ? AND vc.status = 1 AND vc.deleted_at IS NULL
+                LIMIT 1
+            ", [$customerId]);
+        }
+
+        Log::info('🔍 Búsqueda de cliente recién creado', [
+            'perfil_usuario' => auth()->user()->profile_id,
+            'vendedor_id' => auth()->id(),
+            'cliente_id' => $customerId,
+            'clientes_encontrados' => count($customers ?? []),
+            'datos_cliente' => !empty($customers) ? (array) $customers[0] : null
+        ]);
+
+        if (!empty($customers)) {
+            $customer = (array) $customers[0];
             // Seleccionar el cliente recién creado
             $this->selectedCustomer = [
                 'id' => $customer['id'],
@@ -621,14 +654,32 @@ public function validateQuantity($index)
             // Determinar el nombre a mostrar
             $customerName = $customer['businessName'] ?: $customer['firstName'] . ' ' . $customer['lastName'];
 
+            Log::info('✅ Cliente seleccionado exitosamente y modal cerrado', [
+                'cliente_id' => $customer['id'],
+                'cliente_nombre' => $customerName,
+                'modal_cerrado' => $this->showCreateCustomerForm,
+                'campos_limpiados' => [
+                    'showCreateCustomerForm' => $this->showCreateCustomerForm,
+                    'showCreateCustomerButton' => $this->showCreateCustomerButton,
+                    'customerSearch' => $this->customerSearch,
+                    'editingCustomerId' => $this->editingCustomerId
+                ]
+            ]);
+
             $this->dispatch('show-toast', [
                 'type' => 'success',
                 'message' => 'Cliente creado y seleccionado: ' . $customerName
             ]);
+        } else {
+            Log::warning('❌ Cliente recién creado NO encontrado', [
+                'cliente_id' => $customerId,
+                'perfil_usuario' => auth()->user()->profile_id,
+                'vendedor_id' => auth()->id()
+            ]);
         }
     }
 
-    public function onCustomerUpdated($customerId)
+    public function onCustomerUpdated($customerId = null)
     {
         $this->ensureTenantConnection();
 
@@ -833,8 +884,8 @@ public function validateQuantity($index)
             foreach ($this->quoterItems as $item) {
                 VntDetailQuote::create([
                     'quantity' => $item['quantity'],
-                    'tax' => 0,
-                    'value' => $item['price'],
+                    'tax_percentage' => 0,
+                    'price' => $item['price'],
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
                     'description' => $item['name'],
@@ -847,10 +898,12 @@ public function validateQuantity($index)
                 'message' => 'Cotización #' . $quote->consecutive . ' actualizada exitosamente'
             ]);
 
-            // Opcional: limpiar después de actualizar
-            // $this->clearQuoter();
-            // $this->isEditing = false;
-            // $this->editingQuoteId = null;
+            // Redirigir a la página de cotizaciones según el tipo de vista
+            $routeName = $this->viewType === 'mobile'
+                ? 'tenant.quoter.mobile'
+                : 'tenant.quoter.desktop';
+
+            return redirect()->route($routeName);
 
         } catch (\Exception $e) {
             $this->dispatch('show-toast', [
@@ -1300,8 +1353,8 @@ public function validateQuantity($index)
                 try {
                     $detail = VntDetailQuote::create([
                         'quantity' => $restockItem->quantity_request,
-                        'tax' => $productData['tax'] ?? 0,
-                        'value' => $productData['price'] ?? 0,
+                        'tax_percentage' => $productData['tax'] ?? 0,
+                        'price' => $productData['price'] ?? 0,
                         'quoteId' => $quote->id,
                         'itemId' => $restockItem->itemId,
                         'description' => $productData['name'] ?? 'Producto TAT',
@@ -1583,6 +1636,10 @@ public function validateQuantity($index)
      * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
      * Retorna mensaje de advertencia si existe, o null si pasa la validación.
      */
+    /**
+     * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
+     * Retorna el objeto TatRestockList si existe, o null si pasa la validación.
+     */
     protected function checkConfirmedProductStatus($productId)
     {
         // Solo aplica para perfil 17
@@ -1598,16 +1655,10 @@ public function validateQuantity($index)
         }
 
         // Buscar en la tabla de restock si existe confirmado
-        $confirmedItem = TatRestockList::where('company_id', $companyId)
+        return TatRestockList::where('company_id', $companyId)
             ->where('itemId', $productId)
             ->where('status', 'Confirmado')
             ->first();
-
-        if ($confirmedItem) {
-            return "Este producto ya está confirmado con {$confirmedItem->quantity_request} unidades en la orden #{$confirmedItem->order_number}";
-        }
-        
-        return null; // Pasa la validación
     }
 
     /**
@@ -1635,21 +1686,50 @@ public function searchCustomersLive()
     }
 
     $search = '%' . $this->customerSearch . '%';
-    $params = [auth()->id(), $search, $search, $search, $search, $search];
-    
-    $customers = DB::select("
-        SELECT DISTINCT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
-        FROM tat_routes tr
-        INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
-        INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
-        WHERE tr.salesman_id = ? AND (
-            vc.identification LIKE ? OR 
-            vc.businessName LIKE ? OR 
-            vc.firstName LIKE ? OR 
-            vc.lastName LIKE ? OR
-            tr.sale_day LIKE ?
-        )
-    ", $params);
+
+    // Si es vendedor (perfil 4), buscar solo en sus rutas asignadas
+    if (auth()->user()->profile_id == 4) {
+        $params = [auth()->id(), $search, $search, $search, $search, $search];
+
+        $customers = DB::select("
+            SELECT DISTINCT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+            FROM tat_routes tr
+            INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+            INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+            WHERE tr.salesman_id = ? AND (
+                vc.identification LIKE ? OR
+                vc.businessName LIKE ? OR
+                vc.firstName LIKE ? OR
+                vc.lastName LIKE ? OR
+                tr.sale_day LIKE ?
+            )
+        ", $params);
+    } else {
+        // Para administradores u otros perfiles, buscar en todos los clientes
+        $params = [$search, $search, $search, $search];
+
+        $customers = DB::select("
+            SELECT DISTINCT
+                NULL as salesman_id,
+                NULL as sale_day,
+                vc.id as company_id,
+                vc.businessName,
+                vc.billingEmail,
+                vc.firstName,
+                vc.lastName,
+                vc.identification,
+                vc.id
+            FROM vnt_companies vc
+            WHERE (
+                TRIM(vc.identification) LIKE ?
+                OR vc.businessName LIKE ?
+                OR vc.firstName LIKE ?
+                OR vc.lastName LIKE ?
+            )
+            AND vc.status = 1
+            AND vc.deleted_at IS NULL
+        ", $params);
+    }
 
     $this->customerSearchResults = array_map(function($customer) {
         return [
@@ -1659,6 +1739,11 @@ public function searchCustomersLive()
             'sale_day' => $customer->sale_day
         ];
     }, $customers);
+
+    // Auto-open modal if no results and sufficient length
+    if (empty($this->customerSearchResults) && strlen($this->customerSearch) >= 3) {
+        $this->openCustomerModal();
+    }
 }
 
     /**
@@ -1668,24 +1753,34 @@ public function searchCustomersLive()
     {
         $this->ensureTenantConnection();
 
-        // Validar que el cliente pertenece a las rutas del vendedor
-        $params = [auth()->id(), $customerId];
-        $whereSaleDay = '';
-        
-        // Si hay un día seleccionado, agregar filtro
-        if (!empty($this->selectedSaleDay)) {
-            $whereSaleDay = 'AND tr.sale_day = ?';
-            $params[] = $this->selectedSaleDay;
-        }
+        // Si es vendedor (perfil 4), validar que el cliente pertenece a sus rutas
+        if (auth()->user()->profile_id == 4) {
+            $params = [auth()->id(), $customerId];
+            $whereSaleDay = '';
 
-        $customer = DB::select("
-            SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
-            FROM tat_routes tr
-            INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
-            INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
-            WHERE tr.salesman_id = ? AND vc.id = ? $whereSaleDay
-            LIMIT 1
-        ", $params);
+            // Si hay un día seleccionado, agregar filtro
+            if (!empty($this->selectedSaleDay)) {
+                $whereSaleDay = 'AND tr.sale_day = ?';
+                $params[] = $this->selectedSaleDay;
+            }
+
+            $customer = DB::select("
+                SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                FROM tat_routes tr
+                INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
+                INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+                WHERE tr.salesman_id = ? AND vc.id = ? $whereSaleDay
+                LIMIT 1
+            ", $params);
+        } else {
+            // Para administradores, buscar directamente en vnt_companies
+            $customer = DB::select("
+                SELECT vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                FROM vnt_companies vc
+                WHERE vc.id = ? AND vc.status = 1 AND vc.deleted_at IS NULL
+                LIMIT 1
+            ", [$customerId]);
+        }
 
         if (!empty($customer)) {
             $customer = (array) $customer[0];
@@ -1696,7 +1791,7 @@ public function searchCustomersLive()
                 'lastName' => $customer['lastName'],
                 'identification' => $customer['identification'],
                 'billingEmail' => $customer['billingEmail'],
-                'sale_day' => $customer['sale_day'],
+                'sale_day' => $customer['sale_day'] ?? null,
             ];
             $this->customerSearch = '';
             $this->customerSearchResults = [];
@@ -1710,7 +1805,7 @@ public function searchCustomersLive()
         } else {
             $this->dispatch('show-toast', [
                 'type' => 'error',
-                'message' => 'Cliente no disponible en tus rutas asignadas'
+                'message' => auth()->user()->profile_id == 4 ? 'Cliente no disponible en tus rutas asignadas' : 'Cliente no encontrado'
             ]);
         }
     }

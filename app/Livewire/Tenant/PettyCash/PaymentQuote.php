@@ -469,7 +469,16 @@ class PaymentQuote extends Component
                 }
             }
 
-            Log::info('Pago procesado:', [
+            // Actualizar estado de la cotización a 'Pagado'
+            if (auth()->user()->profile_id == 17) {
+                // TAT
+                \App\Models\TAT\Quoter\Quote::where('id', $this->quoteId)->update(['status' => 'Pagado']);
+            } else {
+                // VNT
+                VntQuote::where('id', $this->quoteId)->update(['status' => 'Pagado']);
+            }
+
+            Log::info('Pago procesado y cotización actualizada a Pagado:', [
                 'quote_id' => $this->quoteId,
                 'petty_cash_id' => $this->activePettyCash['id'],
                 'records' => $recordsCreated
