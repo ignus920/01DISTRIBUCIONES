@@ -194,7 +194,7 @@
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 @if($it->inventoriable == 1)
                                 @if($it->invItemsStore->isNotEmpty())
-                                @foreach($item->invItemsStore as $store)
+                                @foreach($it->invItemsStore as $store)
                                 {{ $store->stock_items_store }}
                                 @endforeach
                                 @else
