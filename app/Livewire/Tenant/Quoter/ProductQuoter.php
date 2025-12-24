@@ -61,6 +61,10 @@ class ProductQuoter extends Component
         'perPage' => ['except' => 12],
     ];
 
+    // Propiedades para optimización
+    protected $cachedCategories = null;
+    protected $cachedSaleDays = null;
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -166,27 +170,34 @@ class ProductQuoter extends Component
         ])->layout('layouts.app');
     }
 
-     // Método para obtener las categorías
+     // Método para obtener las categorías (con caché)
     public function getCategories()
     {
-        return Category::where('status', 1)->get();
+        if ($this->cachedCategories === null) {
+            $this->cachedCategories = Category::where('status', 1)->get();
+        }
+        return $this->cachedCategories;
     }
 
-    // Método para obtener los días de venta disponibles del vendedor
+    // Método para obtener los días de venta disponibles del vendedor (con caché)
     public function getSaleDays()
     {
-        $this->ensureTenantConnection();
-        
-        $days = DB::select("
-            SELECT DISTINCT tr.sale_day
-            FROM tat_routes tr
-            WHERE tr.salesman_id = ?
-            ORDER BY tr.sale_day
-        ", [auth()->id()]);
+        if ($this->cachedSaleDays === null) {
+            $this->ensureTenantConnection();
 
-        return array_map(function($day) {
-            return $day->sale_day;
-        }, $days);
+            $days = DB::select("
+                SELECT DISTINCT tr.sale_day
+                FROM tat_routes tr
+                WHERE tr.salesman_id = ?
+                ORDER BY tr.sale_day
+            ", [auth()->id()]);
+
+            $this->cachedSaleDays = array_map(function($day) {
+                return $day->sale_day;
+            }, $days);
+        }
+
+        return $this->cachedSaleDays;
     }
 
     public function addToQuoter($productId, $selectedPrice, $priceLabel)
@@ -297,7 +308,7 @@ class ProductQuoter extends Component
 
 
 
-    //funcion lipiar cotizacion completa con cliente y carrito de compras
+    //funcion limpiar cotizacion completa con cliente y carrito de compras
     public function clearQuoter()
     {
         $this->selectedCustomer = null;
@@ -312,6 +323,19 @@ class ProductQuoter extends Component
         $this->dispatch('show-toast', [
             'type' => 'info',
             'message' => 'Cotizador limpiado'
+        ]);
+    }
+
+    //funcion para limpiar solo los productos del carrito (mantiene cliente)
+    public function clearCart()
+    {
+        $this->quoterItems = [];
+        session()->forget('quoter_items');
+        $this->calculateTotal();
+
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Carrito limpiado. Cliente mantenido.'
         ]);
     }
 

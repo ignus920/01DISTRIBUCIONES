@@ -35,21 +35,8 @@ $header = 'Seleccionar productos';
                 </a>
                 @endif
 
-                <!-- Carrito flotante -->
-                <button
-                    @click="openCart = true; $wire.toggleCartModal();"
-                    class="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
-                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 16a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-
-                    @if($this->quoterCount > 0)
-                    <span class="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {{ $this->quoterCount }}
-                    </span>
-                    @endif
-                </button>
+                <!-- Carrito flotante (header) -->
+              
             </div>
 
             <!-- Contenedor principal con flex para que queden lado a lado -->
@@ -57,14 +44,27 @@ $header = 'Seleccionar productos';
                 <!-- Búsqueda (toma más espacio) -->
                 <div class="flex-1 relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <!-- Icono de búsqueda normal -->
+                        <svg wire:loading.remove wire:target="search" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
+
+                        <!-- Spinner de carga -->
+                        <svg wire:loading wire:target="search" class="h-4 w-4 text-indigo-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
                     </div>
-                    <input wire:model.live.debounce.300ms="search"
+                    <input wire:model.live.debounce.500ms="search"
                         type="text"
                         placeholder="Buscar productos..."
-                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        autocomplete="off"
+                        inputmode="search"
+                        onkeydown="handleProductSearchKeydown(event)"
+                        id="productSearchInput"
+                        wire:loading.attr="disabled"
+                        wire:target="search">
                 </div>
 
                 <!-- Filtro de Categorías (ancho fijo) -->
@@ -261,11 +261,26 @@ $header = 'Seleccionar productos';
                 <!-- Header del modal -->
                 <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-white dark:bg-gray-800">
                     <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $this->quoterCount }} Productos seleccionados</h2>
-                    <button wire:click="toggleCartModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <!-- Botón limpiar carrito -->
+                        @if(!empty($quoterItems))
+                        <button
+                            onclick="confirmClearCart()"
+                            title="Limpiar carrito"
+                            class="text-red-500 hover:text-red-700 p-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                        @endif
+
+                        <!-- Botón cerrar -->
+                        <button wire:click="toggleCartModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Búsqueda de clientes -->
@@ -363,12 +378,14 @@ $header = 'Seleccionar productos';
                         <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Buscar Cliente</label>
                         <!-- Input de búsqueda -->
                         <input
-                            wire:model.live.debounce.300ms="customerSearch"
+                            wire:model.live.debounce.150ms="customerSearch"
                             type="text"
-                            placeholder="Buscar por nombre o cédula... (↑↓ navegar, Enter seleccionar)"
+                            placeholder="Escribe nombre o cédula..."
                             class="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             onkeydown="handleCustomerSearchKeydownMobile(event)"
-                            id="customerSearchInputMobile">
+                            id="customerSearchInputMobile"
+                            autocomplete="off"
+                            inputmode="text">
 
                         <!-- Resultados de búsqueda -->
                         @if(count($customerSearchResults) > 0)
@@ -702,7 +719,28 @@ $header = 'Seleccionar productos';
     </div>
     @endif
     @endif
-  
+
+    <!-- Carrito flotante fijo siempre visible -->
+    @if(!$showCartModal && $this->quoterCount > 0)
+    <div class="fixed bottom-6 right-6 z-50">
+        <button
+            @click="$wire.toggleCartModal()"
+            class="relative bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110">
+
+            <!-- Icono del carrito -->
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 16a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+
+            <!-- Badge de cantidad -->
+            <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
+                {{ $this->quoterCount }}
+            </span>
+        </button>
+    </div>
+    @endif
+
 </div>
 
 @push('scripts')
@@ -715,10 +753,12 @@ $header = 'Seleccionar productos';
                 toast: true,
                 position: 'top-end',
                 showConfirmButton: false,
-                timer: 6000,
+                timer: 2000,
                 timerProgressBar: true,
                 icon: payload.type || 'info',
-                title: payload.message
+                title: payload.message,
+                background: '#ffffff',
+                color: '#111827'
             });
         });
 
@@ -745,6 +785,52 @@ $header = 'Seleccionar productos';
             });
         });
     });
+
+    // Función para confirmar limpiar carrito
+    function confirmClearCart() {
+        Swal.fire({
+            title: '¿Limpiar carrito?',
+            text: 'Se eliminarán todos los productos del carrito. El cliente seleccionado se mantendrá.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Sí, limpiar',
+            cancelButtonText: 'Cancelar',
+            background: '#ffffff',
+            color: '#111827'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                @this.call('clearCart');
+            }
+        });
+    }
+
+    // Función para manejar Enter en búsqueda de productos
+    function handleProductSearchKeydown(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+
+            // Buscar el primer producto visible con precio disponible
+            const products = document.querySelectorAll('[wire\\:click*="addToQuoter"]');
+
+            if (products.length > 0) {
+                // Buscar el primer botón de precio que no esté deshabilitado
+                for (let product of products) {
+                    if (!product.disabled && !product.hasAttribute('disabled')) {
+                        // Hacer scroll al producto
+                        product.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                        // Simular click después del scroll
+                        setTimeout(() => {
+                            product.click();
+                        }, 300);
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     // Keyboard navigation for mobile customer search
     let selectedCustomerIndexMobile = -1;
