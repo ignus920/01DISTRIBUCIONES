@@ -560,7 +560,10 @@ class PaymentQuote extends Component
                         'subtotal' => $subtotalWithTax,
                         'stock' => $item->stock,
                         'tax_name' => $quoteItem->tax_percentage ? $quoteItem->tax_percentage . '%' : 'N/A',
-                        'tax_percentage' => $taxPercentage
+                        'tax_percentage' => $taxPercentage,
+                        'img_path' => $item->img_path ?? null,
+                        'initials' => $this->getProductInitials($item->name),
+                        'avatar_color' => $this->getAvatarColorClass($item->name)
                     ];
                 }
             }
@@ -573,10 +576,11 @@ class PaymentQuote extends Component
                 'typePerson' => $quote->customer->typePerson ?? 'Natural'
             ];
 
-            // Guardar en sesión para que el QuoterView los cargue
+            // Guardar en sesión para que el QuoterView los cargue (incluyendo el ID de la venta para edición)
             session([
                 'quoter_cart' => $cartItems,
                 'quoter_customer' => $customerData,
+                'quoter_quote_id' => $this->quoteId, // ID de la venta para editar
                 'quoter_restored' => true
             ]);
 
@@ -605,6 +609,46 @@ class PaymentQuote extends Component
                 return redirect()->route('tenant.tat.quoter.index');
             }
         }
+    }
+
+    /**
+     * Obtener iniciales del nombre del producto
+     */
+    private function getProductInitials($name)
+    {
+        if (!$name) return '??';
+
+        // Limpiar y dividir el nombre en palabras
+        $words = explode(' ', trim($name));
+
+        if (count($words) == 1) {
+            // Si es una sola palabra, tomar las primeras 2 letras
+            return strtoupper(substr($words[0], 0, 2));
+        } else {
+            // Si son múltiples palabras, tomar la primera letra de las primeras 2 palabras
+            return strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+        }
+    }
+
+    /**
+     * Obtener color de avatar basado en el nombre del producto
+     */
+    private function getAvatarColorClass($name)
+    {
+        $colors = [
+            'bg-gradient-to-br from-blue-500 to-indigo-600',
+            'bg-gradient-to-br from-purple-500 to-pink-600',
+            'bg-gradient-to-br from-green-500 to-teal-600',
+            'bg-gradient-to-br from-yellow-500 to-orange-600',
+            'bg-gradient-to-br from-red-500 to-pink-600',
+            'bg-gradient-to-br from-indigo-500 to-purple-600',
+            'bg-gradient-to-br from-teal-500 to-cyan-600',
+            'bg-gradient-to-br from-orange-500 to-red-600',
+        ];
+
+        // Usar el primer caracter del nombre para determinar el color
+        $index = ord(strtoupper($name[0])) % count($colors);
+        return $colors[$index];
     }
 
     public function render()

@@ -374,6 +374,26 @@ class TatItemsManager extends Component
         return CnfTaxes::all();
     }
 
+    public function getProductInitials($productName)
+    {
+        $words = explode(' ', trim($productName));
+        if (count($words) >= 2) {
+            return strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+        }
+        return strtoupper(substr($productName, 0, 2));
+    }
+
+    public function getAvatarColorClass($productName)
+    {
+        $colors = [
+            'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500',
+            'bg-pink-500', 'bg-indigo-500', 'bg-orange-500', 'bg-teal-500', 'bg-cyan-500'
+        ];
+
+        $hash = crc32($productName);
+        return $colors[abs($hash) % count($colors)];
+    }
+
     public function render()
     {
         return view('livewire.TAT.Items.tat-items-manager', [
