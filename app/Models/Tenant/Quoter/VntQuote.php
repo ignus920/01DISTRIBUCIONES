@@ -69,9 +69,8 @@ class VntQuote extends Model
             return 'Cliente no encontrado';
         }
 
-        // Usar lógica compatible con TAT Listener
-        return $this->customer->businessName ?: 
-               trim($this->customer->firstName . ' ' . $this->customer->lastName);
+        // Usar firstName y lastName que sí existen en vnt_contacts
+        return trim($this->customer->firstName . ' ' . $this->customer->lastName) ?: 'Sin nombre';
     }
 
     public function getWarehouseNameAttribute()

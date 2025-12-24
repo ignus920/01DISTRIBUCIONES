@@ -4,12 +4,12 @@ namespace App\Livewire\Tenant\Quoter;
 use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
 use App\Models\Tenant\Quoter\VntQuote;
-use App\Models\Tenant\Quoter\VntDetailQuote;
 use App\Models\Central\VntWarehouse;
 use App\Traits\HasCompanyConfiguration;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Auth;
 
 
 class Quoter extends Component
@@ -21,8 +21,8 @@ class Quoter extends Component
     public $perPage = 10; // Registros por página
     public $showDetailsModal = false;
     public $selectedQuote = null;
-
-
+    public $sortBy = 'created_at'; // Campo para ordenar
+    public $sortDirection = 'desc'; // Dirección: 'asc' o 'desc'
 
     protected $paginationTheme = 'tailwind';
 
@@ -70,6 +70,26 @@ class Quoter extends Component
 
     public function updatingPerPage()
     {
+        $this->resetPage();
+    }
+
+    /**
+     * Maneja el ordenamiento de columnas
+     * 
+     * @param string $field Campo por el cual ordenar
+     */
+    public function setSortBy($field)
+    {
+        // Si ya estamos ordenando por este campo, invertir la dirección
+        if ($this->sortBy === $field) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            // Si es un nuevo campo, ordenar ascendente por defecto
+            $this->sortBy = $field;
+            $this->sortDirection = 'asc';
+        }
+        
+        // Resetear a la primera página cuando se cambia el ordenamiento
         $this->resetPage();
     }
 
@@ -509,28 +529,61 @@ class Quoter extends Component
     {
         // Asegurar conexión tenant activa
         $this->ensureTenantConnection();
-
+        
+        //dd(Auth::id());
         // Cargar cotizaciones con sus relaciones
+        
         $quotes = VntQuote::with(['customer', 'warehouse.contacts', 'branch', 'detalles'])
+            ->when(Auth::user()->profile_id !== 1, function ($query) {
+                return $query->where('userId', Auth::id());
+            })
             ->when($this->search, function ($query) {
                 $query->where('consecutive', 'like', '%' . $this->search . '%')
                     ->orWhere('status', 'like', '%' . $this->search . '%')
                     ->orWhere('typeQuote', 'like', '%' . $this->search . '%')
                     ->orWhere('observations', 'like', '%' . $this->search . '%')
                     ->orWhereHas('customer', function ($q) {
-                        $q->where('businessName', 'like', '%' . $this->search . '%')
-                          ->orWhere('firstName', 'like', '%' . $this->search . '%')
+                        $q->where('firstName', 'like', '%' . $this->search . '%')
                           ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                          ->orWhere('identification', 'like', '%' . $this->search . '%')
-                          ->orWhere('billingEmail', 'like', '%' . $this->search . '%');
+                          ->orWhere('email', 'like', '%' . $this->search . '%');
                     })
                     ->orWhereHas('warehouse', function ($q) {
                         $q->where('name', 'like', '%' . $this->search . '%')
                           ->orWhere('address', 'like', '%' . $this->search . '%');
                     });
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate($this->perPage);
+            });
+
+        // Aplicar ordenamiento
+        // Para campos que son accessors, ordenar en PHP después de paginar
+        if (in_array($this->sortBy, ['customer_name', 'warehouse_name'])) {
+            $quotes = $quotes->paginate($this->perPage);
+            
+            // Ordenar en PHP para accessors
+            if ($this->sortBy === 'customer_name') {
+                $quotes->getCollection()->transform(function ($item) {
+                    return $item;
+                });
+                $sorted = $quotes->getCollection()->sortBy(function ($item) {
+                    return $item->customer_name;
+                });
+                if ($this->sortDirection === 'desc') {
+                    $sorted = $sorted->reverse();
+                }
+                $quotes->setCollection($sorted);
+            } elseif ($this->sortBy === 'warehouse_name') {
+                $sorted = $quotes->getCollection()->sortBy(function ($item) {
+                    return $item->warehouse_name;
+                });
+                if ($this->sortDirection === 'desc') {
+                    $sorted = $sorted->reverse();
+                }
+                $quotes->setCollection($sorted);
+            }
+        } else {
+            // Para columnas reales de la BD, ordenar en la query
+            $quotes = $quotes->orderBy($this->sortBy, $this->sortDirection)
+                ->paginate($this->perPage);
+        }
 
         $viewName = $this->viewType === 'mobile'
             ? 'livewire.tenant.quoter.components.quoter-mobile'

@@ -103,43 +103,73 @@
             <table class="w-full">
                 <thead>
                     <tr class="border-b border-gray-200 dark:border-slate-700">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-slate-300 transition-colors">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-slate-300 transition-colors" wire:click="setSortBy('consecutive')">
                             <div class="flex items-center space-x-1">
                                 <span>COTIZACIÓN #</span>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                <svg class="w-3 h-3 @if($sortBy === 'consecutive') text-indigo-500 @endif" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    @if($sortBy === 'consecutive' && $sortDirection === 'asc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"></path>
+                                    @elseif($sortBy === 'consecutive' && $sortDirection === 'desc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m0-4v-12m-10 4v12m0 0l-4-4m0 0l4-4m0 4V4"></path>
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    @endif
                                 </svg>
                             </div>
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-slate-300 transition-colors">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-slate-300 transition-colors" wire:click="setSortBy('customer_name')">
                             <div class="flex items-center space-x-1">
                                 <span>CLIENTE</span>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                <svg class="w-3 h-3 @if($sortBy === 'customer_name') text-indigo-500 @endif" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    @if($sortBy === 'customer_name' && $sortDirection === 'asc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"></path>
+                                    @elseif($sortBy === 'customer_name' && $sortDirection === 'desc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m0-4v-12m-10 4v12m0 0l-4-4m0 0l4-4m0 4V4"></path>
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    @endif
                                 </svg>
                             </div>
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors" wire:click="setSortBy('typeQuote')">
                             <div class="flex items-center space-x-1">
                                 <span>TIPO</span>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                <svg class="w-3 h-3 @if($sortBy === 'typeQuote') text-indigo-500 @endif" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    @if($sortBy === 'typeQuote' && $sortDirection === 'asc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"></path>
+                                    @elseif($sortBy === 'typeQuote' && $sortDirection === 'desc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m0-4v-12m-10 4v12m0 0l-4-4m0 0l4-4m0 4V4"></path>
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    @endif
                                 </svg>
                             </div>
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors" wire:click="setSortBy('status')">
                             <div class="flex items-center space-x-1">
                                 <span>ESTADO</span>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                <svg class="w-3 h-3 @if($sortBy === 'status') text-indigo-500 @endif" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    @if($sortBy === 'status' && $sortDirection === 'asc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"></path>
+                                    @elseif($sortBy === 'status' && $sortDirection === 'desc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m0-4v-12m-10 4v12m0 0l-4-4m0 0l4-4m0 4V4"></path>
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    @endif
                                 </svg>
                             </div>
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors" wire:click="setSortBy('warehouse_name')">
                             <div class="flex items-center space-x-1">
                                 <span>SUCURSAL</span>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                <svg class="w-3 h-3 @if($sortBy === 'warehouse_name') text-indigo-500 @endif" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    @if($sortBy === 'warehouse_name' && $sortDirection === 'asc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"></path>
+                                    @elseif($sortBy === 'warehouse_name' && $sortDirection === 'desc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m0-4v-12m-10 4v12m0 0l-4-4m0 0l4-4m0 4V4"></path>
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    @endif
                                 </svg>
                             </div>
                         </th>
@@ -151,11 +181,17 @@
                                 </svg>
                             </div>
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors" wire:click="setSortBy('created_at')">
                             <div class="flex items-center space-x-1">
                                 <span>FECHA</span>
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                <svg class="w-3 h-3 @if($sortBy === 'created_at') text-indigo-500 @endif" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    @if($sortBy === 'created_at' && $sortDirection === 'asc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4"></path>
+                                    @elseif($sortBy === 'created_at' && $sortDirection === 'desc')
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m0-4v-12m-10 4v12m0 0l-4-4m0 0l4-4m0 4V4"></path>
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path>
+                                    @endif
                                 </svg>
                             </div>
                         </th>
@@ -173,11 +209,8 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
                             @if($quote->customer)
                             {{ $quote->customer_name }}
-                            @if($quote->customer->billingEmail)
-                            <br><small class="text-gray-500">{{ $quote->customer->billingEmail }}</small>
-                            @endif
-                            @if($quote->customer->identification)
-                            <br><small class="text-gray-500">{{ $quote->customer->identification }}</small>
+                            @if($quote->customer->email)
+                            <br><small class="text-gray-500">{{ $quote->customer->email }}</small>
                             @endif
                             @else
                             <span class="text-gray-400">Sin cliente asignado</span>
@@ -379,22 +412,16 @@
                                         <span class="text-gray-500 dark:text-slate-400">Nombre:</span>
                                         <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer_name }}</span>
                                     </p>
-                                    @if($selectedQuote->customer->identification)
-                                    <p class="flex justify-between">
-                                        <span class="text-gray-500 dark:text-slate-400">Identificación:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->identification }}</span>
-                                    </p>
-                                    @endif
-                                    @if($selectedQuote->customer->billingEmail)
+                                    @if($selectedQuote->customer->email)
                                     <p class="flex justify-between">
                                         <span class="text-gray-500 dark:text-slate-400">Email:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->billingEmail }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->email }}</span>
                                     </p>
                                     @endif
-                                    @if($selectedQuote->customer->phone)
+                                    @if($selectedQuote->customer->business_phone)
                                     <p class="flex justify-between">
                                         <span class="text-gray-500 dark:text-slate-400">Teléfono:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->phone }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->business_phone }}</span>
                                     </p>
                                     @endif
                                 </div>
