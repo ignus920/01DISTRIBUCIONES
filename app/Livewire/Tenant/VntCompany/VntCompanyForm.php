@@ -457,7 +457,7 @@ class VntCompanyForm extends Component
                 session()->flash('message', 'Registro actualizado exitosamente.');
 
                 // Disparar evento para componentes que escuchan
-                $this->dispatch('customer-updated', $this->editingId);
+                $this->dispatch('customer-updated', customerId: $this->editingId);
 
                 // Actualizar ruta si ha cambiado
                 if ($this->routeId) {
@@ -555,8 +555,14 @@ class VntCompanyForm extends Component
 
                 // Disparar evento para componentes que escuchan
                 if ($company && isset($company->id)) {
-                    $this->dispatch('customer-created', $company->id);
-                    $this->dispatch('vnt-company-saved', $company->id);
+                    Log::info('🚀 Emitiendo evento customer-created', [
+                        'company_id' => $company->id,
+                        'user_id' => auth()->id()
+                    ]);
+
+                    // Usar dispatch global para que llegue a todos los componentes
+                    $this->dispatch('customer-created', customerId: $company->id);
+                    $this->dispatch('vnt-company-saved', customerId: $company->id);
                 }
             }
 

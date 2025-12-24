@@ -39,7 +39,7 @@ class LoginForm extends Form
         
         if (! Auth::attempt($credentials, $this->remember)) {
             $user = \App\Models\Auth\User::where('email', $this->email)->first();
-            
+
             \Illuminate\Support\Facades\Log::warning('❌ Login fallido', [
                 'email' => $this->email,
                 'user_exists' => $user ? 'YES' : 'NO',
@@ -48,8 +48,13 @@ class LoginForm extends Form
 
             RateLimiter::hit($this->throttleKey());
 
+            // Mensaje personalizado dependiendo si el usuario existe o no
+            $message = $user
+                ? 'La contraseña es incorrecta. Por favor, verifica e intenta nuevamente.'
+                : 'No encontramos una cuenta con este correo electrónico. Verifica tus credenciales o contacta al administrador.';
+
             throw ValidationException::withMessages([
-                'form.email' => trans('auth.failed'),
+                'form.email' => $message,
             ]);
         }
 
@@ -103,12 +108,10 @@ class LoginForm extends Form
         event(new Lockout(request()));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+        $minutes = ceil($seconds / 60);
 
         throw ValidationException::withMessages([
-            'form.email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'form.email' => "Por seguridad, has sido bloqueado temporalmente. Intenta nuevamente en {$minutes} minuto(s).",
         ]);
     }
 

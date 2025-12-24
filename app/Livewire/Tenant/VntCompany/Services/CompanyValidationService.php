@@ -10,10 +10,11 @@ class CompanyValidationService
      * Obtener reglas de validación dinámicas
      */
     public function getValidationRules(
-        string $typePerson = '', 
-        ?int $editingId = null, 
+        string $typePerson = '',
+        ?int $editingId = null,
         ?int $typeIdentificationId = null,
-        bool $includeWarehouseAndContact = false
+        bool $includeWarehouseAndContact = false,
+        bool $reusable = false
     ): array {
         $baseRules = $this->getBaseRules($editingId, $typeIdentificationId);
         
@@ -26,7 +27,7 @@ class CompanyValidationService
         
         // Si se solicita, incluir reglas de warehouse y contacto
         if ($includeWarehouseAndContact) {
-            $rules = $this->addWarehouseAndContactRules($rules);
+            $rules = $this->addWarehouseAndContactRules($rules, $reusable);
         }
         
         return $rules;
@@ -192,7 +193,6 @@ class CompanyValidationService
             'verification_digit' => $verificationDigitRule,
             // 'vntUserId' => 'nullable|integer|exists:users,id', // Campo no existe en la tabla
             'routeId' => 'nullable|integer|exists:tat_routes,id',
-            'district' => 'required|string|min:3|max:100',
             'warehouses' => 'array',
             // 'warehouses.*.name' => 'required|string|max:255',
             'warehouses.*.address' => 'required|string|max:255',
@@ -232,20 +232,24 @@ class CompanyValidationService
     /**
      * Agregar reglas de warehouse y contacto
      */
-    private function addWarehouseAndContactRules(array $rules): array
+    private function addWarehouseAndContactRules(array $rules, bool $reusable = false): array
     {
         // Eliminar reglas obsoletas de warehouses.* (ya no usamos array)
         $warehouseKeys = ['warehouses', 'warehouses.*.name', 'warehouses.*.address', 'warehouses.*.postcode', 'warehouses.*.cityId', 'warehouses.*.main'];
         foreach ($warehouseKeys as $key) {
             unset($rules[$key]);
         }
-        
+
+        // En modo reusable (para cotizador), el distrito es opcional
+        $districtRule = $reusable ? 'nullable|string|min:3|max:100' : 'required|string|min:3|max:100';
+
         // Agregar reglas para campos individuales de warehouse
         return array_merge($rules, [
             // 'warehouseName' => 'required|string|max:255',
             'warehouseAddress' => 'required|string|min:5|max:255',
             'warehousePostcode' => 'nullable|string|min:5|max:10|regex:/^[0-9]+$/',
             'warehouseCityId' => 'required|integer',
+            'district' => $districtRule,
             'business_phone' => 'nullable|string|min:7|max:100|regex:/^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/',
             'personal_phone' => 'nullable|string|min:7|max:100|regex:/^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/',
             'positionId' => 'nullable|integer|exists:cnf_positions,id',

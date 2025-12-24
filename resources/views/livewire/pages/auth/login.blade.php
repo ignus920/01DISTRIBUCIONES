@@ -22,6 +22,14 @@ new #[Layout('layouts.guest')] class extends Component
             // Si llegamos aquí, no hay 2FA o ya fue validado
             Session::regenerate();
 
+            // Mostrar notificación de bienvenida
+            $userName = auth()->user()->name ?? 'Usuario';
+            $this->dispatch('login-success', [
+                'title' => '¡Bienvenido!',
+                'message' => "Hola {$userName}, has iniciado sesión correctamente.",
+                'icon' => 'success'
+            ]);
+
             // Verificar si ya hay 2FA pendiente
             if (Session::has('2fa_user_id')) {
                 $this->redirect(route('verify.2fa'), navigate: true);
@@ -43,12 +51,75 @@ new #[Layout('layouts.guest')] class extends Component
                 return;
             }
 
+            // Capturar el mensaje de error y mostrar notificación SweetAlert
+            $errors = $e->errors();
+            if (isset($errors['form.email'][0])) {
+                $message = $errors['form.email'][0];
+
+                // Determinar el tipo de error y mostrar notificación personalizada
+                if (str_contains($message, 'bloqueado temporalmente')) {
+                    $this->dispatch('login-error', [
+                        'title' => 'Demasiados intentos',
+                        'message' => $message,
+                        'icon' => 'warning'
+                    ]);
+                } else {
+                    $this->dispatch('login-error', [
+                        'title' => 'Credenciales incorrectas',
+                        'message' => $message,
+                        'icon' => 'error'
+                    ]);
+                }
+
+                // Limpiar el mensaje de error para evitar mostrar el mensaje estándar
+                $e->withMessages(['form.email' => '']);
+            }
+
             throw $e;
         }
     }
 }; ?>
 
-<div class="flex min-h-screen flex-col justify-center px-6 py-12 lg:px-8 lg:py-20">
+<div class="flex min-h-screen flex-col justify-center px-6 py-12 lg:px-8 lg:py-20" x-data="{
+    init() {
+        // Listener para errores de login
+        Livewire.on('login-error', (data) => {
+            Swal.fire({
+                title: data[0].title,
+                text: data[0].message,
+                icon: data[0].icon,
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#4F46E5',
+                background: '#ffffff',
+                color: '#111827',
+                customClass: {
+                    popup: 'swal-popup-light',
+                    title: 'swal-title-light',
+                    content: 'swal-content-light'
+                }
+            });
+        });
+
+        // Listener para login exitoso
+        Livewire.on('login-success', (data) => {
+            Swal.fire({
+                title: data[0].title,
+                text: data[0].message,
+                icon: data[0].icon,
+                timer: 2000,
+                timerProgressBar: true,
+                showConfirmButton: false,
+                background: '#ffffff',
+                color: '#111827',
+                customClass: {
+                    popup: 'swal-popup-light',
+                    title: 'swal-title-light',
+                    content: 'swal-content-light'
+                }
+            });
+        });
+    }
+}">
     <!-- Header -->
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
         <div class="mx-auto h-10 w-10 flex items-center justify-center bg-indigo-600 rounded-lg">
@@ -176,4 +247,56 @@ new #[Layout('layouts.guest')] class extends Component
             </p>
         @endif
     </div>
+
+    <!-- Estilos CSS para SweetAlert2 - Siempre modo claro -->
+    <style>
+        /* Estilos personalizados para SweetAlert2 - Forzar modo claro */
+        .swal-popup-light {
+            background-color: white !important;
+            border-radius: 8px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+        }
+
+        .swal-title-light {
+            color: #111827 !important;
+            font-weight: 600 !important;
+        }
+
+        .swal-content-light {
+            color: #374151 !important;
+        }
+
+        /* Forzar colores claros para todos los elementos internos */
+        .swal2-popup {
+            background-color: white !important;
+            color: #111827 !important;
+        }
+
+        .swal2-title {
+            color: #111827 !important;
+        }
+
+        .swal2-content {
+            color: #374151 !important;
+        }
+
+        .swal2-confirm {
+            background-color: #4F46E5 !important;
+            color: white !important;
+        }
+
+        /* Estilos para el icono de éxito */
+        .swal2-success-circular-line-left,
+        .swal2-success-circular-line-right {
+            background-color: #10B981 !important;
+        }
+
+        .swal2-success-fix {
+            background-color: #10B981 !important;
+        }
+
+        .swal2-timer-progress-bar {
+            background-color: #10B981 !important;
+        }
+    </style>
 </div>

@@ -42,7 +42,7 @@ class VntQuote extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(VntContacts::class, 'customerId');
+        return $this->belongsTo(VntCompany::class, 'customerId');
     }
 
     public function warehouse(): BelongsTo

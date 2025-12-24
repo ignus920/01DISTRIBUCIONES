@@ -85,7 +85,7 @@
                         </div>
 
                         <!-- Preview de nueva imagen -->
-                        @if ($principalImage)
+                        @if ($principalImage && !$errors->has('principalImage'))
                             <div class="flex items-center space-x-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg">
                                 <div class="rounded-md overflow-hidden border-2 border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-700" style="width:64px;height:64px;">
                                     <img class="max-w-[64px] max-h-[64px] w-auto h-auto object-contain block"
@@ -99,6 +99,7 @@
                                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                         Esta será la nueva imagen principal
                                     </p>
+                                    
                                 </div>
                             </div>
                         @endif

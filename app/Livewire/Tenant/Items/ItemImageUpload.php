@@ -30,12 +30,18 @@ class ItemImageUpload extends Component
         'image',
         'mimes:jpeg,png,jpg,webp',
         'max:2048'
-    ],message: [
+    ], message: [
         'image' => 'El archivo principal debe ser una imagen válida.',
         'mimes' => 'La imagen debe ser en formato JPEG, PNG, JPG o WebP.',
         'max' => 'La imagen principal no debe superar 2MB.',
     ])] // 2MB max
     public $principalImage;
+
+    public function updatedPrincipalImage()
+    {
+        //dd('a');
+        $this->validateOnly('principalImage');
+    }
 
     // Imágenes de galería temporales (múltiples)
     #[Validate([
@@ -48,6 +54,10 @@ class ItemImageUpload extends Component
     ])]
     public $galleryImages = [];
 
+    public function updatedGalleryImages()
+    {
+        $this->validateOnly('galleryImages');
+    }
     // Límite de imágenes en galería
     const MAX_GALLERY_IMAGES = 6;
 
@@ -88,11 +98,11 @@ class ItemImageUpload extends Component
             'principalImage.mimes' => 'La imagen principal debe ser en formato JPEG, PNG, JPG o WebP.',
             'principalImage.max' => 'La imagen principal no debe superar 2MB.',
             'principalImage.max.file' => 'La imagen principal no debe superar 2MB.', // Específico para error de tamaño de archivo
-            
+
             // Mensajes para el array de galería
             'galleryImages.array' => 'Las imágenes deben ser un conjunto válido.',
             'galleryImages.max' => 'No puedes subir más de ' . self::MAX_GALLERY_IMAGES . ' imágenes a la vez.',
-            
+
             // Mensajes para cada imagen en el array
             'galleryImages.*.image' => 'Todos los archivos deben ser imágenes válidas.',
             'galleryImages.*.mimes' => 'Las imágenes deben ser en formato JPEG, PNG, JPG o WebP.',
@@ -151,9 +161,9 @@ class ItemImageUpload extends Component
     {
         $this->ensureTenantConnection();
         return ImageGallery::where('itemId', $this->itemId)
-                          ->where('type', 'PRINCIPAL')
-                          ->whereNull('deleted_at')
-                          ->first();
+            ->where('type', 'PRINCIPAL')
+            ->whereNull('deleted_at')
+            ->first();
     }
 
     /**
@@ -163,10 +173,10 @@ class ItemImageUpload extends Component
     {
         $this->ensureTenantConnection();
         return ImageGallery::where('itemId', $this->itemId)
-                          ->where('type', 'GALERIA')
-                          ->whereNull('deleted_at')
-                          ->orderBy('created_at', 'desc')
-                          ->get();
+            ->where('type', 'GALERIA')
+            ->whereNull('deleted_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     /**
@@ -224,7 +234,6 @@ class ItemImageUpload extends Component
             // Limpiar y mostrar mensaje
             $this->reset('principalImage');
             session()->flash('image-message', 'Imagen principal actualizada exitosamente.');
-
         } catch (\Exception $e) {
             \Log::error('Error subiendo imagen principal: ' . $e->getMessage());
             session()->flash('image-error', 'Error al subir la imagen principal: ' . $e->getMessage());
@@ -302,7 +311,6 @@ class ItemImageUpload extends Component
             unset($this->galleryImagesData);
 
             session()->flash('image-message', "{$uploadedCount} imagen(es) agregada(s) a la galería exitosamente.");
-
         } catch (\Exception $e) {
             \Log::error('Error subiendo imágenes de galería: ' . $e->getMessage());
             session()->flash('image-error', 'Error al subir las imágenes de galería: ' . $e->getMessage());
@@ -348,7 +356,6 @@ class ItemImageUpload extends Component
             $image->softDelete();
 
             session()->flash('image-message', 'Imagen eliminada exitosamente.');
-
         } catch (\Exception $e) {
             \Log::error('Error eliminando imagen: ' . $e->getMessage());
             session()->flash('image-error', 'Error al eliminar la imagen.');
@@ -379,12 +386,12 @@ class ItemImageUpload extends Component
             $image->update(['type' => 'PRINCIPAL']);
 
             session()->flash('image-message', 'Imagen establecida como principal exitosamente.');
-
         } catch (\Exception $e) {
             \Log::error('Error estableciendo imagen principal: ' . $e->getMessage());
             session()->flash('image-error', 'Error al establecer imagen principal.');
         }
     }
+
 
     /**
      * Renderizar componente
