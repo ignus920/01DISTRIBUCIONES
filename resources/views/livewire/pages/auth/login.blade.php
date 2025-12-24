@@ -43,12 +43,53 @@ new #[Layout('layouts.guest')] class extends Component
                 return;
             }
 
+            // Capturar el mensaje de error y mostrar notificación SweetAlert
+            $errors = $e->errors();
+            if (isset($errors['form.email'][0])) {
+                $message = $errors['form.email'][0];
+
+                // Determinar el tipo de error y mostrar notificación personalizada
+                if (str_contains($message, 'bloqueado temporalmente')) {
+                    $this->dispatch('login-error', [
+                        'title' => 'Demasiados intentos',
+                        'message' => $message,
+                        'icon' => 'warning'
+                    ]);
+                } else {
+                    $this->dispatch('login-error', [
+                        'title' => 'Credenciales incorrectas',
+                        'message' => $message,
+                        'icon' => 'error'
+                    ]);
+                }
+
+                // Limpiar el mensaje de error para evitar mostrar el mensaje estándar
+                $e->withMessages(['form.email' => '']);
+            }
+
             throw $e;
         }
     }
 }; ?>
 
-<div class="flex min-h-screen flex-col justify-center px-6 py-12 lg:px-8 lg:py-20">
+<div class="flex min-h-screen flex-col justify-center px-6 py-12 lg:px-8 lg:py-20" x-data="{
+    init() {
+        Livewire.on('login-error', (data) => {
+            Swal.fire({
+                title: data[0].title,
+                text: data[0].message,
+                icon: data[0].icon,
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#4F46E5',
+                customClass: {
+                    popup: 'swal-popup-dark',
+                    title: 'swal-title-dark',
+                    content: 'swal-content-dark'
+                }
+            });
+        });
+    }
+}">
     <!-- Header -->
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
         <div class="mx-auto h-10 w-10 flex items-center justify-center bg-indigo-600 rounded-lg">
@@ -176,4 +217,37 @@ new #[Layout('layouts.guest')] class extends Component
             </p>
         @endif
     </div>
+
+    <!-- Estilos CSS para SweetAlert2 -->
+    <style>
+        /* Estilos personalizados para SweetAlert2 */
+        .swal-popup-dark {
+            background-color: white !important;
+            border-radius: 8px !important;
+        }
+
+        .swal-title-dark {
+            color: #111827 !important;
+            font-weight: 600 !important;
+        }
+
+        .swal-content-dark {
+            color: #374151 !important;
+        }
+
+        /* Modo oscuro */
+        @media (prefers-color-scheme: dark) {
+            .swal-popup-dark {
+                background-color: #1f2937 !important;
+            }
+
+            .swal-title-dark {
+                color: white !important;
+            }
+
+            .swal-content-dark {
+                color: #e5e7eb !important;
+            }
+        }
+    </style>
 </div>
