@@ -458,7 +458,7 @@
             border-t border-gray-200 dark:border-gray-700 lg:border-t-0
             p-3 lg:p-0 z-10">
 
-    <!-- Total centrado en móviles - REMOVIDO PARA MÓVIL -->
+    <!-- Total centrado en móviles -->
     <div class="text-center mb-3 lg:hidden">
         <div class="text-2xl font-bold text-gray-800 dark:text-gray-200">
                     ${{ number_format($total, 0, '.', '.') }}
