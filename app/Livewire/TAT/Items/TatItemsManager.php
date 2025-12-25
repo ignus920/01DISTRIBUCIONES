@@ -55,7 +55,7 @@ class TatItemsManager extends Component
     protected function rules(): array
     {
         return [
-            'sku' => 'required|string|max:100|unique:tat_items,sku,' . $this->item_id,
+            'sku' => 'required|string|max:100|unique:tat_items,sku,' . $this->item_id . ',id,company_id,' . $this->company_id,
             'name' => 'required|string|max:255',
             'taxId' => 'nullable|exists:cnf_taxes,id',
             'categoryId' => 'required|exists:tat_categories,id',
