@@ -570,7 +570,7 @@
                 <!-- Vista Móvil - Nombre completo arriba, controles abajo -->
                 <div wire:key="cart-item-mobile-{{ $item['id'] }}" class="lg:hidden">
                     <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 space-y-3">
-                        <!-- Fila 1: Imagen/Avatar + Información del producto -->
+                        <!-- Fila 1: Imagen/Avatar + Información del producto + Botón Eliminar -->
                         <div class="flex items-center gap-2 w-full">
                             <!-- Imagen del producto o avatar con iniciales -->
                             <div class="flex-shrink-0">
@@ -600,11 +600,22 @@
                                     <span class="ml-2 font-semibold text-blue-600 dark:text-blue-400">| IVA: {{ $item['tax_name'] ?? 'N/A' }}</span>
                                 </div>
                             </div>
+
+                            <!-- Botón Eliminar -->
+                            <div class="flex-shrink-0">
+                                <button wire:click="removeFromCart({{ $item['id'] }})"
+                                        class="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg p-2 transition-colors duration-150 flex items-center justify-center"
+                                        title="Eliminar producto">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Fila 2: Controles optimizados - más espacio para inputs, menos para eliminar -->
-                        <div class="grid grid-cols-12 gap-2 w-full">
-                            <!-- Precio (30% del espacio) -->
+                        <!-- Fila 2: Controles con más espacio para los inputs -->
+                        <div class="grid grid-cols-10 gap-2 w-full">
+                            <!-- Precio (40% del espacio) -->
                             <div class="col-span-4">
                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Precio</div>
                                 @if($companyConfig && $companyConfig->allowsPriceChange())
@@ -612,13 +623,13 @@
                                     <input type="number"
                                            value="{{ number_format($item['price'], 0, '.', '') }}"
                                            wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
-                                           class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-1 py-2 text-xs font-semibold"
+                                           class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-semibold"
                                            min="0"
                                            step="1"
                                            title="Precio editable">
                                 @else
                                     <!-- Precio solo lectura -->
-                                    <div class="w-full text-center bg-gray-100 dark:bg-gray-600 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-1 py-2 text-xs font-semibold"
+                                    <div class="w-full text-center bg-gray-100 dark:bg-gray-600 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-semibold"
                                          title="Precio fijo - No editable">
                                         ${{ number_format($item['price'], 0, '.', '.') }}
                                     </div>
@@ -630,30 +641,18 @@
                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Cant.</div>
                                 <input type="number"
                                        wire:model.live.debounce.500ms="cartItems.{{ $index }}.quantity"
-                                       class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-1 py-2 text-xs font-semibold"
+                                       class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-semibold"
                                        min="1"
                                        step="1"
                                        pattern="\d*">
                             </div>
 
-                            <!-- Subtotal (35% del espacio) -->
+                            <!-- Subtotal (40% del espacio) -->
                             <div class="col-span-4">
                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Subtotal</div>
-                                <div class="text-center font-bold text-gray-800 dark:text-gray-200 text-xs bg-gray-100 dark:bg-gray-700 rounded px-1 py-2">
+                                <div class="text-center font-bold text-gray-800 dark:text-gray-200 text-xs bg-gray-100 dark:bg-gray-700 rounded px-2 py-2">
                                     ${{ number_format($item['subtotal'], 0, '.', '.') }}
                                 </div>
-                            </div>
-
-                            <!-- Botón Eliminar (15% del espacio - más compacto) -->
-                            <div class="col-span-2">
-                                <div class="text-[8px] text-gray-500 dark:text-gray-400 mb-1 text-center">Eliminar</div>
-                                <button wire:click="removeFromCart({{ $item['id'] }})"
-                                        class="w-full bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded px-1 py-1 transition-colors duration-150 flex items-center justify-center h-8"
-                                        title="Eliminar producto">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
                             </div>
                         </div>
                     </div>
