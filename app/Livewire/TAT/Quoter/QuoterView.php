@@ -453,13 +453,21 @@ class QuoterView extends Component
         $product = TatItems::find($productId);
 
         if (!$product) {
-            session()->flash('error', 'Producto no encontrado.');
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'Producto no encontrado.',
+                'mobile' => true
+            ]);
             return;
         }
 
         // Verificar stock solo si no se permite vender sin saldo
         if (!$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
-            session()->flash('error', 'No se puede agregar un producto sin stock.');
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'No se puede agregar un producto sin stock.',
+                'mobile' => true
+            ]);
             return;
         }
 
@@ -490,13 +498,21 @@ class QuoterView extends Component
         ]);
 
         if (!$product) {
-            session()->flash('error', 'Producto no disponible.');
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'Producto no disponible.',
+                'mobile' => true
+            ]);
             return;
         }
 
         // Verificar stock solo si no se permite vender sin saldo
         if (!$this->companyConfig->canSellWithoutStock() && !$product->hasStock()) {
-            session()->flash('error', 'Producto sin stock.');
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'Producto sin stock.',
+                'mobile' => true
+            ]);
             return;
         }
 
@@ -547,7 +563,15 @@ class QuoterView extends Component
         $this->calculateTotal();
         $this->saveCartToSession();
 
-        session()->flash('success', 'Producto agregado al carrito.');
+        // Determinar si es actualización o nuevo producto para el mensaje
+        $isUpdate = $existingItemIndex !== false;
+        $message = $isUpdate ? 'Cantidad actualizada en el carrito' : 'Producto agregado al carrito';
+
+        $this->dispatch('swal:toast', [
+            'type' => 'success',
+            'message' => $message,
+            'mobile' => true
+        ]);
     }
 
     /**
@@ -628,6 +652,10 @@ class QuoterView extends Component
      */
     public function removeFromCart($productId)
     {
+        // Obtener el nombre del producto antes de eliminarlo
+        $removedItem = collect($this->cartItems)->firstWhere('id', $productId);
+        $productName = $removedItem ? $removedItem['name'] : 'Producto';
+
         $this->cartItems = collect($this->cartItems)
             ->reject(function ($item) use ($productId) {
                 return $item['id'] == $productId;
@@ -636,7 +664,11 @@ class QuoterView extends Component
         $this->calculateTotal();
         $this->saveCartToSession();
 
-        session()->flash('success', 'Producto removido del carrito.');
+        $this->dispatch('swal:toast', [
+            'type' => 'success',
+            'message' => $productName . ' removido del carrito',
+            'mobile' => true
+        ]);
     }
 
     /**
@@ -644,11 +676,16 @@ class QuoterView extends Component
      */
     public function clearCart()
     {
+        $itemCount = count($this->cartItems);
         $this->cartItems = [];
         $this->total = 0;
         $this->saveCartToSession();
 
-        session()->flash('success', 'Carrito limpiado.');
+        $this->dispatch('swal:toast', [
+            'type' => 'info',
+            'message' => "Carrito limpiado ($itemCount productos eliminados)",
+            'mobile' => true
+        ]);
     }
 
     /**

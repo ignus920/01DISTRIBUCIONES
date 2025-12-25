@@ -57,8 +57,9 @@
         <!-- Main content -->
         <div class="flex flex-1 flex-col min-h-screen transition-all duration-300 bg-gray-50 dark:bg-gray-900"
              :class="sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'">
-            <!-- Top bar -->
-            <div class="sticky top-0 z-10 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+            <!-- Top bar - Oculto en móvil para la página de quoter TAT -->
+            <div class="sticky top-0 z-10 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700
+                        {{ request()->routeIs('tenant.tat.quoter.index') ? 'hidden lg:block' : '' }}">
                 <div class="flex h-16 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
                     <!-- Desktop sidebar toggle -->
                     <button type="button" class="hidden lg:block -m-2.5 p-2.5 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400" @click="sidebarCollapsed = !sidebarCollapsed">
@@ -158,7 +159,7 @@
             </div>
 
             <!-- Page content -->
-            <main class="flex-1">
+            <main class="flex-1 {{ request()->routeIs('tenant.tat.quoter.index') ? 'lg:pt-0' : '' }}">
             {{ $slot }}
             </main>
         </div>

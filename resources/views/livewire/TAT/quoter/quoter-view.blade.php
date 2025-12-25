@@ -1,4 +1,5 @@
-<div class="quoter-main-container min-h-screen bg-gray-50 dark:bg-gray-900 p-2 sm:p-6 relative">
+<div class="quoter-main-container min-h-screen bg-gray-50 dark:bg-gray-900 p-2 sm:p-6 relative
+     {{ request()->routeIs('tenant.tat.quoter.index') ? 'lg:min-h-[calc(100vh-4rem)]' : '' }}">
     <div class="w-full max-w-full sm:max-w-12xl mx-auto">
     <!-- Header con botones de estado -->
     <div class="bg-gray-50 dark:bg-gray-800 p-3 border-b dark:border-gray-700">
@@ -15,6 +16,18 @@
                 <!-- Modo búsqueda de cliente -->
                 <div class="space-y-2">
                     <div class="flex gap-1">
+                        <!-- Botón hamburguesa solo en móvil -->
+                        <button
+                            x-data
+                            @click="$dispatch('toggle-mobile-menu')"
+                            class="lg:hidden flex items-center justify-center w-10 h-10 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-all duration-200 mr-1 shadow-md hover:shadow-lg active:scale-95"
+                            title="Abrir menú de navegación"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        </button>
+
                         <input
                             wire:model.live.debounce.300ms="customerSearch"
                             type="text"
@@ -63,22 +76,36 @@
             @else
                 <!-- Modo mostrar cliente seleccionado -->
                 <div class="flex justify-between items-center">
-                    <div>
-                        @if($selectedCustomer)
-                            <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold">
-                                {{ $selectedCustomer['identification'] }}
-                            </div>
-                            <div class="text-xs lg:text-sm text-green-600 dark:text-green-400">{{ $selectedCustomer['display_name'] }}</div>
-                        @else
-                            <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold">
-                                Sin cliente
-                            </div>
-                            <div class="text-xs lg:text-sm text-green-600 dark:text-green-400">Seleccionar cliente</div>
-                        @endif
+                    <div class="flex items-center gap-2 flex-1">
+                        <!-- Botón hamburguesa solo en móvil -->
+                        <button
+                            x-data
+                            @click="$dispatch('toggle-mobile-menu')"
+                            class="lg:hidden flex items-center justify-center w-10 h-10 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg active:scale-95"
+                            title="Abrir menú de navegación"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            </svg>
+                        </button>
+
+                        <div class="flex-1 min-w-0">
+                            @if($selectedCustomer)
+                                <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold truncate">
+                                    {{ $selectedCustomer['identification'] }}
+                                </div>
+                                <div class="text-xs lg:text-sm text-green-600 dark:text-green-400 truncate">{{ $selectedCustomer['display_name'] }}</div>
+                            @else
+                                <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold">
+                                    Sin cliente
+                                </div>
+                                <div class="text-xs lg:text-sm text-green-600 dark:text-green-400">Seleccionar cliente</div>
+                            @endif
+                        </div>
                     </div>
                     <button
                         wire:click="enableClientSearch"
-                        class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center justify-center"
+                        class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center justify-center flex-shrink-0"
                         title="Cambiar cliente"
                     >
                         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,7 +119,7 @@
         <!-- Input de búsqueda de productos - Ahora debajo del cliente -->
         <div class="space-y-1 mt-3">
             <!-- Input de búsqueda optimizado -->
-            <div class="relative" x-data="{ isLoading: false }">
+            <div class="relative" x-data="{ isLoading: false, fullscreenSearch: false }" @keydown.escape="fullscreenSearch = false">
                 <!-- Input principal con indicador de carga -->
                 <div class="relative">
                     <input type="text"
@@ -105,7 +132,9 @@
                            wire:loading.class="border-blue-400"
                            wire:target="updatedCurrentSearch"
                            inputmode="search"
-                           enterkeyhint="search">
+                           enterkeyhint="search"
+                           @focus="if (window.innerWidth < 1024) fullscreenSearch = true"
+                           x-ref="searchInput">
 
                     <!-- Spinner de carga -->
                     <div wire:loading wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -123,10 +152,144 @@
                     </div>
                 </div>
 
-                <!-- Dropdown de resultados mejorado con indicadores de stock -->
+                <!-- Interfaz de búsqueda fullscreen para móvil -->
+                <div x-show="fullscreenSearch"
+                     x-transition:enter="transition ease-out duration-300"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-200"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 z-50 lg:hidden bg-white dark:bg-gray-900"
+                     @click.self="fullscreenSearch = false">
+
+                    <div class="h-full flex flex-col">
+                        <!-- Header del fullscreen con input y botón cerrar -->
+                        <div class="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                            <div class="flex items-center gap-3">
+                                <!-- Botón cerrar -->
+                                <button @click="fullscreenSearch = false; $wire.set('currentSearch', '')"
+                                        class="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+
+                                <!-- Input de búsqueda fullscreen -->
+                                <input type="text"
+                                       wire:model.live.debounce.250ms="currentSearch"
+                                       placeholder="Buscar productos..."
+                                       class="flex-1 px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 dark:text-white border-0 rounded-lg focus:outline-none focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm"
+                                       autocomplete="off"
+                                       x-ref="fullscreenInput"
+                                       inputmode="search"
+                                       enterkeyhint="search">
+                            </div>
+
+                            <!-- Info de búsqueda -->
+                            <div class="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center">
+                                @if(strlen($currentSearch) >= 2 && count($searchResults) > 0)
+                                    {{ count($searchResults) }} producto{{ count($searchResults) !== 1 ? 's' : '' }} encontrado{{ count($searchResults) !== 1 ? 's' : '' }}
+                                @elseif(strlen($currentSearch) >= 2)
+                                    No se encontraron productos
+                                @else
+                                    Escribe al menos 2 caracteres para buscar
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Resultados fullscreen -->
+                        <div class="flex-1 overflow-y-auto">
+                            @if(strlen($currentSearch) >= 2 && count($searchResults) > 0)
+                                <div class="p-4 space-y-3">
+                                    @foreach($searchResults as $index => $product)
+                                        @php
+                                            $hasStock = $product['stock'] > 0;
+                                            $canSelect = $hasStock || ($companyConfig && $companyConfig->canSellWithoutStock());
+                                            $stockLevel = $product['stock_level'] ?? 'disponible';
+                                        @endphp
+
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 transition-all duration-200
+                                                    {{ $canSelect ? 'cursor-pointer hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-750' : 'cursor-not-allowed opacity-60' }}
+                                                    {{ $stockLevel === 'agotado' && !$canSelect ? 'bg-red-50 dark:bg-red-900/20' : '' }}
+                                                    {{ $stockLevel === 'bajo' ? 'bg-yellow-50 dark:bg-yellow-900/20' : '' }}"
+                                             {{ $canSelect ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}
+                                             @click="if ($event.target.dataset.canSelect) fullscreenSearch = false"
+                                             data-can-select="{{ $canSelect ? 'true' : 'false' }}">
+
+                                            <div class="flex items-center gap-3">
+                                                <!-- Imagen/Avatar -->
+                                                <div class="flex-shrink-0">
+                                                    @if($product['img_path'] && file_exists(storage_path('app/public/' . $product['img_path'])))
+                                                        <img src="{{ asset('storage/' . $product['img_path']) }}"
+                                                             alt="{{ $product['name'] }}"
+                                                             class="w-14 h-14 rounded-lg object-cover border border-gray-200 dark:border-gray-600">
+                                                    @else
+                                                        <div class="w-14 h-14 rounded-lg {{ $product['avatar_color'] }} flex items-center justify-center text-white font-bold text-sm border border-gray-200 dark:border-gray-600">
+                                                            {{ $product['initials'] }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                <!-- Info del producto -->
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="font-semibold text-gray-900 dark:text-gray-100 text-base {{ $stockLevel === 'agotado' ? 'line-through' : '' }} truncate">
+                                                        {{ $product['name'] }}
+                                                    </div>
+                                                    <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                        SKU: {{ $product['sku'] ?? 'N/A' }} | Stock: {{ number_format($product['stock'], 0) }}
+                                                    </div>
+                                                    <div class="text-lg font-bold text-blue-600 dark:text-blue-400 mt-1">
+                                                        ${{ number_format($product['price'], 0, '.', '.') }}
+                                                    </div>
+                                                </div>
+
+                                                <!-- Badge de stock -->
+                                                <div class="flex-shrink-0">
+                                                    <span class="px-3 py-1 rounded-full text-xs font-medium
+                                                        {{ $stockLevel === 'disponible' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : '' }}
+                                                        {{ $stockLevel === 'bajo' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' : '' }}
+                                                        {{ $stockLevel === 'agotado' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' : '' }}">
+                                                        @if($stockLevel === 'disponible')
+                                                            ✓ Disponible
+                                                        @elseif($stockLevel === 'bajo')
+                                                            ⚠ Stock Bajo
+                                                        @else
+                                                            ✗ Agotado
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @elseif(strlen($currentSearch) >= 2)
+                                <!-- Sin resultados -->
+                                <div class="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+                                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                    <div class="text-lg font-medium">No se encontraron productos</div>
+                                    <div class="text-sm">Intenta con otro término de búsqueda</div>
+                                </div>
+                            @else
+                                <!-- Estado inicial -->
+                                <div class="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
+                                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                    <div class="text-lg font-medium">Buscar productos</div>
+                                    <div class="text-sm">Escribe al menos 2 caracteres</div>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dropdown de resultados mejorado con indicadores de stock (solo desktop) -->
                 @if(strlen($currentSearch) >= 2 && count($searchResults) > 0)
                     <div id="productSearchResults"
-                         class="search-results-dropdown z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-60 sm:max-h-72 overflow-y-auto mt-1"
+                         class="search-results-dropdown z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-60 sm:max-h-72 overflow-y-auto mt-1 hidden lg:block"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0 transform scale-95"
                          x-transition:enter-end="opacity-100 transform scale-100">
@@ -229,8 +392,8 @@
                     </div>
 
                 @elseif(strlen($currentSearch) >= 2)
-                    <!-- Estado sin resultados -->
-                    <div class="absolute z-50 w-full bg-white dark:bg-gray-800 border-2 border-yellow-500 dark:border-yellow-600 rounded-lg shadow-xl mt-1 p-4">
+                    <!-- Estado sin resultados (solo desktop) -->
+                    <div class="absolute z-50 w-full bg-white dark:bg-gray-800 border-2 border-yellow-500 dark:border-yellow-600 rounded-lg shadow-xl mt-1 p-4 hidden lg:block">
                         <div class="text-center text-gray-600 dark:text-gray-400">
                             <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-3-3v6m-9 1V5a2 2 0 012-2h.05A2 2 0 016 2h12a2 2 0 011.95 2.05H20a2 2 0 012 2v14a2 2 0 01-2 2H4a2 2 0 01-2-2z"></path>
@@ -241,8 +404,8 @@
                     </div>
 
                 @elseif(strlen($currentSearch) >= 1 && strlen($currentSearch) < 2)
-                    <!-- Mensaje de mínimo caracteres -->
-                    <div class="absolute z-50 w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-600 rounded-lg shadow-lg mt-1 p-3">
+                    <!-- Mensaje de mínimo caracteres (solo desktop) -->
+                    <div class="absolute z-50 w-full bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-600 rounded-lg shadow-lg mt-1 p-3 hidden lg:block">
                         <div class="text-center text-blue-700 dark:text-blue-300 text-sm">
                             Escriba al menos 2 caracteres para buscar
                         </div>
@@ -597,6 +760,15 @@
             padding-bottom: 140px; /* Espacio para el footer fijo */
         }
 
+        /* Ajustar altura cuando no hay header (página de quoter) */
+        @media (max-width: 1023px) {
+            .quoter-main-container {
+                /* En móvil sin header, usar toda la pantalla */
+                height: 100vh;
+                min-height: 100vh;
+            }
+        }
+
         /* Footer fijo en móviles */
         .mobile-footer {
             position: fixed;
@@ -675,6 +847,69 @@
             overflow-x: visible !important;
         }
     }
+
+    /* Estilos simplificados para toasts */
+    @media (max-width: 767px) {
+        .swal2-popup.swal2-toast {
+            font-size: 14px !important;
+            padding: 0.75rem !important;
+            border-radius: 0.5rem !important;
+            max-width: calc(100vw - 2rem) !important;
+            margin-top: 1rem !important;
+        }
+
+        .swal2-toast .swal2-icon {
+            width: 1.2rem !important;
+            height: 1.2rem !important;
+            margin-right: 0.5rem !important;
+        }
+    }
+
+    /* Estilos para búsqueda fullscreen en móvil */
+    @media (max-width: 1023px) {
+        /* Asegurar que el fullscreen se vea correctamente */
+        .fullscreen-search {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            z-index: 9999 !important;
+            background: white;
+        }
+
+        /* Prevenir zoom en inputs en iOS */
+        input[type="text"], input[type="search"] {
+            font-size: 16px !important;
+            touch-action: manipulation;
+        }
+
+        /* Optimizar scroll en la lista de resultados */
+        .fullscreen-results {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        /* Mejorar area de toque para productos */
+        .product-item-touch {
+            min-height: 72px;
+            padding: 16px;
+            touch-action: manipulation;
+        }
+    }
+
+    /* Asegurar que el fullscreen tenga máxima prioridad */
+    .search-fullscreen {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 9999 !important;
+        background: white !important;
+    }
+
+    /* Dark mode para fullscreen */
+    .dark .search-fullscreen {
+        background: rgb(17 24 39) !important;
+    }
 </style>
 <script>
     // Forzar ancho completo en móviles
@@ -706,6 +941,22 @@
     document.addEventListener('livewire:init', () => {
         // Forzar ancho completo después de que Livewire esté listo
         setTimeout(forceFullWidth, 100);
+
+        // Listener para el botón hamburguesa móvil
+        document.addEventListener('toggle-mobile-menu', () => {
+            // Buscar el elemento body que tiene Alpine.js
+            const body = document.body;
+            if (body._x_dataStack && body._x_dataStack[0]) {
+                // Activar el sidebar móvil usando la variable de Alpine.js
+                body._x_dataStack[0].sidebarOpen = true;
+            } else {
+                // Fallback: disparar click en el botón hamburguesa del header si existe
+                const headerMenuButton = document.querySelector('button[\\@click="sidebarOpen = true"]');
+                if (headerMenuButton) {
+                    headerMenuButton.click();
+                }
+            }
+        });
         // Listener para alertas de SweetAlert2
         Livewire.on('swal:warning', (data) => {
             // data es un array con los argumentos pasados desde el componente
@@ -728,6 +979,95 @@
                 });
             } else {
                 alert(alertData.text);
+            }
+        });
+
+        // Manejar búsqueda fullscreen en móviles
+        document.addEventListener('alpine:init', () => {
+            // Escuchar cuando se abre la búsqueda fullscreen
+            document.addEventListener('alpine:init', () => {
+                // Observar cambios en fullscreenSearch
+                setTimeout(() => {
+                    const observer = new MutationObserver(() => {
+                        const fullscreenElement = document.querySelector('[x-show="fullscreenSearch"]');
+                        if (fullscreenElement && !fullscreenElement.style.display.includes('none')) {
+                            // Enfocar el input fullscreen
+                            setTimeout(() => {
+                                const fullscreenInput = document.querySelector('[x-ref="fullscreenInput"]');
+                                if (fullscreenInput) {
+                                    fullscreenInput.focus();
+                                    // Prevenir zoom en iOS
+                                    fullscreenInput.setAttribute('readonly', 'readonly');
+                                    setTimeout(() => fullscreenInput.removeAttribute('readonly'), 100);
+                                }
+                            }, 100);
+                        }
+                    });
+
+                    observer.observe(document.body, { childList: true, subtree: true });
+                }, 500);
+            });
+        });
+
+        // Test básico de SweetAlert al cargar
+        setTimeout(() => {
+            if (typeof Swal !== 'undefined') {
+                console.log('SweetAlert2 disponible y funcionando');
+
+                // Test simple de toast
+                window.testToast = function() {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true,
+                        icon: 'success',
+                        title: 'Toast de prueba - debería desaparecer en 2 segundos'
+                    });
+                }
+            } else {
+                console.error('SweetAlert2 no está disponible');
+            }
+        }, 1000);
+
+        // Listener para toasts no invasivos - Configuración simplificada
+        Livewire.on('swal:toast', (data) => {
+            const toastData = Array.isArray(data) ? data[0] : data;
+
+            if (typeof Swal !== 'undefined') {
+                const isMobile = window.innerWidth < 768;
+
+                // Configuración ultra-simple para garantizar funcionamiento
+                const config = {
+                    toast: true,
+                    position: isMobile ? 'top' : 'top-end',
+                    showConfirmButton: false,
+                    timer: isMobile ? 1500 : 2500,
+                    timerProgressBar: true,
+                    title: toastData.message,
+                    background: isMobile ? 'rgba(0, 0, 0, 0.85)' : undefined,
+                    color: isMobile ? 'white' : undefined
+                };
+
+                // Agregar ícono según tipo
+                if (toastData.type === 'success') {
+                    config.icon = 'success';
+                } else if (toastData.type === 'error') {
+                    config.icon = 'error';
+                } else if (toastData.type === 'info') {
+                    config.icon = 'info';
+                } else {
+                    config.icon = 'success';
+                }
+
+                // Disparar el toast
+                Swal.fire(config);
+
+                // Debug
+                console.log('Toast disparado con timer:', config.timer + 'ms');
+            } else {
+                console.log(`${toastData.type.toUpperCase()}: ${toastData.message}`);
             }
         });
 
