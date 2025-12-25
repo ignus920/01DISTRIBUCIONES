@@ -123,8 +123,26 @@ class PaymentQuote extends Component
         // Simular anticipos existentes (opcional)
         $this->loadAdvances();
 
+        // Configurar efectivo como método principal con el total por defecto
+        $this->setDefaultCashAmount();
+
         // Calcular balances iniciales
         $this->calculateBalances();
+    }
+
+    private function setDefaultCashAmount()
+    {
+        // Establecer el efectivo como el total de la venta por defecto
+        $this->paymentMethods['efectivo']['value'] = $this->quoteTotal;
+        $this->paymentMethods['efectivo']['selected'] = true;
+
+        // Asegurar que otros métodos empiecen en 0
+        foreach ($this->paymentMethods as $key => $method) {
+            if ($key !== 'efectivo') {
+                $this->paymentMethods[$key]['value'] = 0;
+                $this->paymentMethods[$key]['selected'] = false;
+            }
+        }
     }
 
     private function ensureTenantConnection()
@@ -297,6 +315,46 @@ class PaymentQuote extends Component
         $this->calculateBalances();
     }
 
+    public function autoDistributePayments()
+    {
+        // Calcular total pagado con otros métodos (excluyendo efectivo)
+        $totalOtherMethods = 0;
+        foreach ($this->paymentMethods as $key => $method) {
+            if ($key !== 'efectivo') {
+                $totalOtherMethods += (float) ($method['value'] ?? 0);
+            }
+        }
+
+        // El efectivo debe cubrir lo que falta para completar el total
+        $remainingAmount = $this->quoteTotal - $totalOtherMethods;
+
+        // Si la cantidad restante es negativa, significa que los otros métodos superan el total
+        if ($remainingAmount < 0) {
+            // En este caso, el efectivo debe ser 0 y necesitamos ajustar otros métodos
+            $this->paymentMethods['efectivo']['value'] = 0;
+            // Opcional: redistribuir proporcionalmente los otros métodos
+            $this->redistributeOtherMethods($totalOtherMethods);
+        } else {
+            // Asignar lo que falta al efectivo
+            $this->paymentMethods['efectivo']['value'] = $remainingAmount;
+        }
+    }
+
+    private function redistributeOtherMethods($totalOtherMethods)
+    {
+        if ($totalOtherMethods <= 0) return;
+
+        // Calcular factor de redistribución
+        $factor = $this->quoteTotal / $totalOtherMethods;
+
+        // Redistribuir proporcionalmente todos los métodos excepto efectivo
+        foreach ($this->paymentMethods as $key => $method) {
+            if ($key !== 'efectivo') {
+                $this->paymentMethods[$key]['value'] = round(($method['value'] ?? 0) * $factor, 2);
+            }
+        }
+    }
+
     public function autoDistributeFromCash()
     {
         // Calcular total de todos los métodos EXCEPTO efectivo
@@ -320,20 +378,6 @@ class PaymentQuote extends Component
         $this->paymentMethods['efectivo']['value'] = max(0, $cashAmount);
     }
 
-    public function autoDistributePayments()
-    {
-        // Calcular total actual de todos los métodos
-        $totalCurrentPayments = 0;
-        foreach ($this->paymentMethods as $method) {
-            $totalCurrentPayments += (float) ($method['value'] ?? 0);
-        }
-
-        // Si el total excede la venta, ajustar proporcionalmente
-        if ($totalCurrentPayments > $this->quoteTotal) {
-            $this->redistributePayments($totalCurrentPayments);
-        }
-        // Si es menor al total, no hacer nada (permitir combinaciones manuales)
-    }
 
     private function redistributePayments($overAmount)
     {
