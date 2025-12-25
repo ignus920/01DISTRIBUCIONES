@@ -279,6 +279,11 @@ class TatCustomersManager extends Component
     {
         $this->showModal = false;
         $this->resetForm();
+
+        // Si está en modo modal, notificar al padre para cerrar el overlay
+        if ($this->isModalMode) {
+            $this->dispatch('customer-modal-closed');
+        }
     }
 
     public function updatingSearch()

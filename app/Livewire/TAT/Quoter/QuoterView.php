@@ -453,9 +453,16 @@ class QuoterView extends Component
      */
     public function selectProduct($productId)
     {
+        Log::info('INICIANDO selectProduct', [
+            'product_id' => $productId,
+            'cart_items_count' => count($this->cartItems),
+            'current_search' => $this->currentSearch
+        ]);
+
         $product = TatItems::find($productId);
 
         if (!$product) {
+            Log::error('PRODUCTO NO ENCONTRADO', ['product_id' => $productId]);
             $this->dispatch('swal:toast', [
                 'type' => 'error',
                 'message' => 'Producto no encontrado.',
@@ -464,8 +471,22 @@ class QuoterView extends Component
             return;
         }
 
+        Log::info('PRODUCTO ENCONTRADO', [
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_stock' => $product->stock,
+            'company_config_exists' => $this->companyConfig ? 'YES' : 'NO'
+        ]);
+
         // Verificar stock solo si no se permite vender sin saldo
-        if (!$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
+        if ($this->companyConfig && !$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
+            Log::info('PRODUCTO SIN STOCK RECHAZADO', [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'stock' => $product->stock,
+                'can_sell_without_stock' => $this->companyConfig->canSellWithoutStock()
+            ]);
+
             $this->dispatch('swal:toast', [
                 'type' => 'error',
                 'message' => 'No se puede agregar un producto sin stock.',
@@ -476,14 +497,28 @@ class QuoterView extends Component
 
         $this->addToCart($productId);
 
-        // Limpiar la búsqueda para permitir nueva búsqueda
-        $this->currentSearch = '';
-        $this->searchResults = [];
-        $this->additionalSuggestions = [];
-        $this->selectedIndex = -1;
+        // Detectar si es móvil basado en el User-Agent
+        $userAgent = request()->header('User-Agent') ?? '';
+        $isMobile = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/', $userAgent);
 
-        // Emitir evento para limpiar el input en el frontend
-        $this->dispatch('product-selected');
+        if (!$isMobile) {
+            // En desktop: limpiar completamente la búsqueda
+            $this->currentSearch = '';
+            $this->searchResults = [];
+            $this->additionalSuggestions = [];
+            $this->selectedIndex = -1;
+            $this->dispatch('product-selected');
+        } else {
+            // En móvil: mantener el texto de búsqueda, solo limpiar resultados
+            $this->searchResults = [];
+            $this->selectedIndex = -1;
+            $this->dispatch('product-selected-keep-search');
+
+            Log::info('MÓVIL DETECTADO - Manteniendo búsqueda', [
+                'current_search' => $this->currentSearch,
+                'search_results_count' => count($this->searchResults)
+            ]);
+        }
     }
 
     /**
@@ -491,6 +526,11 @@ class QuoterView extends Component
      */
     public function addToCart($productId)
     {
+        Log::info('INICIANDO addToCart', [
+            'product_id' => $productId,
+            'cart_items_before' => count($this->cartItems)
+        ]);
+
         $product = TatItems::with('tax')->find($productId);
         
         Log::info('Adding to cart', [
@@ -510,7 +550,13 @@ class QuoterView extends Component
         }
 
         // Verificar stock solo si no se permite vender sin saldo
-        if (!$this->companyConfig->canSellWithoutStock() && !$product->hasStock()) {
+        if ($this->companyConfig && !$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
+            Log::info('PRODUCTO SIN STOCK EN ADDTOCART', [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'stock' => $product->stock
+            ]);
+
             $this->dispatch('swal:toast', [
                 'type' => 'error',
                 'message' => 'Producto sin stock.',
@@ -525,16 +571,28 @@ class QuoterView extends Component
 
         if ($existingItemIndex !== false) {
             // Si ya existe, incrementar cantidad
-            $newQuantity = $this->cartItems[$existingItemIndex]['quantity'] + 1;
+            $oldQuantity = $this->cartItems[$existingItemIndex]['quantity'];
+            $newQuantity = $oldQuantity + 1;
 
             // Verificar stock solo si no se permite vender sin saldo
-            if (!$this->companyConfig->canSellWithoutStock() && $newQuantity > $product->stock) {
-                 $this->dispatch('swal:warning', [
-                    'title' => 'Stock Insuficiente',
-                    'text' => "No puedes agregar más de {$product->stock} unidades.",
+            if ($this->companyConfig && !$this->companyConfig->canSellWithoutStock() && $newQuantity > $product->stock) {
+                Log::info('STOCK INSUFICIENTE DETECTADO', [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_stock' => $product->stock,
+                    'old_quantity' => $oldQuantity,
+                    'new_quantity' => $newQuantity,
+                    'can_sell_without_stock' => $this->companyConfig->canSellWithoutStock()
                 ]);
-                return;
-             }
+
+                // En lugar de hacer return, mantener la cantidad máxima permitida
+                $newQuantity = $product->stock;
+
+                $this->dispatch('swal:warning', [
+                    'title' => 'Stock Limitado',
+                    'text' => "Solo hay {$product->stock} unidades disponibles. Cantidad ajustada automáticamente.",
+                ]);
+            }
 
             $this->cartItems[$existingItemIndex]['quantity'] = $newQuantity;
             $baseSubtotal = $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
@@ -568,7 +626,18 @@ class QuoterView extends Component
 
         // Determinar si es actualización o nuevo producto para el mensaje
         $isUpdate = $existingItemIndex !== false;
-        $message = $isUpdate ? 'Cantidad actualizada en el carrito' : 'Producto agregado al carrito';
+        if ($isUpdate) {
+            $finalQuantity = $this->cartItems[$existingItemIndex]['quantity'];
+            $wasAdjusted = $finalQuantity != ($oldQuantity + 1);
+
+            if ($wasAdjusted) {
+                $message = "Cantidad ajustada por stock: {$oldQuantity} → {$finalQuantity} ({$product->name})";
+            } else {
+                $message = "Cantidad actualizada: {$oldQuantity} → {$finalQuantity} ({$product->name})";
+            }
+        } else {
+            $message = "Producto agregado: {$product->name}";
+        }
 
         $this->dispatch('swal:toast', [
             'type' => 'success',
@@ -1018,8 +1087,17 @@ class QuoterView extends Component
                 ->toArray();
 
             // Si no hay resultados y la búsqueda tiene al menos 2 caracteres, abrir automáticamente el modal
-            // PERO solo si no está en proceso de cierre y no hay un cliente seleccionado ya
-            if (empty($this->customerSearchResults) && strlen($this->customerSearch) >= 2 && !$this->modalClosing && !$this->selectedCustomer) {
+            // PERO solo si no está en proceso de cierre
+            Log::info('🔍 Evaluando apertura automática del modal', [
+                'customerSearch' => $this->customerSearch,
+                'search_length' => strlen($this->customerSearch),
+                'results_count' => count($this->customerSearchResults),
+                'modalClosing' => $this->modalClosing,
+                'selectedCustomer_exists' => $this->selectedCustomer ? 'YES' : 'NO',
+                'showCustomerModal_current' => $this->showCustomerModal
+            ]);
+
+            if (empty($this->customerSearchResults) && strlen($this->customerSearch) >= 2 && !$this->modalClosing) {
                 $this->searchedIdentification = $this->customerSearch;
                 $this->showCustomerModal = true;
 
@@ -1125,15 +1203,21 @@ class QuoterView extends Component
         $this->editingCustomerId = null;
         $this->searchedIdentification = '';
         $this->customerSearch = ''; // Limpiar búsqueda para evitar reactivación
+        $this->customerSearchResults = []; // Limpiar resultados
+        $this->showClientSearch = false; // Salir del modo de búsqueda de cliente
 
         Log::info('Modal de cliente cerrado', [
             'showCustomerModal' => $this->showCustomerModal,
             'editingCustomerId' => $this->editingCustomerId,
+            'showClientSearch' => $this->showClientSearch,
             'modalClosing' => $this->modalClosing
         ]);
 
         // Reset la flag después de un momento para permitir reapertura
         $this->modalClosing = false;
+
+        // Forzar actualización del componente
+        $this->dispatch('$refresh');
     }
 
     /**
@@ -1172,10 +1256,12 @@ class QuoterView extends Component
      */
     public function handleCustomerModalClosed()
     {
+        Log::info('handleCustomerModalClosed ejecutado');
         $this->closeCustomerModal();
 
         Log::info('Modal cerrado por listener', [
-            'showCustomerModal' => $this->showCustomerModal
+            'showCustomerModal' => $this->showCustomerModal,
+            'showClientSearch' => $this->showClientSearch
         ]);
     }
 

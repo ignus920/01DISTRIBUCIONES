@@ -248,7 +248,10 @@
                                                     {{ $stockLevel === 'agotado' && !$canSelect ? 'bg-red-50 dark:bg-red-900/20' : '' }}
                                                     {{ $stockLevel === 'bajo' ? 'bg-yellow-50 dark:bg-yellow-900/20' : '' }}"
                                              {{ $canSelect ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}
-                                             @click="if ($event.target.dataset.canSelect) fullscreenSearch = false"
+                                             @click="if ($event.target.dataset.canSelect) {
+                                                 // En móvil mantener el fullscreen abierto para facilitar re-selección
+                                                 if (window.innerWidth >= 1024) fullscreenSearch = false;
+                                             }"
                                              data-can-select="{{ $canSelect ? 'true' : 'false' }}">
 
                                             <div class="flex items-center gap-3">
@@ -478,7 +481,7 @@
         </div>
 
         <!-- Contenedor de productos con scroll (móvil) / normal (desktop) -->
-        <div class="flex-1 overflow-y-auto lg:overflow-visible p-3 lg:p-0" style="max-height: calc(100vh - 420px);">
+        <div class="flex-1 overflow-y-auto lg:overflow-visible p-3 lg:p-0 products-container">
             <!-- Productos en el carrito -->
             <div class="space-y-2 mb-3 lg:mb-0">
             @foreach($cartItems as $index => $item)
@@ -739,35 +742,13 @@
 
         </div>
 
-        <!-- Modal para crear nuevo cliente -->
+        <!-- Modal para crear/editar cliente (se maneja solo) -->
         @if($showCustomerModal)
-        <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-90 overflow-y-auto h-full w-full z-[9999] flex items-center justify-center p-4">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-
-                <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            Crear Nuevo Cliente
-                        </h3>
-                        <button wire:click="closeCustomerModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Contenido - Componente real de cliente -->
-                <div class="p-6">
-                    @livewire('TAT.Customers.tat-customers-manager', [
-                        'preFilledIdentification' => $searchedIdentification,
-                        'isModalMode' => true,
-                        'editingCustomerId' => $editingCustomerId
-                    ], key('customer-modal-' . uniqid() . '-' . ($editingCustomerId ?? 'new')))
-                </div>
-            </div>
-        </div>
+            @livewire('TAT.Customers.tat-customers-manager', [
+                'preFilledIdentification' => $searchedIdentification,
+                'isModalMode' => true,
+                'editingCustomerId' => $editingCustomerId
+            ], key('customer-modal-' . ($editingCustomerId ?? 'new')))
         @endif
 
     </div>
@@ -777,7 +758,13 @@
 @push('scripts')
 <style>
     /* Optimización móvil para evitar interferencia del teclado */
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
+        /* Maximizar área de productos en móvil */
+        .products-container {
+            max-height: calc(100vh - 260px) !important; /* Más espacio para productos */
+            height: calc(100vh - 260px) !important;
+        }
+
         /* Hacer que los resultados de búsqueda se posicionen de manera fija en móviles */
         .search-results-dropdown {
             position: fixed !important;
@@ -795,7 +782,12 @@
         .quoter-main-container {
             height: 100vh;
             overflow-y: auto;
-            padding-bottom: 140px; /* Espacio para el footer fijo */
+            padding-bottom: 130px; /* Espacio optimizado para el footer fijo */
+        }
+
+        /* Optimizar padding en móvil para más espacio */
+        .flex.flex-col.h-full.lg\\:block.lg\\:h-auto.lg\\:p-3 {
+            padding: 0.5rem !important; /* Menos padding en móvil */
         }
 
         /* Ajustar altura cuando no hay header (página de quoter) */
@@ -1183,13 +1175,26 @@
         const searchInput = document.getElementById('product-search-input');
 
         if (searchInput) {
-            // Mantener el foco en el input después de seleccionar un producto
+            // Mantener el foco en el input después de seleccionar un producto (desktop)
             Livewire.on('product-selected', () => {
                 // Solo enfocar si NO estamos buscando cliente
                 const customerSearchInput = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]');
                 const isCustomerSearchActive = customerSearchInput && document.activeElement === customerSearchInput;
 
                 if (!isCustomerSearchActive) {
+                    setTimeout(() => {
+                        searchInput.focus();
+                    }, 100);
+                }
+            });
+
+            // Manejar selección de producto en móvil (mantener search)
+            Livewire.on('product-selected-keep-search', () => {
+                // En móvil NO enfocamos el input automáticamente para evitar problemas con el teclado
+                // El usuario puede tocar el input cuando quiera cambiar el término de búsqueda
+                const isMobile = window.innerWidth < 1024;
+                if (!isMobile) {
+                    // Si por alguna razón esto se dispara en desktop, comportarse normalmente
                     setTimeout(() => {
                         searchInput.focus();
                     }, 100);
