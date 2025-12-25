@@ -20,8 +20,7 @@
                     <div class="flex gap-1">
                         <!-- Botón hamburguesa solo en móvil -->
                         <button
-                            x-data
-                            @click="$dispatch('toggle-mobile-menu')"
+                            @click="if (window.openMobileSidebar) window.openMobileSidebar();"
                             class="lg:hidden flex items-center justify-center w-10 h-10 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-all duration-200 mr-1 shadow-md hover:shadow-lg active:scale-95"
                             title="Abrir menú de navegación"
                         >
@@ -75,8 +74,7 @@
                     <div class="flex items-center gap-2 flex-1">
                         <!-- Botón hamburguesa solo en móvil -->
                         <button
-                            x-data
-                            @click="$dispatch('toggle-mobile-menu')"
+                            @click="if (window.openMobileSidebar) window.openMobileSidebar();"
                             class="lg:hidden flex items-center justify-center w-10 h-10 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg active:scale-95"
                             title="Abrir menú de navegación"
                         >
@@ -996,21 +994,40 @@
         // Forzar ancho completo después de que Livewire esté listo
         setTimeout(forceFullWidth, 100);
 
-        // Listener para el botón hamburguesa móvil
-        document.addEventListener('toggle-mobile-menu', () => {
-            // Buscar el elemento body que tiene Alpine.js
-            const body = document.body;
-            if (body._x_dataStack && body._x_dataStack[0]) {
-                // Activar el sidebar móvil usando la variable de Alpine.js
-                body._x_dataStack[0].sidebarOpen = true;
-            } else {
-                // Fallback: disparar click en el botón hamburguesa del header si existe
-                const headerMenuButton = document.querySelector('button[\\@click="sidebarOpen = true"]');
+        // Función mejorada para abrir el sidebar móvil
+        window.openMobileSidebar = function() {
+            console.log('Attempting to open mobile sidebar');
+
+            try {
+                // Método 1: Buscar el botón hamburguesa del header
+                const headerMenuButton = document.querySelector('[\\@click*="sidebarOpen = true"]');
                 if (headerMenuButton) {
+                    console.log('Method 1: Found header button, clicking...');
                     headerMenuButton.click();
+                    return;
                 }
+
+                // Método 2: Acceder directamente a Alpine.js en el body
+                const body = document.body;
+                if (body && body.__x && body.__x.$data) {
+                    console.log('Method 2: Found Alpine data, setting sidebarOpen...');
+                    body.__x.$data.sidebarOpen = true;
+                    return;
+                }
+
+                // Método 3: Buscar cualquier elemento con x-data que contenga sidebarOpen
+                const alpineElement = document.querySelector('[x-data*="sidebarOpen"]');
+                if (alpineElement && alpineElement.__x && alpineElement.__x.$data) {
+                    console.log('Method 3: Found Alpine element, setting sidebarOpen...');
+                    alpineElement.__x.$data.sidebarOpen = true;
+                    return;
+                }
+
+                console.log('Could not open sidebar - no method worked');
+            } catch (error) {
+                console.error('Error opening sidebar:', error);
             }
-        });
+        };
         // Listener para alertas de SweetAlert2
         Livewire.on('swal:warning', (data) => {
             // data es un array con los argumentos pasados desde el componente

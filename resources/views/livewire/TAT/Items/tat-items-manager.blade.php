@@ -1,5 +1,5 @@
-<div class="p-6 bg-gray-50 dark:bg-slate-900 min-h-screen transition-colors">
-    <div class="max-w-12xl mx-auto">
+<div class="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
+    <div class="px-4 sm:px-6 lg:px-8 py-6">
         <!-- Header -->
         <div
             class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">

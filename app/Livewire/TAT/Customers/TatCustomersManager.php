@@ -155,7 +155,7 @@ class TatCustomersManager extends Component
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
 
-        return view('livewire.TAT.Customers.tat-customers-manager', compact('customers'));
+        return view('livewire.TAT.Customers.tat-customers-manager', compact('customers'))->layout('layouts.app'); // 👈 aquí agregas el layout
     }
 
     public function sortBy($field)

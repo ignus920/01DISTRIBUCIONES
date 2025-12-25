@@ -400,6 +400,6 @@ class TatItemsManager extends Component
             'items' => $this->items,
             'categories' => $this->categories,
             'taxes' => $this->taxes,
-        ]);
+        ])->layout('layouts.app'); // 👈 aquí agregas el layout
     }
 }
