@@ -186,14 +186,31 @@
                                        enterkeyhint="search">
                             </div>
 
-                            <!-- Info de búsqueda -->
+                            <!-- Info de búsqueda / carrito -->
                             <div class="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center">
                                 @if(strlen($currentSearch) >= 2 && count($searchResults) > 0)
                                     {{ count($searchResults) }} producto{{ count($searchResults) !== 1 ? 's' : '' }} encontrado{{ count($searchResults) !== 1 ? 's' : '' }}
                                 @elseif(strlen($currentSearch) >= 2)
                                     No se encontraron productos
                                 @else
-                                    Escribe al menos 2 caracteres para buscar
+                                    <!-- Información del carrito cuando no hay búsqueda -->
+                                    @if(count($cartItems) > 0)
+                                        <div class="flex items-center justify-center gap-4 text-xs">
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 1.5M6 20c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm12 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"></path>
+                                                </svg>
+                                                {{ count($cartItems) }} producto{{ count($cartItems) !== 1 ? 's' : '' }}
+                                            </span>
+                                            <span class="text-green-600 dark:text-green-400 font-medium">
+                                                ${{ number_format($total, 0, '.', '.') }}
+                                            </span>
+                                        </div>
+                                    @else
+                                        <span class="text-gray-400 dark:text-gray-500 text-xs">
+                                            Buscar productos para agregar al carrito
+                                        </span>
+                                    @endif
                                 @endif
                             </div>
                         </div>
@@ -273,13 +290,28 @@
                                     <div class="text-sm">Intenta con otro término de búsqueda</div>
                                 </div>
                             @else
-                                <!-- Estado inicial -->
+                                <!-- Estado inicial con info del carrito -->
                                 <div class="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
-                                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
-                                    <div class="text-lg font-medium">Buscar productos</div>
-                                    <div class="text-sm">Escribe al menos 2 caracteres</div>
+                                    @if(count($cartItems) > 0)
+                                        <!-- Mostrar resumen del carrito -->
+                                        <svg class="w-16 h-16 mb-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 1.5M6 20c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm12 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"></path>
+                                        </svg>
+                                        <div class="text-lg font-medium text-gray-600 dark:text-gray-300">{{ count($cartItems) }} producto{{ count($cartItems) !== 1 ? 's' : '' }} en carrito</div>
+                                        <div class="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">
+                                            ${{ number_format($total, 0, '.', '.') }}
+                                        </div>
+                                        <div class="text-sm mt-3 text-center">
+                                            Busca más productos para agregar
+                                        </div>
+                                    @else
+                                        <!-- Carrito vacío -->
+                                        <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        </svg>
+                                        <div class="text-lg font-medium">Buscar productos</div>
+                                        <div class="text-sm">Escribe al menos 2 caracteres para buscar</div>
+                                    @endif
                                 </div>
                             @endif
                         </div>
@@ -289,7 +321,7 @@
                 <!-- Dropdown de resultados mejorado con indicadores de stock (solo desktop) -->
                 @if(strlen($currentSearch) >= 2 && count($searchResults) > 0)
                     <div id="productSearchResults"
-                         class="search-results-dropdown z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-60 sm:max-h-72 overflow-y-auto mt-1 hidden lg:block"
+                         class="search-results-dropdown z-50 w-full bg-white dark:bg-gray-800 border-2 border-blue-500 dark:border-blue-600 rounded-lg shadow-2xl max-h-96 lg:max-h-[500px] xl:max-h-[600px] overflow-y-auto mt-1 hidden lg:block"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0 transform scale-95"
                          x-transition:enter-end="opacity-100 transform scale-100">
@@ -803,7 +835,7 @@
         }
     }
 
-    /* Para desktop mantener comportamiento normal */
+    /* Para desktop mantener comportamiento normal con más altura */
     @media (min-width: 640px) {
         .search-results-dropdown {
             position: absolute !important;
@@ -813,6 +845,19 @@
             right: 0 !important;
             width: 100% !important;
             max-width: none !important;
+        }
+    }
+
+    /* Permitir más altura en pantallas grandes */
+    @media (min-width: 1024px) {
+        .search-results-dropdown {
+            max-height: 500px !important;
+        }
+    }
+
+    @media (min-width: 1280px) {
+        .search-results-dropdown {
+            max-height: 600px !important;
         }
     }
 
