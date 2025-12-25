@@ -15,8 +15,23 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
 
-        <!-- SweetAlert2 -->
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <!-- SweetAlert2 CDN fallback -->
+        <script>
+            // Check if SweetAlert2 is loaded via Vite, if not load from CDN
+            document.addEventListener('DOMContentLoaded', function() {
+                if (typeof window.Swal === 'undefined') {
+                    console.log('Loading SweetAlert2 from CDN as fallback');
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+                    script.onload = function() {
+                        console.log('SweetAlert2 loaded from CDN');
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    console.log('SweetAlert2 loaded from Vite bundle');
+                }
+            });
+        </script>
     </head>
     <body class="font-sans antialiased"
           x-data="{

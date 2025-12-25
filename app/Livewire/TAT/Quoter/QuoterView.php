@@ -4,6 +4,7 @@ namespace App\Livewire\TAT\Quoter;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\On;
 use App\Models\TAT\Items\TatItems;
 use App\Models\TAT\Quoter\Quote;
 use App\Models\TAT\Quoter\QuoteItem;
@@ -36,6 +37,8 @@ class QuoterView extends Component
     public $showClientSearch = false;
     public $showCustomerModal = false;
     public $searchedIdentification = '';
+    public $editingCustomerId = null;
+    public $modalClosing = false;
 
     // Propiedades para manejo de venta
     public $currentQuoteId = null; // ID de la venta actual (para edición)
@@ -1013,6 +1016,30 @@ class QuoterView extends Component
                     ];
                 })
                 ->toArray();
+
+            // Si no hay resultados y la búsqueda tiene al menos 2 caracteres, abrir automáticamente el modal
+            // PERO solo si no está en proceso de cierre y no hay un cliente seleccionado ya
+            if (empty($this->customerSearchResults) && strlen($this->customerSearch) >= 2 && !$this->modalClosing && !$this->selectedCustomer) {
+                $this->searchedIdentification = $this->customerSearch;
+                $this->showCustomerModal = true;
+
+                Log::info('Modal activado automáticamente', [
+                    'customerSearch' => $this->customerSearch,
+                    'searchedIdentification' => $this->searchedIdentification,
+                    'showCustomerModal' => $this->showCustomerModal,
+                    'resultados_count' => count($this->customerSearchResults),
+                    'search_length' => strlen($this->customerSearch)
+                ]);
+
+                // Enviar evento para mostrar en el frontend
+                $this->dispatch('swal:toast', [
+                    'type' => 'info',
+                    'message' => 'Abriendo formulario de nuevo cliente para: ' . $this->customerSearch
+                ]);
+
+                // Forzar re-renderizado
+                $this->dispatch('$refresh');
+            }
         } else {
             $this->customerSearchResults = [];
         }
@@ -1047,7 +1074,45 @@ class QuoterView extends Component
     public function openCustomerModal()
     {
         $this->searchedIdentification = $this->customerSearch;
+        $this->editingCustomerId = null; // Modo crear
         $this->showCustomerModal = true;
+
+        Log::info('openCustomerModal llamado', [
+            'showCustomerModal' => $this->showCustomerModal,
+            'searchedIdentification' => $this->searchedIdentification
+        ]);
+    }
+
+    /**
+     * Abrir modal para editar cliente existente
+     */
+    public function editCustomer()
+    {
+        if (!$this->selectedCustomer) {
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'No hay cliente seleccionado para editar'
+            ]);
+            return;
+        }
+
+        // Verificar si es el cliente genérico (222222222)
+        if ($this->selectedCustomer['identification'] === '222222222') {
+            $this->dispatch('swal:toast', [
+                'type' => 'info',
+                'message' => 'Este es un cliente genérico que no puede ser editado'
+            ]);
+            return;
+        }
+
+        $this->editingCustomerId = $this->selectedCustomer['id'];
+        $this->searchedIdentification = $this->selectedCustomer['identification'];
+        $this->showCustomerModal = true;
+
+        Log::info('editCustomer llamado', [
+            'editingCustomerId' => $this->editingCustomerId,
+            'showCustomerModal' => $this->showCustomerModal
+        ]);
     }
 
     /**
@@ -1055,17 +1120,51 @@ class QuoterView extends Component
      */
     public function closeCustomerModal()
     {
+        $this->modalClosing = true;
         $this->showCustomerModal = false;
+        $this->editingCustomerId = null;
+        $this->searchedIdentification = '';
+        $this->customerSearch = ''; // Limpiar búsqueda para evitar reactivación
+
+        Log::info('Modal de cliente cerrado', [
+            'showCustomerModal' => $this->showCustomerModal,
+            'editingCustomerId' => $this->editingCustomerId,
+            'modalClosing' => $this->modalClosing
+        ]);
+
+        // Reset la flag después de un momento para permitir reapertura
+        $this->modalClosing = false;
     }
 
     /**
-     * Manejar cuando se crea un cliente nuevo (listener)
+     * Manejar cuando se crea/actualiza un cliente (listener)
      */
     public function handleCustomerCreated($customerId)
     {
+        // Determinar el mensaje antes de limpiar las variables
+        $wasEditing = !empty($this->editingCustomerId);
+        $message = $wasEditing ? 'Cliente actualizado correctamente.' : 'Cliente creado y seleccionado correctamente.';
+
+        // Cerrar modal y limpiar variables
         $this->closeCustomerModal();
         $this->selectCustomer($customerId);
-        session()->flash('success', 'Cliente creado y seleccionado correctamente.');
+        $this->showClientSearch = false; // Salir del modo búsqueda
+        $this->customerSearch = ''; // Limpiar búsqueda
+        $this->customerSearchResults = []; // Limpiar resultados
+
+        $this->dispatch('swal:toast', [
+            'type' => 'success',
+            'message' => $message
+        ]);
+
+        // Asegurar que la búsqueda se desactive
+        $this->showClientSearch = false;
+
+        Log::info('Cliente procesado correctamente', [
+            'customerId' => $customerId,
+            'wasEditing' => $wasEditing,
+            'showCustomerModal' => $this->showCustomerModal
+        ]);
     }
 
     /**
@@ -1074,6 +1173,10 @@ class QuoterView extends Component
     public function handleCustomerModalClosed()
     {
         $this->closeCustomerModal();
+
+        Log::info('Modal cerrado por listener', [
+            'showCustomerModal' => $this->showCustomerModal
+        ]);
     }
 
     /**

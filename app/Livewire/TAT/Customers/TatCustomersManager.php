@@ -24,6 +24,7 @@ class TatCustomersManager extends Component
     // Para modo modal
     public $isModalMode = false;
     public $preFilledIdentification = '';
+    public $editingCustomerId = null;
 
     protected $listeners = [
         'type-identification-changed' => 'updateTypeIdentification',
@@ -83,16 +84,60 @@ class TatCustomersManager extends Component
         if ($this->isModalMode) {
             $this->showModal = true;
 
-            // Pre-llenar el número de identificación si se proporcionó
-            if (!empty($this->preFilledIdentification)) {
-                $this->identification = $this->preFilledIdentification;
-            }
+            // Si hay un ID de cliente para editar, cargar sus datos
+            if ($this->editingCustomerId) {
+                $this->loadCustomerData($this->editingCustomerId);
+                $this->editingId = $this->editingCustomerId;
 
-            Log::info('Modal activado en modo reutilizable', [
-                'showModal' => $this->showModal,
-                'identification' => $this->identification
-            ]);
+                Log::info('Modal activado en modo edición', [
+                    'editingCustomerId' => $this->editingCustomerId,
+                    'showModal' => $this->showModal
+                ]);
+            } else {
+                // Pre-llenar el número de identificación si se proporcionó (modo crear)
+                if (!empty($this->preFilledIdentification)) {
+                    $this->identification = $this->preFilledIdentification;
+                }
+
+                Log::info('Modal activado en modo crear', [
+                    'showModal' => $this->showModal,
+                    'identification' => $this->identification
+                ]);
+            }
         }
+    }
+
+    /**
+     * Cargar datos del cliente para edición
+     */
+    private function loadCustomerData($customerId)
+    {
+        $customer = TatCustomer::find($customerId);
+
+        if (!$customer) {
+            Log::warning('Cliente no encontrado para edición', ['id' => $customerId]);
+            return;
+        }
+
+        // Cargar todos los campos del cliente
+        $this->typePerson = $customer->typePerson ?? '';
+        $this->typeIdentificationId = $customer->typeIdentificationId;
+        $this->identification = $customer->identification ?? '';
+        $this->regimeId = $customer->regimeId;
+        $this->cityId = $customer->cityId;
+        $this->businessName = $customer->businessName ?? '';
+        $this->billingEmail = $customer->billingEmail ?? '';
+        $this->firstName = $customer->firstName ?? '';
+        $this->lastName = $customer->lastName ?? '';
+        $this->address = $customer->address ?? '';
+        $this->business_phone = $customer->business_phone ?? '';
+
+        Log::info('Datos del cliente cargados para edición', [
+            'customerId' => $customerId,
+            'identification' => $this->identification,
+            'businessName' => $this->businessName,
+            'firstName' => $this->firstName
+        ]);
     }
 
     public function render()
@@ -184,12 +229,16 @@ class TatCustomersManager extends Component
         if ($this->editingId) {
             TatCustomer::findOrFail($this->editingId)->update($data);
             session()->flash('message', 'Cliente actualizado correctamente.');
+            $customerId = $this->editingId;
         } else {
             $customer = TatCustomer::create($data);
             session()->flash('message', 'Cliente creado correctamente.');
+            $customerId = $customer->id;
+        }
 
-            // Emitir evento para notificar al quoter que se creó un cliente
-            $this->dispatch('customer-created', customerId: $customer->id);
+        // Emitir evento para notificar al quoter (tanto para crear como editar)
+        if ($this->isModalMode) {
+            $this->dispatch('customer-created', customerId: $customerId);
         }
 
         $this->resetForm();

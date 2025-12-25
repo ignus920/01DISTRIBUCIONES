@@ -1,5 +1,7 @@
 <div class="quoter-main-container min-h-screen bg-gray-50 dark:bg-gray-900 p-2 sm:p-6 relative
      {{ request()->routeIs('tenant.tat.quoter.index') ? 'lg:min-h-[calc(100vh-4rem)]' : '' }}">
+
+
     <div class="w-full max-w-full sm:max-w-12xl mx-auto">
     <!-- Header con botones de estado -->
     <div class="bg-gray-50 dark:bg-gray-800 p-3 border-b dark:border-gray-700">
@@ -63,13 +65,7 @@
                         </div>
                     @elseif(strlen($customerSearch) >= 2)
                         <div class="p-2 text-xs text-gray-500 border border-green-300 rounded bg-white">
-                            <div class="mb-1">No se encontraron clientes</div>
-                            <button
-                                wire:click="openCustomerModal"
-                                class="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
-                            >
-                                Crear nuevo cliente
-                            </button>
+                            <div class="mb-1">No se encontraron clientes. Abriendo formulario de nuevo cliente...</div>
                         </div>
                     @endif
                 </div>
@@ -91,10 +87,33 @@
 
                         <div class="flex-1 min-w-0">
                             @if($selectedCustomer)
-                                <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold truncate">
-                                    {{ $selectedCustomer['identification'] }}
-                                </div>
-                                <div class="text-xs lg:text-sm text-green-600 dark:text-green-400 truncate">{{ $selectedCustomer['display_name'] }}</div>
+                                @if($selectedCustomer['identification'] === '222222222')
+                                    {{-- Cliente genérico - no editable --}}
+                                    <div class="p-2 rounded">
+                                        <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold truncate">
+                                            {{ $selectedCustomer['identification'] }}
+                                        </div>
+                                        <div class="text-xs lg:text-sm text-green-600 dark:text-green-400 truncate">
+                                            {{ $selectedCustomer['display_name'] }}
+                                            <span class="ml-2 text-gray-400">🔒</span>
+                                        </div>
+                                    </div>
+                                @else
+                                    {{-- Cliente normal - editable --}}
+                                    <div
+                                        wire:click="editCustomer"
+                                        class="cursor-pointer hover:bg-green-50 dark:hover:bg-green-800/20 rounded p-2 transition-colors group"
+                                        title="Haz clic para editar cliente"
+                                    >
+                                        <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold truncate group-hover:underline">
+                                            {{ $selectedCustomer['identification'] }}
+                                        </div>
+                                        <div class="text-xs lg:text-sm text-green-600 dark:text-green-400 truncate group-hover:text-green-700 dark:group-hover:text-green-300">
+                                            {{ $selectedCustomer['display_name'] }}
+                                            <span class="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
+                                        </div>
+                                    </div>
+                                @endif
                             @else
                                 <div class="text-green-700 dark:text-green-300 font-mono text-sm lg:text-lg font-bold">
                                     Sin cliente
@@ -723,49 +742,39 @@
 
         </div>
 
-    </div>
-</div>
+        <!-- Modal para crear nuevo cliente -->
+        @if($showCustomerModal)
+        <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-90 overflow-y-auto h-full w-full z-[9999] flex items-center justify-center p-4">
+            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
 
-<!-- Modal para crear nuevo cliente -->
-@if($showCustomerModal)
-<div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-50 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50"
-     x-data="{ show: true }" x-show="show" x-transition:enter="ease-out duration-300"
-     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0">
-    <div class="relative min-h-screen flex items-center justify-center p-4">
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-             x-transition:enter="ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-             x-transition:leave="ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+                <!-- Header -->
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Crear Nuevo Cliente
+                        </h3>
+                        <button wire:click="closeCustomerModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
-            <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        Crear Nuevo Cliente
-                    </h3>
-                    <button wire:click="closeCustomerModal"
-                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
+                <!-- Contenido - Componente real de cliente -->
+                <div class="p-6">
+                    @livewire('TAT.Customers.tat-customers-manager', [
+                        'preFilledIdentification' => $searchedIdentification,
+                        'isModalMode' => true,
+                        'editingCustomerId' => $editingCustomerId
+                    ], key('customer-modal-' . uniqid() . '-' . ($editingCustomerId ?? 'new')))
                 </div>
             </div>
-
-            <div class="p-6">
-                @livewire('TAT.Customers.tat-customers-manager', [
-                    'preFilledIdentification' => $searchedIdentification,
-                    'isModalMode' => true
-                ], key('customer-modal'))
-            </div>
         </div>
+        @endif
+
     </div>
 </div>
-@endif
 
 
 @push('scripts')
@@ -1078,9 +1087,11 @@
 
         // Listener para toasts no invasivos - Configuración simplificada
         Livewire.on('swal:toast', (data) => {
+            console.log('🔥 Evento swal:toast recibido:', data);
             const toastData = Array.isArray(data) ? data[0] : data;
 
             if (typeof Swal !== 'undefined') {
+                console.log('✅ SweetAlert2 está disponible, mostrando toast');
                 const isMobile = window.innerWidth < 768;
 
                 // Configuración ultra-simple para garantizar funcionamiento
@@ -1112,7 +1123,18 @@
                 // Debug
                 console.log('Toast disparado con timer:', config.timer + 'ms');
             } else {
+                console.error('❌ SweetAlert2 NO está disponible, usando fallback');
                 console.log(`${toastData.type.toUpperCase()}: ${toastData.message}`);
+
+                // Fallback básico si no hay SweetAlert
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg z-50';
+                notification.textContent = toastData.message;
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
             }
         });
 
