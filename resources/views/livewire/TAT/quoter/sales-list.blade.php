@@ -7,7 +7,7 @@
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Ventas</h1>
                     <p class="text-sm text-gray-600 dark:text-slate-400 mt-1">Gestión de registros</p>
                 </div>
-                <a href="{{ route('tenant.tat.quoter.index') }}"
+                <a href="{{ route('tenant.tat.quoter.index', ['new' => 'true']) }}"
                    class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>

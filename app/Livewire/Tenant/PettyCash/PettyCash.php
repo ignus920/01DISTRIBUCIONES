@@ -216,7 +216,8 @@ class PettyCash extends Component
                 'observations' => 'Apertura de caja'
             ];
 
-            VntDetailPettyCash::create($dataDetailPettyCash);
+            $detailModel = $this->getDetailPettyCashModel();
+            $detailModel->create($dataDetailPettyCash);
         } catch (\Exception $e) {
             session()->flash('error', 'Error al registrar el detalle: ' . $e->getMessage());
         }

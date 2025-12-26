@@ -61,6 +61,13 @@ class QuoterView extends Component
             $edit = request('edit');
         }
 
+        // Verificar si es una nueva venta (limpiar carrito)
+        $isNewSale = request('new') === 'true';
+        if ($isNewSale) {
+            Log::info('Nueva venta detectada - Limpiando carrito y sesión');
+            $this->clearCartAndSession();
+        }
+
         // Obtener company_id del usuario autenticado
         $user = Auth::user();
         $this->companyId = $this->getUserCompanyId($user);
@@ -1499,6 +1506,44 @@ class QuoterView extends Component
             return 'Actualizando...';
         }
         return 'Guardando...';
+    }
+
+    /**
+     * Limpiar carrito y datos de sesión para nueva venta
+     */
+    private function clearCartAndSession()
+    {
+        // Limpiar carrito
+        $this->cartItems = [];
+        $this->total = 0;
+
+        // Limpiar cliente seleccionado
+        $this->selectedCustomer = null;
+        $this->customerSearch = '';
+        $this->customerSearchResults = [];
+        $this->showClientSearch = false;
+
+        // Limpiar datos de edición
+        $this->currentQuoteId = null;
+        $this->editingQuoteId = null;
+        $this->isEditing = false;
+
+        // Limpiar búsqueda de productos
+        $this->currentSearch = '';
+        $this->searchResults = [];
+        $this->additionalSuggestions = [];
+        $this->selectedIndex = -1;
+
+        // Limpiar sesiones relacionadas
+        session()->forget([
+            'quoter_cart',
+            'quoter_customer',
+            'quoter_restored',
+            'quoter_total',
+            'payment_customer_data'
+        ]);
+
+        Log::info('Carrito y sesión limpiados para nueva venta');
     }
 
     public function render()
