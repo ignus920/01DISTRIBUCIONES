@@ -454,7 +454,7 @@ class VntCompanyForm extends Component
             if ($this->editingId) {
                 Log::info('Updating existing company', ['companyId' => $this->editingId]);
                 $company = $this->companyService->update($this->editingId, $data, $warehouses, $this->mainContactId);
-                session()->flash('message', 'Registro actualizado exitosamente.');
+                $message = 'Registro actualizado exitosamente.';
 
                 // Disparar evento para componentes que escuchan
                 $this->dispatch('customer-updated', customerId: $this->editingId);
@@ -479,6 +479,35 @@ class VntCompanyForm extends Component
                      TatCompanyRoute::where('company_id', $this->editingId)->delete();
                      Log::info('Route removed for company', ['companyId' => $this->editingId]);
                 }
+
+                // Crear usuario si está marcado el checkbox y no existe usuario
+                if ($this->createUser && $company && !$this->hasExistingUser) {
+                    try {
+                        Log::info('Creating user for existing company during edit', [
+                            'companyId' => $this->editingId,
+                            'createUser' => $this->createUser
+                        ]);
+                        $this->createUserFromCompany($company);
+                        
+                        // Verificar si hubo advertencia de productos
+                        if (session()->has('warning')) {
+                            $message = session()->pull('warning');
+                        } else {
+                            $message = 'Registro actualizado y usuario creado exitosamente.';
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Error creating user during edit', ['error' => $e->getMessage()]);
+                        $message = 'Registro actualizado exitosamente, pero hubo un error al crear el usuario: ' . $e->getMessage();
+                    }
+                } else {
+                    Log::info('Skipping user creation during edit', [
+                        'createUser' => $this->createUser,
+                        'hasExistingUser' => $this->hasExistingUser,
+                        'hasCompany' => $company !== null
+                    ]);
+                }
+
+                session()->flash('message', $message);
             } else {
                 Log::info('Creating new company');
                 $company = $this->companyService->create($data, $warehouses);
