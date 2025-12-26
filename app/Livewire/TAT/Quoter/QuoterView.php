@@ -89,6 +89,11 @@ class QuoterView extends Component
             'total' => $this->total,
             'defaultCustomer' => $this->selectedCustomer ? $this->selectedCustomer['identification'] : null
         ]);
+
+        // Verificar si hay caja abierta al cargar la vista
+        if (!$this->checkActivePettyCash()) {
+            $this->dispatch('swal:no-petty-cash');
+        }
     }
 
     /**
@@ -509,12 +514,11 @@ class QuoterView extends Component
             $this->selectedIndex = -1;
             $this->dispatch('product-selected');
         } else {
-            // En móvil: mantener el texto de búsqueda, solo limpiar resultados
-            $this->searchResults = [];
+            // En móvil: mantener el texto de búsqueda Y los resultados para permitir múltiples toques
             $this->selectedIndex = -1;
             $this->dispatch('product-selected-keep-search');
 
-            Log::info('MÓVIL DETECTADO - Manteniendo búsqueda', [
+            Log::info('MÓVIL DETECTADO - Manteniendo resultados para toques múltiples', [
                 'current_search' => $this->currentSearch,
                 'search_results_count' => count($this->searchResults)
             ]);
@@ -782,6 +786,16 @@ class QuoterView extends Component
     protected function loadCartFromSession()
     {
         $this->cartItems = session('quoter_cart', []);
+    }
+
+    /**
+     * Método público para verificar caja desde el frontend
+     */
+    public function verifyPettyCash()
+    {
+        if (!$this->checkActivePettyCash()) {
+            $this->dispatch('swal:no-petty-cash');
+        }
     }
 
     /**

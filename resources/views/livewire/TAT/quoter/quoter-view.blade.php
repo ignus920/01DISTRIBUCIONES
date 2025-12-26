@@ -1533,6 +1533,29 @@
         }
     }
 
+    // Verificar caja cuando la página se vuelve visible
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            // La página se volvió visible, verificar caja
+            console.log('Página visible, verificando caja...');
+            Livewire.find('{{ $this->getId() }}').call('verifyPettyCash');
+        }
+    });
+
+    // También verificar cuando se hace foco en la ventana
+    window.addEventListener('focus', () => {
+        console.log('Ventana en foco, verificando caja...');
+        Livewire.find('{{ $this->getId() }}').call('verifyPettyCash');
+    });
+
+    // Verificar cuando Livewire termina de navegar a esta página
+    document.addEventListener('livewire:navigated', () => {
+        console.log('Livewire navegado, verificando caja...');
+        setTimeout(() => {
+            Livewire.find('{{ $this->getId() }}').call('verifyPettyCash');
+        }, 500); // Pequeño delay para asegurar que el componente esté listo
+    });
+
     // Inicializar mejoras móviles cuando el DOM esté listo
     document.addEventListener('DOMContentLoaded', () => {
         preventZoom();
