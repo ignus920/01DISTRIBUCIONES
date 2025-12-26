@@ -553,19 +553,30 @@ $header = 'Seleccionar productos';
                         </div>
 
                         <!-- Fila inferior: acción final -->
-                        <button type="button" wire:click.prevent="confirmarPedido"
-                            class="w-full px-4 py-3 text-sm font-medium text-blue-800 dark:text-blue-300
-                                   border border-blue-200 dark:border-blue-700
-                                   hover:bg-blue-50 dark:hover:bg-blue-900/20
-                                   rounded-lg transition-colors flex items-center justify-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                            </svg>
-                            Confirmar pedido
-                        </button>
+                        @if($quoteHasRemission)
+                            <div class="w-full px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400
+                                       border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800
+                                       rounded-lg flex items-center justify-center cursor-not-allowed">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Remisión ya generada
+                            </div>
+                        @else
+                            <button type="button" wire:click.prevent="confirmarPedido"
+                                class="w-full px-4 py-3 text-sm font-medium text-blue-800 dark:text-blue-300
+                                       border border-blue-200 dark:border-blue-700
+                                       hover:bg-blue-50 dark:hover:bg-blue-900/20
+                                       rounded-lg transition-colors flex items-center justify-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                                </svg>
+                                Confirmar pedido
+                            </button>
+                        @endif
 
                     </div>
 
@@ -670,135 +681,6 @@ $header = 'Seleccionar productos';
             @endif
         </div>
     </div>
-
-
-<!-- Modal de Confirmación de Pedido -->
-@if($showConfirmationModal)
-<div class="fixed inset-0 z-50 overflow-y-auto">
-    <!-- Overlay -->
-    <div class="fixed inset-0 bg-black bg-opacity-50" wire:click="closeConfirmationModal"></div>
-
-    <!-- Modal -->
-    <div class="relative flex items-center justify-center min-h-screen p-4">
-        <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            
-            <!-- Header -->
-            <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Pedido</h2>
-                <button wire:click="closeConfirmationModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Contenido -->
-            <div class="px-6 py-4 space-y-6">
-                
-                <!-- Resumen de Pedido -->
-                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                    <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Resumen del Pedido</h3>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600 dark:text-gray-400">Productos:</span>
-                            <span class="font-medium text-gray-900 dark:text-white">{{ count($quoterItems) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600 dark:text-gray-400">Cantidad Total:</span>
-                            <span class="font-medium text-gray-900 dark:text-white">{{ $this->quoterCount }}</span>
-                        </div>
-                        <div class="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                            <span class="text-gray-600 dark:text-gray-400">Total:</span>
-                            <span class="font-bold text-lg text-indigo-600 dark:text-indigo-400">${{ number_format($totalAmount) }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Seleccionar Razón -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Razón del Movimiento <span class="text-red-500">*</span>
-                    </label>
-                    <select wire:model="selectedReason"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">-- Seleccionar razón --</option>
-                        @foreach($availableReasons as $reason)
-                        <option value="{{ $reason['id'] }}">{{ $reason['name'] }}</option>
-                        @endforeach
-                    </select>
-                    @if(!$selectedReason)
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Debe seleccionar una razón para continuar</p>
-                    @endif
-                </div>
-
-                <!-- Productos en el Pedido -->
-                <div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Productos</h3>
-                    <div class="space-y-2 max-h-64 overflow-y-auto">
-                        @foreach($quoterItems as $item)
-                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                            <div class="flex-1">
-                                <p class="font-medium text-gray-900 dark:text-white text-sm">{{ $item['name'] }}</p>
-                                @if($item['sku'])
-                                <p class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ $item['sku'] }}</p>
-                                @endif
-                            </div>
-                            <div class="text-right">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white">
-                                    {{ $item['quantity'] }} x ${{ number_format($item['price']) }}
-                                </p>
-                                <p class="text-xs text-indigo-600 dark:text-indigo-400">
-                                    ${{ number_format($item['price'] * $item['quantity']) }}
-                                </p>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-
-                <!-- Observaciones (Opcional) -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Observaciones (Opcional)
-                    </label>
-                    <textarea wire:model="observaciones"
-                        rows="3"
-                        placeholder="Agregar observaciones sobre el pedido..."
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    </textarea>
-                </div>
-
-            </div>
-
-            <!-- Footer -->
-            <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex gap-3 justify-end">
-                <button type="button" wire:click.prevent="closeConfirmationModal"
-                    class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg font-medium transition-colors">
-                    Cancelar
-                </button>
-                <button type="button" wire:click.prevent="processOrderConfirmation"
-                    wire:loading.attr="disabled"
-                    wire:target="processOrderConfirmation"
-                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                    
-                    <svg wire:loading.remove wire:target="processOrderConfirmation" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    
-                    <svg wire:loading wire:target="processOrderConfirmation" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    
-                    <span wire:loading.remove wire:target="processOrderConfirmation">Confirmar Pedido</span>
-                    <span wire:loading wire:target="processOrderConfirmation">Procesando...</span>
-                </button>
-            </div>
-
-        </div>
-    </div>
-</div>
-@endif
 </div>
 
 @push('scripts')

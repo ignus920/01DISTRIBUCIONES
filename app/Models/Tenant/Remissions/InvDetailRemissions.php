@@ -16,18 +16,16 @@ class InvDetailRemissions extends Model
         'id',
         'quantity',
         'value',
-        'discount',
         'tax',
         'remissionId',
         'itemId',
+        'invoiceId',
         'created_at',
         'updated_at'
     ];
 
     protected $casts = [
         'quantity' => 'integer',
-        'value' => 'decimal:2',
-        'discount' => 'decimal:2',
         'tax' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
