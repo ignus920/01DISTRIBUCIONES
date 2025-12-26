@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Tenant\Quoter\TatRestockList;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Tenant\Movements\InvReason;
+use App\Models\Tenant\Remissions\InvRemissions;
+use App\Models\Tenant\Remissions\InvDetailRemissions;
 
 class ProductQuoter extends Component
 {
@@ -48,6 +51,12 @@ class ProductQuoter extends Component
     // Propiedades para edición de restock (TAT)
     public $editingRestockOrder = null;
     public $isEditingRestock = false;
+
+    // Propiedades para el modal de confirmación
+    public $showConfirmationModal = false;
+    public $selectedReason = null;
+    public $availableReasons = [];
+    public $confirmationLoading = false;
 
     protected $listeners = [
         'customer-created' => 'onCustomerCreated',
@@ -1841,6 +1850,156 @@ public function searchCustomersLive()
     {
         $this->customerSearch = '';
         $this->customerSearchResults = [];
+    }
+
+    /**
+     * Abrir modal de confirmación de pedido
+     * 
+     * @param int|null $quoteId ID de la cotización a confirmar (opcional)
+     */
+    public function confirmarPedido($quoteId = null)
+    {
+        try {
+            if (empty($this->quoterItems) && !$quoteId) {
+                $this->dispatch('show-toast', [
+                    'type' => 'error',
+                    'message' => 'No hay productos en el cotizador'
+                ]);
+                return;
+            }
+
+            $this->ensureTenantConnection();
+            
+            // Si se proporciona un quoteId, cargar la cotización
+            if ($quoteId) {
+                $this->loadQuoteForEditing($quoteId);
+            }
+            
+            // Cargar razones disponibles
+            $this->availableReasons = InvReason::active()->get()->toArray();
+            
+            // Abrir modal
+            $this->showConfirmationModal = true;
+        } catch (\Exception $e) {
+            Log::error('Error en confirmarPedido: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al abrir modal: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Cerrar modal de confirmación
+     */
+    public function closeConfirmationModal()
+    {
+        $this->showConfirmationModal = false;
+        $this->selectedReason = null;
+        $this->confirmationLoading = false;
+    }
+
+    /**
+     * Confirmar y procesar el pedido
+     */
+    public function processOrderConfirmation()
+    {
+        if (empty($this->quoterItems)) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No hay productos en el cotizador'
+            ]);
+            return;
+        }
+
+        if (!$this->selectedReason) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Debe seleccionar una razón para el pedido'
+            ]);
+            return;
+        }
+
+        $this->confirmationLoading = true;
+        $this->ensureTenantConnection();
+
+        try {
+            // Obtener la razón seleccionada
+            $reason = InvReason::find($this->selectedReason);
+            
+            if (!$reason) {
+                throw new \Exception('Razón no encontrada');
+            }
+
+            // Crear remisión
+            $remission = InvRemissions::create([
+                'consecutive' => $this->generateRemissionConsecutive(),
+                'reasonId' => $reason->id,
+                'userId' => auth()->id(),
+                'status' => 'REGISTRADO',
+                'total_value' => $this->totalAmount,
+                'observations' => $this->observaciones ?? null,
+            ]);
+
+            // Crear detalles de remisión para cada producto
+            $detailsCreated = 0;
+            foreach ($this->quoterItems as $item) {
+                InvDetailRemissions::create([
+                    'remissionId' => $remission->id,
+                    'itemId' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'value' => $item['price'],
+                    'discount' => 0,
+                    'tax' => 0,
+                ]);
+                $detailsCreated++;
+            }
+
+            Log::info('Remisión creada exitosamente', [
+                'remission_id' => $remission->id,
+                'consecutive' => $remission->consecutive,
+                'details_created' => $detailsCreated,
+                'user_id' => auth()->id()
+            ]);
+
+            // Limpiar cotizador
+            $this->quoterItems = [];
+            $this->selectedCustomer = null;
+            $this->customerSearch = '';
+            $this->observaciones = null;
+            session()->forget('quoter_items');
+            $this->calculateTotal();
+
+            // Cerrar modal
+            $this->closeConfirmationModal();
+            $this->showCartModal = false;
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Remisión #' . $remission->consecutive . ' creada exitosamente'
+            ]);
+
+            // Redirigir a la página de remisiones o cotizaciones
+            return redirect()->route('tenant.quoter');
+
+        } catch (\Exception $e) {
+            Log::error('Error al procesar confirmación de pedido: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al confirmar pedido: ' . $e->getMessage()
+            ]);
+        } finally {
+            $this->confirmationLoading = false;
+        }
+    }
+
+    /**
+     * Generar consecutivo para remisión
+     */
+    private function generateRemissionConsecutive()
+    {
+        $lastRemission = InvRemissions::orderBy('consecutive', 'desc')->first();
+        return $lastRemission ? $lastRemission->consecutive + 1 : 1;
     }
 
 }

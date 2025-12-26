@@ -23,6 +23,18 @@ class Quoter extends Component
     public $selectedQuote = null;
     public $sortBy = 'created_at'; // Campo para ordenar
     public $sortDirection = 'desc'; // Dirección: 'asc' o 'desc'
+    
+    // Propiedades para el modal de confirmación de pedido
+    public $showConfirmationModal = false;
+    public $selectedReason = null;
+    public $availableReasons = [];
+    public $confirmationLoading = false;
+    public $quoterItems = [];
+    public $selectedCustomer = null;
+    public $customerSearch = '';
+    public $observaciones = null;
+    public $showCartModal = false;
+    public $totalAmount = 0;
 
     protected $paginationTheme = 'tailwind';
 
@@ -592,5 +604,210 @@ class Quoter extends Component
         return view($viewName, [
             'quotes' => $quotes
         ]);
+    }
+    
+    /**
+     * Abrir modal de confirmación de pedido
+     * 
+     * @param int|null $quoteId ID de la cotización a confirmar (opcional)
+     */
+    public function confirmarPedido($quoteId = null)
+    {
+        if (empty($this->quoterItems) && !$quoteId) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No hay productos en el cotizador'
+            ]);
+            return;
+        }
+
+        $this->ensureTenantConnection();
+        
+        // Si se proporciona un quoteId, cargar la cotización desde la base de datos
+        if ($quoteId) {
+            try {
+                $quote = VntQuote::with(['detalles.item', 'customer'])->findOrFail($quoteId);
+                
+                // Mapear los detalles de la cotización a items del cotizador
+                $this->quoterItems = $quote->detalles->map(function ($detail) {
+                    return [
+                        'id' => $detail->itemId,
+                        'name' => $detail->item->name ?? 'Producto desconocido',
+                        'sku' => $detail->item->sku ?? null,
+                        'quantity' => $detail->quantity,
+                        'price' => $detail->value,
+                        'total' => $detail->quantity * $detail->value,
+                    ];
+                })->toArray();
+                
+                // Cargar cliente si existe
+                if ($quote->customer) {
+                    $this->selectedCustomer = $quote->customer->id;
+                }
+                
+                // Cargar observaciones
+                $this->observaciones = $quote->observations ?? null;
+                
+                Log::info('Cotización cargada para confirmación', [
+                    'quote_id' => $quoteId,
+                    'items_count' => count($this->quoterItems)
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error al cargar cotización para confirmación', [
+                    'quote_id' => $quoteId,
+                    'error' => $e->getMessage()
+                ]);
+                
+                $this->dispatch('show-toast', [
+                    'type' => 'error',
+                    'message' => 'Error al cargar la cotización: ' . $e->getMessage()
+                ]);
+                return;
+            }
+        }
+        
+        // Cargar razones disponibles
+        try {
+            $this->availableReasons = \App\Models\Tenant\Movements\InvReason::active()->get()->toArray();
+        } catch (\Exception $e) {
+            Log::warning('No se pudieron cargar las razones de movimiento', [
+                'error' => $e->getMessage()
+            ]);
+            $this->availableReasons = [];
+        }
+        
+        // Abrir modal
+        $this->showConfirmationModal = true;
+    }
+
+    /**
+     * Cerrar modal de confirmación
+     */
+    public function closeConfirmationModal()
+    {
+        $this->showConfirmationModal = false;
+        $this->selectedReason = null;
+        $this->confirmationLoading = false;
+    }
+
+    /**
+     * Confirmar y procesar el pedido
+     */
+    public function processOrderConfirmation()
+    {
+        if (empty($this->quoterItems)) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No hay productos en el cotizador'
+            ]);
+            return;
+        }
+
+        if (!$this->selectedReason) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Debe seleccionar una razón para el pedido'
+            ]);
+            return;
+        }
+
+        $this->confirmationLoading = true;
+        $this->ensureTenantConnection();
+
+        try {
+            // Obtener la razón seleccionada
+            $reason = \App\Models\Tenant\Movements\InvReason::find($this->selectedReason);
+            
+            if (!$reason) {
+                throw new \Exception('Razón no encontrada');
+            }
+
+            // Crear remisión
+            $remission = \App\Models\Tenant\Remissions\InvRemissions::create([
+                'consecutive' => $this->generateRemissionConsecutive(),
+                'reasonId' => $reason->id,
+                'userId' => auth()->id(),
+                'status' => 'REGISTRADO',
+                'total_value' => $this->totalAmount,
+                'observations' => $this->observaciones ?? null,
+            ]);
+
+            // Crear detalles de remisión para cada producto
+            $detailsCreated = 0;
+            foreach ($this->quoterItems as $item) {
+                \App\Models\Tenant\Remissions\InvDetailRemissions::create([
+                    'remissionId' => $remission->id,
+                    'itemId' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'value' => $item['price'],
+                    'discount' => 0,
+                    'tax' => 0,
+                ]);
+                $detailsCreated++;
+            }
+
+            Log::info('Remisión creada exitosamente', [
+                'remission_id' => $remission->id,
+                'consecutive' => $remission->consecutive,
+                'details_created' => $detailsCreated,
+                'user_id' => auth()->id()
+            ]);
+
+            // Limpiar cotizador
+            $this->quoterItems = [];
+            $this->selectedCustomer = null;
+            $this->customerSearch = '';
+            $this->observaciones = null;
+            session()->forget('quoter_items');
+            $this->calculateTotal();
+
+            // Cerrar modal
+            $this->closeConfirmationModal();
+            $this->showCartModal = false;
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Remisión #' . $remission->consecutive . ' creada exitosamente'
+            ]);
+
+            // Redirigir a la página de remisiones o cotizaciones
+            return redirect()->route('tenant.quoter');
+
+        } catch (\Exception $e) {
+            Log::error('Error al procesar confirmación de pedido: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al confirmar pedido: ' . $e->getMessage()
+            ]);
+        } finally {
+            $this->confirmationLoading = false;
+        }
+    }
+
+    /**
+     * Generar consecutivo para remisión
+     */
+    private function generateRemissionConsecutive()
+    {
+        $lastRemission = \App\Models\Tenant\Remissions\InvRemissions::orderBy('consecutive', 'desc')->first();
+        return $lastRemission ? $lastRemission->consecutive + 1 : 1;
+    }
+
+    /**
+     * Calcular el total del cotizador
+     */
+    private function calculateTotal()
+    {
+        $this->totalAmount = collect($this->quoterItems)->sum(function ($item) {
+            return ($item['quantity'] ?? 0) * ($item['price'] ?? 0);
+        });
+    }
+
+    /**
+     * Obtener la cantidad total de productos en el cotizador
+     */
+    public function getQuoterCountProperty()
+    {
+        return collect($this->quoterItems)->sum('quantity');
     }
 }
