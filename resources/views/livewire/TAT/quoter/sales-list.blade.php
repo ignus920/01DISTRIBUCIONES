@@ -7,7 +7,7 @@
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Ventas</h1>
                     <p class="text-sm text-gray-600 dark:text-slate-400 mt-1">Gestión de registros</p>
                 </div>
-                <a href="{{ route('tenant.tat.quoter.index') }}"
+                <a href="{{ route('tenant.tat.quoter.index', ['new' => 'true']) }}"
                    class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -64,61 +64,61 @@
         </div>
 
         <!-- Tabla -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden relative">
+            <div class="overflow-x-auto overflow-y-visible">
+                <table class="w-full divide-y divide-gray-200 dark:divide-slate-700" style="min-width: 1000px;">
                     <thead class="bg-gray-50 dark:bg-slate-800/50">
                         <tr>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">COTIZACIÓN #</th>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">CLIENTE</th>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">TIPO</th>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">ESTADO</th>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">SUCURSAL</th>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">TELÉFONO</th>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">FECHA</th>
-                            <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider">ACCIONES</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-20">COTIZACIÓN #</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-64">CLIENTE</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-16">TIPO</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-24">ESTADO</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-32">SUCURSAL</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-28">TELÉFONO</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-32">FECHA</th>
+                            <th class="px-3 py-3.5 text-center text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-24">ACCIONES</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700/50">
                         @forelse($quotes as $quote)
                             <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors duration-150">
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-4 whitespace-nowrap">
                                     <span class="text-sm font-semibold text-gray-900 dark:text-white">#{{ $quote->consecutive }}</span>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-4">
                                     @if($quote->customer)
-                                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $quote->customer->full_name }}</div>
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $quote->customer->full_name }}</div>
                                         <div class="text-xs text-gray-600 dark:text-slate-400 mt-0.5">{{ $quote->customer->identification }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5">{{ $quote->customer->billingEmail ?? 'Sin email' }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5 truncate">{{ $quote->customer->billingEmail ?? 'Sin email' }}</div>
                                     @else
                                         <div class="text-sm text-gray-500 dark:text-slate-400">Sin cliente</div>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 dark:border-blue-500/30">
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 dark:border-blue-500/30">
                                         POS
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border
-                                        {{ $quote->status === 'Registrado' 
-                                            ? 'bg-green-500/10 dark:bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/20 dark:border-green-500/30' 
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border
+                                        {{ $quote->status === 'Registrado'
+                                            ? 'bg-green-500/10 dark:bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/20 dark:border-green-500/30'
                                             : 'bg-red-500/10 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/20 dark:border-red-500/30' }}">
                                         {{ strtoupper($quote->status) }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-3 py-4">
                                     <div class="text-sm font-medium text-gray-900 dark:text-white">Soacha</div>
-                                    <div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5">calle 25a+5a-20</div>
+                                    <div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5 truncate">calle 25a+5a-20</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-4 whitespace-nowrap">
                                     <span class="text-sm text-gray-900 dark:text-slate-200">{{ $quote->customer->business_phone ?? '3208614517' }}</span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-4 whitespace-nowrap">
                                     <span class="text-sm text-gray-900 dark:text-slate-200">{{ $quote->created_at->format('d/m/Y H:i') }}</span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <div class="relative" x-data="{ open: false }">
+                                <td class="px-3 py-4 whitespace-nowrap text-center">
+                                    <div class="relative isolation-auto" x-data="{ open: false }">
                                         <!-- Botón de tres puntos -->
                                         <button @click="open = !open"
                                                 class="inline-flex items-center justify-center w-8 h-8 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-all duration-150">
@@ -136,17 +136,31 @@
                                              x-transition:leave="transition ease-in duration-75"
                                              x-transition:leave-start="transform opacity-100 scale-100"
                                              x-transition:leave-end="transform opacity-0 scale-95"
-                                             class="absolute right-0 z-10 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1">
+                                             class="fixed z-[9999] w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1"
+                                             x-bind:style="`right: 20px; top: ${$el.parentElement.getBoundingClientRect().bottom + 8}px;`"
+                                             style="box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
 
                                             <!-- Opción Detalle -->
                                             <button wire:click="showDetails({{ $quote->id }})"
-                                                    @click="open = false"
+                                                    @click="openDropdown = null"
                                                     class="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150">
                                                 <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                                 </svg>
                                                 Ver Detalle
                                             </button>
+
+                                            <!-- Opción Editar (solo para ventas no pagadas) -->
+                                            @if($quote->status !== 'Pagado')
+                                                <button wire:click="editSale({{ $quote->id }})"
+                                                        @click="open = false"
+                                                        class="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-150">
+                                                    <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                                    </svg>
+                                                    Editar Venta
+                                                </button>
+                                            @endif
 
                                             <!-- Separador -->
                                             <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>

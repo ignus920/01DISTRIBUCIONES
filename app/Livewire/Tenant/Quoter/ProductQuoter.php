@@ -1572,10 +1572,18 @@ public function validateQuantity($index)
                 // Migrar a cotizaciones
                 $quote = $this->migrateRestockToQuotes($existing->order_number, $companyId);
 
+                // Crear remisión automáticamente
+                $remission = $this->createRemissionFromRestock($existing->order_number, $companyId, $quote);
+
                 if ($quote) {
+                    $message = "Solicitud confirmada y migrada a cotización #{$quote->consecutive}";
+                    if ($remission) {
+                        $message .= " y remisión #{$remission->consecutive} creada";
+                    }
+
                     $this->dispatch('show-toast', [
                         'type' => 'success',
-                        'message' => "Solicitud confirmada y migrada a cotización #{$quote->consecutive}"
+                        'message' => $message
                     ]);
                 }
             }
@@ -1872,7 +1880,7 @@ public function searchCustomersLive()
         $this->customerSearchResults = [];
     }
 
-    /**
+        /**
      * Abrir modal de confirmación de pedido
      * 
      * @param int|null $quoteId ID de la cotización a confirmar (opcional)

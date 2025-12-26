@@ -50,7 +50,7 @@ class TatCategoriesManager extends Component
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
 
-        return view('livewire.TAT.Categories.tat-categories-manager', compact('categories'));
+        return view('livewire.TAT.Categories.tat-categories-manager', compact('categories'))->layout('layouts.app'); // 👈 aquí agregas el layout
     }
 
     public function create()

@@ -357,16 +357,19 @@ class ManageItems extends Component
                     $this->resetForm(); // Clear the form completely for next new item
                 }
             } else { // New item
-                // Guardar los valores temporales si existen
-                if (!empty($this->tempValues)) {
+                // Validar que los cinco tipos de precios estén registrados
+                $requiredPrices = ['Costo Inicial', 'Costo', 'Precio Base', 'Precio Regular', 'Precio Crédito'];
+                $missingPrices = $this->validateRequiredPrices($requiredPrices);
+                //dd($missingPrices);
+                if (!empty($missingPrices)) {
+                    $this->messageValues = 'Debe registrar todos los precios requeridos: ' . implode(', ', $missingPrices);
+                } else {
                     $newItem = Items::create($itemData);
                     $item_id = $newItem->id;
                     $this->saveTemporaryValues($item_id);
                     session()->flash('message', 'Item creado correctamente.');
                     $this->resetValidation(); // Clear validation for current submission
                     $this->edit($item_id); // Load new item into the form (sets showModal=true, disabled=true)
-                } else {
-                    $this->messageValues = 'Tiene que registrar al menos un valor.';
                 }
             }
         } catch (\Exception $e) {
@@ -892,6 +895,26 @@ class ManageItems extends Component
             Log::error('Error al guardar valores del item: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Validar que todos los precios requeridos estén presentes en tempValues
+     * 
+     * @param array $requiredPrices Array con los nombres de precios requeridos
+     * @return array Array con los precios que faltan, vacío si están todos presentes
+     */
+    private function validateRequiredPrices(array $requiredPrices): array
+    {
+        $missingPrices = [];
+
+        foreach ($requiredPrices as $priceLabel) {
+            // Verificar si la etiqueta existe en tempValues y tiene un valor válido
+            if (!isset($this->tempValues[$priceLabel]) || $this->tempValues[$priceLabel] === null || $this->tempValues[$priceLabel] === '' || $this->tempValues[$priceLabel] <= 0) {
+                $missingPrices[] = $priceLabel;
+            }
+        }
+
+        return $missingPrices;
     }
 
     /**

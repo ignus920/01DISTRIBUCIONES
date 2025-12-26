@@ -2,7 +2,7 @@
 
 namespace App\Models\Tenant\PettyCash;
 
-use App\Livewire\Tenant\PettyCash\PettyCash;
+use App\Models\Tenant\PettyCash\PettyCash;
 use App\Models\Auth\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

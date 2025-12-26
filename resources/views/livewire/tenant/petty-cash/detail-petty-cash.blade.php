@@ -51,7 +51,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">BASE</label>
                             <input type="text" readonly
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                value="{{number_format($this->resumen['resumBase'],2)}}">
+                                value="${{number_format($this->resumen['resumBase'],0)}}">
                         </div>
 
                         <!--Suma de ingresos-->
@@ -60,7 +60,7 @@
                                 INGRESOS </label>
                             <input type="text" readonly
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                value="{{ number_format($this->resumen['ingresos'],2) }}">
+                                value="${{ number_format($this->resumen['ingresos'],0) }}">
                         </div>
 
                         <!--Suma de egresos-->
@@ -69,7 +69,7 @@
                                 EGRESOS</label>
                             <input type="text" readonly
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                value="{{ number_format($this->resumen['egresos'],2) }}">
+                                value="${{ number_format($this->resumen['egresos'],0) }}">
                         </div>
 
                         <!--Total-->
@@ -77,7 +77,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">TOTAL</label>
                             <input type="text" readonly
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                value="{{ number_format($this->resumen['total'],2) }}">
+                                value="${{ number_format($this->resumen['total'],0) }}">
                         </div>
                     </div>
                 </div>
@@ -225,16 +225,16 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                     @if ($dt->reasonsPettyCash->type=="i")
-                                    {{$dt->value}}
+                                    ${{ number_format($dt->value, 0) }}
                                     @else
-                                    0
+                                    $0
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                     @if($dt->reasonsPettyCash->type=="e")
-                                    {{ $dt->value }}
+                                    ${{ number_format($dt->value, 0) }}
                                     @else
-                                    0
+                                    $0
                                     @endif
                                 </td>
                                 <td
