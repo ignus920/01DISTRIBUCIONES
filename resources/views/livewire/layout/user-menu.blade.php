@@ -24,7 +24,7 @@ new class extends Component
         <button type="button" class="-m-1.5 flex items-center p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors" @click="open = !open">
             <span class="sr-only">Abrir menu usuario</span>
             <img id="header-avatar-button" class="h-8 w-8 rounded-full bg-gray-50 dark:bg-gray-700 ring-2 ring-gray-200 dark:ring-gray-600 object-cover" src="{{ auth()->user()->getAvatarUrl() }}" alt="{{ auth()->user()->name }}">
-            <span class="hidden lg:flex lg:items-center">
+            <span class="hidden xl:flex xl:items-center">
                 <span class="ml-3 text-sm font-semibold leading-6 text-gray-900 dark:text-white">{{ auth()->user()->name }}</span>
                 <svg class="ml-2 h-4 w-4 text-gray-400 dark:text-gray-500 transition-transform" :class="open ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />

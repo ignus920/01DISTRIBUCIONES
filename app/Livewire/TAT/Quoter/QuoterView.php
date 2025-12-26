@@ -4,6 +4,7 @@ namespace App\Livewire\TAT\Quoter;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\On;
 use App\Models\TAT\Items\TatItems;
 use App\Models\TAT\Quoter\Quote;
 use App\Models\TAT\Quoter\QuoteItem;
@@ -36,6 +37,13 @@ class QuoterView extends Component
     public $showClientSearch = false;
     public $showCustomerModal = false;
     public $searchedIdentification = '';
+    public $editingCustomerId = null;
+    public $modalClosing = false;
+
+    // Propiedades para manejo de venta
+    public $currentQuoteId = null; // ID de la venta actual (para edición)
+    public $editingQuoteId = null; // ID de la cotización que se está editando
+    public $isEditing = false; // Flag para indicar si estamos en modo edición
 
     // Propiedades para paginación
     protected $paginationTheme = 'bootstrap';
@@ -46,8 +54,13 @@ class QuoterView extends Component
         'customer-modal-closed' => 'handleCustomerModalClosed'
     ];
 
-    public function mount()
+    public function mount($edit = null)
     {
+        // Si no se pasa edit como parámetro, intentar obtenerlo de la query string
+        if (!$edit) {
+            $edit = request('edit');
+        }
+
         // Obtener company_id del usuario autenticado
         $user = Auth::user();
         $this->companyId = $this->getUserCompanyId($user);
@@ -56,7 +69,10 @@ class QuoterView extends Component
             'user_id' => $user->id,
             'user_profile_id' => $user->profile_id,
             'user_contact_id' => $user->contact_id,
-            'companyId' => $this->companyId
+            'companyId' => $this->companyId,
+            'edit_parameter' => $edit,
+            'request_edit' => request('edit'),
+            'all_request' => request()->all()
         ]);
 
         if (!$this->companyId) {
@@ -68,13 +84,20 @@ class QuoterView extends Component
         // Cargar configuración de la empresa
         $this->loadCompanyConfig();
 
-        $this->loadCartFromSession();
-        $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
-        $this->calculateTotal();
+        // Si se está editando una venta existente, cargarla
+        if ($edit) {
+            Log::info('Iniciando carga de cotización existente', ['quote_id' => $edit]);
+            $this->loadExistingQuote($edit);
+        } else {
+            Log::info('Iniciando nueva cotización');
+            $this->loadCartFromSession();
+            $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
+            $this->calculateTotal();
 
-        // Solo cargar cliente por defecto si no hay uno restaurado
-        if (!$this->selectedCustomer) {
-            $this->loadDefaultCustomer();
+            // Solo cargar cliente por defecto si no hay uno restaurado
+            if (!$this->selectedCustomer) {
+                $this->loadDefaultCustomer();
+            }
         }
 
         Log::info('QuoterView mounted successfully', [
@@ -83,6 +106,11 @@ class QuoterView extends Component
             'total' => $this->total,
             'defaultCustomer' => $this->selectedCustomer ? $this->selectedCustomer['identification'] : null
         ]);
+
+        // Verificar si hay caja abierta al cargar la vista
+        if (!$this->checkActivePettyCash()) {
+            $this->dispatch('swal:no-petty-cash');
+        }
     }
 
     /**
@@ -225,7 +253,7 @@ class QuoterView extends Component
             $query = TatItems::query()
                 ->select([
                     'id', 'name', 'sku', 'price', 'stock',
-                    'taxId', 'categoryId'
+                    'taxId', 'categoryId', 'img_path'
                 ])
                 ->byCompany($this->companyId)
                 ->active();
@@ -252,7 +280,7 @@ class QuoterView extends Component
                 ->limit(15) // Límite para performance
                 ->get();
 
-            // Mapear resultados con indicadores de stock
+            // Mapear resultados con indicadores de stock e imágenes
             $this->searchResults = $results->map(function ($item) {
                 $stockLevel = $this->getStockLevel($item->stock);
 
@@ -264,7 +292,10 @@ class QuoterView extends Component
                     'stock' => $item->stock,
                     'stock_level' => $stockLevel,
                     'stock_color' => $this->getStockColor($stockLevel),
-                    'tax_percentage' => $item->tax ? $item->tax->percentage : 0
+                    'tax_percentage' => $item->tax ? $item->tax->percentage : 0,
+                    'img_path' => $item->img_path,
+                    'initials' => $this->getProductInitials($item->name),
+                    'avatar_color' => $this->getAvatarColorClass($item->name)
                 ];
             })->toArray();
 
@@ -298,6 +329,46 @@ class QuoterView extends Component
             'bajo' => 'text-yellow-600 dark:text-yellow-400',
             'agotado' => 'text-red-600 dark:text-red-400'
         };
+    }
+
+    /**
+     * Obtener iniciales del nombre del producto
+     */
+    private function getProductInitials($name)
+    {
+        if (!$name) return '??';
+
+        // Limpiar y dividir el nombre en palabras
+        $words = explode(' ', trim($name));
+
+        if (count($words) == 1) {
+            // Si es una sola palabra, tomar las primeras 2 letras
+            return strtoupper(substr($words[0], 0, 2));
+        } else {
+            // Si son múltiples palabras, tomar la primera letra de las primeras 2 palabras
+            return strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+        }
+    }
+
+    /**
+     * Obtener color de avatar basado en el nombre del producto
+     */
+    private function getAvatarColorClass($name)
+    {
+        $colors = [
+            'bg-gradient-to-br from-blue-500 to-indigo-600',
+            'bg-gradient-to-br from-purple-500 to-pink-600',
+            'bg-gradient-to-br from-green-500 to-teal-600',
+            'bg-gradient-to-br from-yellow-500 to-orange-600',
+            'bg-gradient-to-br from-red-500 to-pink-600',
+            'bg-gradient-to-br from-indigo-500 to-purple-600',
+            'bg-gradient-to-br from-teal-500 to-cyan-600',
+            'bg-gradient-to-br from-orange-500 to-red-600',
+        ];
+
+        // Usar el primer caracter del nombre para determinar el color
+        $index = ord(strtoupper($name[0])) % count($colors);
+        return $colors[$index];
     }
 
     /**
@@ -404,29 +475,71 @@ class QuoterView extends Component
      */
     public function selectProduct($productId)
     {
+        Log::info('INICIANDO selectProduct', [
+            'product_id' => $productId,
+            'cart_items_count' => count($this->cartItems),
+            'current_search' => $this->currentSearch
+        ]);
+
         $product = TatItems::find($productId);
 
         if (!$product) {
-            session()->flash('error', 'Producto no encontrado.');
+            Log::error('PRODUCTO NO ENCONTRADO', ['product_id' => $productId]);
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'Producto no encontrado.',
+                'mobile' => true
+            ]);
             return;
         }
 
+        Log::info('PRODUCTO ENCONTRADO', [
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_stock' => $product->stock,
+            'company_config_exists' => $this->companyConfig ? 'YES' : 'NO'
+        ]);
+
         // Verificar stock solo si no se permite vender sin saldo
-        if (!$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
-            session()->flash('error', 'No se puede agregar un producto sin stock.');
+        if ($this->companyConfig && !$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
+            Log::info('PRODUCTO SIN STOCK RECHAZADO', [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'stock' => $product->stock,
+                'can_sell_without_stock' => $this->companyConfig->canSellWithoutStock()
+            ]);
+
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'No se puede agregar un producto sin stock.',
+                'mobile' => true
+            ]);
             return;
         }
 
         $this->addToCart($productId);
 
-        // Limpiar la búsqueda para permitir nueva búsqueda
-        $this->currentSearch = '';
-        $this->searchResults = [];
-        $this->additionalSuggestions = [];
-        $this->selectedIndex = -1;
+        // Detectar si es móvil basado en el User-Agent
+        $userAgent = request()->header('User-Agent') ?? '';
+        $isMobile = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/', $userAgent);
 
-        // Emitir evento para limpiar el input en el frontend
-        $this->dispatch('product-selected');
+        if (!$isMobile) {
+            // En desktop: limpiar completamente la búsqueda
+            $this->currentSearch = '';
+            $this->searchResults = [];
+            $this->additionalSuggestions = [];
+            $this->selectedIndex = -1;
+            $this->dispatch('product-selected');
+        } else {
+            // En móvil: mantener el texto de búsqueda Y los resultados para permitir múltiples toques
+            $this->selectedIndex = -1;
+            $this->dispatch('product-selected-keep-search');
+
+            Log::info('MÓVIL DETECTADO - Manteniendo resultados para toques múltiples', [
+                'current_search' => $this->currentSearch,
+                'search_results_count' => count($this->searchResults)
+            ]);
+        }
     }
 
     /**
@@ -434,6 +547,11 @@ class QuoterView extends Component
      */
     public function addToCart($productId)
     {
+        Log::info('INICIANDO addToCart', [
+            'product_id' => $productId,
+            'cart_items_before' => count($this->cartItems)
+        ]);
+
         $product = TatItems::with('tax')->find($productId);
         
         Log::info('Adding to cart', [
@@ -444,13 +562,27 @@ class QuoterView extends Component
         ]);
 
         if (!$product) {
-            session()->flash('error', 'Producto no disponible.');
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'Producto no disponible.',
+                'mobile' => true
+            ]);
             return;
         }
 
         // Verificar stock solo si no se permite vender sin saldo
-        if (!$this->companyConfig->canSellWithoutStock() && !$product->hasStock()) {
-            session()->flash('error', 'Producto sin stock.');
+        if ($this->companyConfig && !$this->companyConfig->canSellWithoutStock() && $product->stock <= 0) {
+            Log::info('PRODUCTO SIN STOCK EN ADDTOCART', [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'stock' => $product->stock
+            ]);
+
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'Producto sin stock.',
+                'mobile' => true
+            ]);
             return;
         }
 
@@ -460,16 +592,28 @@ class QuoterView extends Component
 
         if ($existingItemIndex !== false) {
             // Si ya existe, incrementar cantidad
-            $newQuantity = $this->cartItems[$existingItemIndex]['quantity'] + 1;
+            $oldQuantity = $this->cartItems[$existingItemIndex]['quantity'];
+            $newQuantity = $oldQuantity + 1;
 
             // Verificar stock solo si no se permite vender sin saldo
-            if (!$this->companyConfig->canSellWithoutStock() && $newQuantity > $product->stock) {
-                 $this->dispatch('swal:warning', [
-                    'title' => 'Stock Insuficiente',
-                    'text' => "No puedes agregar más de {$product->stock} unidades.",
+            if ($this->companyConfig && !$this->companyConfig->canSellWithoutStock() && $newQuantity > $product->stock) {
+                Log::info('STOCK INSUFICIENTE DETECTADO', [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_stock' => $product->stock,
+                    'old_quantity' => $oldQuantity,
+                    'new_quantity' => $newQuantity,
+                    'can_sell_without_stock' => $this->companyConfig->canSellWithoutStock()
                 ]);
-                return;
-             }
+
+                // En lugar de hacer return, mantener la cantidad máxima permitida
+                $newQuantity = $product->stock;
+
+                $this->dispatch('swal:warning', [
+                    'title' => 'Stock Limitado',
+                    'text' => "Solo hay {$product->stock} unidades disponibles. Cantidad ajustada automáticamente.",
+                ]);
+            }
 
             $this->cartItems[$existingItemIndex]['quantity'] = $newQuantity;
             $baseSubtotal = $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
@@ -491,14 +635,36 @@ class QuoterView extends Component
                 'subtotal' => $subtotalWithTax,
                 'stock' => $product->stock,
                 'tax_name' => $product->tax ? $product->tax->name : 'N/A',
-                'tax_percentage' => $taxPercentage
+                'tax_percentage' => $taxPercentage,
+                'img_path' => $product->img_path,
+                'initials' => $this->getProductInitials($product->name),
+                'avatar_color' => $this->getAvatarColorClass($product->name)
             ];
         }
 
         $this->calculateTotal();
         $this->saveCartToSession();
 
-        session()->flash('success', 'Producto agregado al carrito.');
+        // Determinar si es actualización o nuevo producto para el mensaje
+        $isUpdate = $existingItemIndex !== false;
+        if ($isUpdate) {
+            $finalQuantity = $this->cartItems[$existingItemIndex]['quantity'];
+            $wasAdjusted = $finalQuantity != ($oldQuantity + 1);
+
+            if ($wasAdjusted) {
+                $message = "Cantidad ajustada por stock: {$oldQuantity} → {$finalQuantity} ({$product->name})";
+            } else {
+                $message = "Cantidad actualizada: {$oldQuantity} → {$finalQuantity} ({$product->name})";
+            }
+        } else {
+            $message = "Producto agregado: {$product->name}";
+        }
+
+        $this->dispatch('swal:toast', [
+            'type' => 'success',
+            'message' => $message,
+            'mobile' => true
+        ]);
     }
 
     /**
@@ -579,6 +745,10 @@ class QuoterView extends Component
      */
     public function removeFromCart($productId)
     {
+        // Obtener el nombre del producto antes de eliminarlo
+        $removedItem = collect($this->cartItems)->firstWhere('id', $productId);
+        $productName = $removedItem ? $removedItem['name'] : 'Producto';
+
         $this->cartItems = collect($this->cartItems)
             ->reject(function ($item) use ($productId) {
                 return $item['id'] == $productId;
@@ -587,7 +757,11 @@ class QuoterView extends Component
         $this->calculateTotal();
         $this->saveCartToSession();
 
-        session()->flash('success', 'Producto removido del carrito.');
+        $this->dispatch('swal:toast', [
+            'type' => 'success',
+            'message' => $productName . ' removido del carrito',
+            'mobile' => true
+        ]);
     }
 
     /**
@@ -595,11 +769,16 @@ class QuoterView extends Component
      */
     public function clearCart()
     {
+        $itemCount = count($this->cartItems);
         $this->cartItems = [];
         $this->total = 0;
         $this->saveCartToSession();
 
-        session()->flash('success', 'Carrito limpiado.');
+        $this->dispatch('swal:toast', [
+            'type' => 'info',
+            'message' => "Carrito limpiado ($itemCount productos eliminados)",
+            'mobile' => true
+        ]);
     }
 
     /**
@@ -627,6 +806,141 @@ class QuoterView extends Component
     }
 
     /**
+     * Cargar una cotización existente para edición
+     */
+    protected function loadExistingQuote($quoteId)
+    {
+        Log::info('Ejecutando loadExistingQuote', [
+            'quote_id' => $quoteId,
+            'company_id' => $this->companyId
+        ]);
+
+        try {
+            $quote = DB::table('tat_quotes')
+                ->where('id', $quoteId)
+                ->where('company_id', $this->companyId)
+                ->first();
+
+            Log::info('Resultado de búsqueda de cotización', [
+                'quote_found' => $quote ? 'SI' : 'NO',
+                'quote_data' => $quote
+            ]);
+
+            if (!$quote) {
+                Log::error('Cotización no encontrada', ['quote_id' => $quoteId]);
+                session()->flash('error', 'Cotización no encontrada.');
+                return;
+            }
+
+            // Verificar que no esté pagada
+            if ($quote->status === 'Pagado') {
+                Log::error('Intento de editar cotización pagada', ['quote_id' => $quoteId]);
+                session()->flash('error', 'No se puede editar una venta que ya está pagada.');
+                return;
+            }
+
+            // Cargar cliente
+            if ($quote->customerId) {
+                $customer = DB::table('tat_customers')
+                    ->where('id', $quote->customerId)
+                    ->where(function($query) {
+                        $query->where('company_id', $this->companyId)
+                              ->orWhere('company_id', 0) // Para clientes generales
+                              ->orWhereNull('company_id');
+                    })
+                    ->first();
+
+                Log::info('Búsqueda de cliente', [
+                    'customerId' => $quote->customerId,
+                    'company_id' => $this->companyId,
+                    'customer_found' => $customer ? 'SI' : 'NO',
+                    'customer_data' => $customer
+                ]);
+
+                if ($customer) {
+                    $this->selectedCustomer = [
+                        'id' => $customer->id,
+                        'identification' => $customer->identification,
+                        'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
+                        'full_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
+                        'phone' => $customer->business_phone,
+                        'email' => $customer->billingEmail,
+                        'address' => $customer->address
+                    ];
+                }
+            }
+
+            // Cargar productos
+            $quoteItems = DB::table('tat_detail_quotes as qi')
+                ->join('tat_items as i', 'qi.itemId', '=', 'i.id')
+                ->where('qi.quoteId', $quoteId)
+                ->select([
+                    'qi.*',
+                    'i.id as product_id',
+                    'i.name as product_name',
+                    'i.sku',
+                    'i.img_path',
+                    'i.stock'
+                ])
+                ->get();
+
+            $this->cartItems = [];
+            foreach ($quoteItems as $item) {
+                // Generar avatar color e iniciales
+                $avatarColor = $this->getAvatarColorClass($item->product_name);
+                $initials = $this->getProductInitials($item->product_name);
+
+                $this->cartItems[] = [
+                    'id' => $item->product_id,
+                    'name' => $item->product_name,
+                    'sku' => $item->sku,
+                    'price' => $item->price,
+                    'quantity' => $item->quantity,
+                    'subtotal' => $item->quantity * $item->price,
+                    'stock' => $item->stock,
+                    'img_path' => $item->img_path,
+                    'avatar_color' => $avatarColor,
+                    'initials' => $initials,
+                    'tax_name' => '5%' // Valor por defecto temporal
+                ];
+            }
+
+            // Establecer modo edición y ID de la cotización
+            $this->editingQuoteId = $quoteId;
+            $this->isEditing = true;
+
+            // Calcular total
+            $this->calculateTotal();
+
+            Log::info('Cotización cargada para edición', [
+                'quote_id' => $quoteId,
+                'customerId' => $quote->customerId,
+                'items_count' => count($this->cartItems),
+                'total' => $this->total,
+                'editingQuoteId' => $this->editingQuoteId,
+                'isEditing' => $this->isEditing
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error cargando cotización para edición', [
+                'quote_id' => $quoteId,
+                'error' => $e->getMessage()
+            ]);
+            session()->flash('error', 'Error al cargar la cotización para edición.');
+        }
+    }
+
+    /**
+     * Método público para verificar caja desde el frontend
+     */
+    public function verifyPettyCash()
+    {
+        if (!$this->checkActivePettyCash()) {
+            $this->dispatch('swal:no-petty-cash');
+        }
+    }
+
+    /**
      * Verificar si hay una caja abierta para el usuario actual
      */
     protected function checkActivePettyCash()
@@ -651,7 +965,7 @@ class QuoterView extends Component
     }
 
     /**
-     * Guardar cotización/venta
+     * Guardar cotización/venta (crear nueva o editar existente)
      */
     public function saveQuote()
     {
@@ -697,56 +1011,141 @@ class QuoterView extends Component
         try {
             DB::beginTransaction();
 
-            // Generar consecutivo para la venta
-            $lastQuote = Quote::byCompany($this->companyId)->orderBy('consecutive', 'desc')->first();
-            $consecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
-
-            // Crear observaciones con información del cliente
             $customerInfo = $this->selectedCustomer['display_name'] . ' (' . $this->selectedCustomer['identification'] . ')';
             $observations = 'Venta registrada para: ' . $customerInfo . ' - Total productos: ' . count($this->cartItems);
 
-            // Crear la venta
-            $quote = Quote::create([
-                'company_id' => $this->companyId,
-                'consecutive' => $consecutive,
-                'status' => 'Registrado',
-                'customerId' => $this->selectedCustomer['id'],
-                'userId' => Auth::id(),
-                'observations' => $observations,
+            // Verificar si estamos editando una venta existente
+            Log::info('Verificando modo de edición en saveQuote', [
+                'currentQuoteId' => $this->currentQuoteId,
+                'editingQuoteId' => $this->editingQuoteId,
+                'isEditing' => $this->isEditing
             ]);
 
-            // Agregar items a la venta
+            if ($this->currentQuoteId || $this->editingQuoteId) {
+                // EDITAR VENTA EXISTENTE
+                Log::info('Modo edición detectado en saveQuote');
+                $quoteId = $this->currentQuoteId ?: $this->editingQuoteId;
+                $quote = Quote::find($quoteId);
+
+                if (!$quote) {
+                    throw new \Exception('La venta a editar no fue encontrada.');
+                }
+
+                // Verificar que la venta no haya sido pagada
+                if ($quote->status === 'Pagado') {
+                    throw new \Exception('No se puede editar una venta que ya fue pagada.');
+                }
+
+                // Restaurar stock de los items anteriores (incluyendo soft deleted)
+                $oldQuoteItems = QuoteItem::withTrashed()->where('quoteId', $quote->id)->get();
+
+                Log::info('Restaurando stock de items anteriores', [
+                    'quote_id' => $quote->id,
+                    'items_count' => $oldQuoteItems->count(),
+                    'items' => $oldQuoteItems->pluck('id', 'itemId')->toArray()
+                ]);
+
+                foreach ($oldQuoteItems as $oldItem) {
+                    $product = TatItems::find($oldItem->itemId);
+                    if ($product) {
+                        $product->increment('stock', $oldItem->quantity);
+                        Log::info('Stock restaurado', [
+                            'product_id' => $product->id,
+                            'quantity_restored' => $oldItem->quantity,
+                            'new_stock' => $product->fresh()->stock
+                        ]);
+                    }
+                }
+
+                // Eliminar items antiguos FÍSICAMENTE (incluyendo soft deleted)
+                $deletedCount = QuoteItem::withTrashed()->where('quoteId', $quote->id)->forceDelete();
+
+                Log::info('Items antiguos eliminados', [
+                    'quote_id' => $quote->id,
+                    'deleted_count' => $deletedCount
+                ]);
+
+                // Actualizar la venta
+                $quote->update([
+                    'customerId' => $this->selectedCustomer['id'],
+                    'observations' => $observations . ' - EDITADA',
+                ]);
+
+                $actionType = 'editada';
+
+            } else {
+                // CREAR NUEVA VENTA
+                Log::info('Modo nueva venta detectado en saveQuote');
+                $lastQuote = Quote::byCompany($this->companyId)->orderBy('consecutive', 'desc')->first();
+                $consecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
+
+                $quote = Quote::create([
+                    'company_id' => $this->companyId,
+                    'consecutive' => $consecutive,
+                    'status' => 'Registrado',
+                    'customerId' => $this->selectedCustomer['id'],
+                    'userId' => Auth::id(),
+                    'observations' => $observations,
+                ]);
+
+                $actionType = 'registrada';
+            }
+
+            // Agregar/actualizar items de la venta
+            Log::info('Agregando nuevos items a la venta', [
+                'quote_id' => $quote->id,
+                'new_items_count' => count($this->cartItems),
+                'action_type' => $actionType ?? 'desconocido'
+            ]);
+
             foreach ($this->cartItems as $item) {
-                QuoteItem::create([
+                $newQuoteItem = QuoteItem::create([
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
                     'quantity' => $item['quantity'],
-                    'tax_percentage' => $item['tax_percentage'] ?? 0, // Usar el porcentaje real del producto
+                    'tax_percentage' => $item['tax_percentage'] ?? 0,
                     'price' => $item['price'],
                     'descripcion' => $item['name'],
                 ]);
 
-                // Opcional: Reducir stock del inventario
+                Log::info('Item agregado a la venta', [
+                    'quote_item_id' => $newQuoteItem->id,
+                    'quote_id' => $quote->id,
+                    'product_id' => $item['id'],
+                    'quantity' => $item['quantity']
+                ]);
+
+                // Reducir stock del inventario
                 $product = TatItems::find($item['id']);
                 if ($product) {
+                    $oldStock = $product->stock;
                     $product->decrement('stock', $item['quantity']);
+                    Log::info('Stock reducido en venta', [
+                        'product_id' => $product->id,
+                        'old_stock' => $oldStock,
+                        'quantity_sold' => $item['quantity'],
+                        'new_stock' => $product->fresh()->stock
+                    ]);
                 }
             }
 
             DB::commit();
 
+            // Limpiar estado después de guardar
             $this->clearCart();
-            $this->loadDefaultCustomer(); // Resetear al cliente por defecto
+            $this->currentQuoteId = null; // Reset para próxima venta
+            $this->loadDefaultCustomer();
 
-            // Log de la venta
-            Log::info('Venta registrada', [
+            // Log de la acción
+            Log::info("Venta {$actionType}", [
                 'venta_id' => $quote->id,
-                'consecutive' => $consecutive,
+                'consecutive' => $quote->consecutive ?? 'N/A',
                 'cliente' => $customerInfo,
                 'total_productos' => count($this->cartItems),
                 'total_venta' => $this->total,
                 'company_id' => $this->companyId,
-                'user_id' => Auth::id()
+                'user_id' => Auth::id(),
+                'action' => $actionType
             ]);
 
             // Redirigir a la vista de pagos
@@ -754,13 +1153,14 @@ class QuoterView extends Component
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al registrar venta', [
+            Log::error('Error al procesar venta', [
                 'error' => $e->getMessage(),
                 'company_id' => $this->companyId,
                 'user_id' => Auth::id(),
-                'cliente' => $this->selectedCustomer['display_name'] ?? 'N/A'
+                'cliente' => $this->selectedCustomer['display_name'] ?? 'N/A',
+                'currentQuoteId' => $this->currentQuoteId
             ]);
-            session()->flash('error', 'Error al registrar la venta: ' . $e->getMessage());
+            session()->flash('error', 'Error al procesar la venta: ' . $e->getMessage());
         }
     }
 
@@ -850,6 +1250,39 @@ class QuoterView extends Component
                     ];
                 })
                 ->toArray();
+
+            // Si no hay resultados y la búsqueda tiene al menos 2 caracteres, abrir automáticamente el modal
+            // PERO solo si no está en proceso de cierre
+            Log::info('🔍 Evaluando apertura automática del modal', [
+                'customerSearch' => $this->customerSearch,
+                'search_length' => strlen($this->customerSearch),
+                'results_count' => count($this->customerSearchResults),
+                'modalClosing' => $this->modalClosing,
+                'selectedCustomer_exists' => $this->selectedCustomer ? 'YES' : 'NO',
+                'showCustomerModal_current' => $this->showCustomerModal
+            ]);
+
+            if (empty($this->customerSearchResults) && strlen($this->customerSearch) >= 2 && !$this->modalClosing) {
+                $this->searchedIdentification = $this->customerSearch;
+                $this->showCustomerModal = true;
+
+                Log::info('Modal activado automáticamente', [
+                    'customerSearch' => $this->customerSearch,
+                    'searchedIdentification' => $this->searchedIdentification,
+                    'showCustomerModal' => $this->showCustomerModal,
+                    'resultados_count' => count($this->customerSearchResults),
+                    'search_length' => strlen($this->customerSearch)
+                ]);
+
+                // Enviar evento para mostrar en el frontend
+                $this->dispatch('swal:toast', [
+                    'type' => 'info',
+                    'message' => 'Abriendo formulario de nuevo cliente para: ' . $this->customerSearch
+                ]);
+
+                // Forzar re-renderizado
+                $this->dispatch('$refresh');
+            }
         } else {
             $this->customerSearchResults = [];
         }
@@ -884,7 +1317,45 @@ class QuoterView extends Component
     public function openCustomerModal()
     {
         $this->searchedIdentification = $this->customerSearch;
+        $this->editingCustomerId = null; // Modo crear
         $this->showCustomerModal = true;
+
+        Log::info('openCustomerModal llamado', [
+            'showCustomerModal' => $this->showCustomerModal,
+            'searchedIdentification' => $this->searchedIdentification
+        ]);
+    }
+
+    /**
+     * Abrir modal para editar cliente existente
+     */
+    public function editCustomer()
+    {
+        if (!$this->selectedCustomer) {
+            $this->dispatch('swal:toast', [
+                'type' => 'error',
+                'message' => 'No hay cliente seleccionado para editar'
+            ]);
+            return;
+        }
+
+        // Verificar si es el cliente genérico (222222222)
+        if ($this->selectedCustomer['identification'] === '222222222') {
+            $this->dispatch('swal:toast', [
+                'type' => 'info',
+                'message' => 'Este es un cliente genérico que no puede ser editado'
+            ]);
+            return;
+        }
+
+        $this->editingCustomerId = $this->selectedCustomer['id'];
+        $this->searchedIdentification = $this->selectedCustomer['identification'];
+        $this->showCustomerModal = true;
+
+        Log::info('editCustomer llamado', [
+            'editingCustomerId' => $this->editingCustomerId,
+            'showCustomerModal' => $this->showCustomerModal
+        ]);
     }
 
     /**
@@ -892,17 +1363,57 @@ class QuoterView extends Component
      */
     public function closeCustomerModal()
     {
+        $this->modalClosing = true;
         $this->showCustomerModal = false;
+        $this->editingCustomerId = null;
+        $this->searchedIdentification = '';
+        $this->customerSearch = ''; // Limpiar búsqueda para evitar reactivación
+        $this->customerSearchResults = []; // Limpiar resultados
+        $this->showClientSearch = false; // Salir del modo de búsqueda de cliente
+
+        Log::info('Modal de cliente cerrado', [
+            'showCustomerModal' => $this->showCustomerModal,
+            'editingCustomerId' => $this->editingCustomerId,
+            'showClientSearch' => $this->showClientSearch,
+            'modalClosing' => $this->modalClosing
+        ]);
+
+        // Reset la flag después de un momento para permitir reapertura
+        $this->modalClosing = false;
+
+        // Forzar actualización del componente
+        $this->dispatch('$refresh');
     }
 
     /**
-     * Manejar cuando se crea un cliente nuevo (listener)
+     * Manejar cuando se crea/actualiza un cliente (listener)
      */
     public function handleCustomerCreated($customerId)
     {
+        // Determinar el mensaje antes de limpiar las variables
+        $wasEditing = !empty($this->editingCustomerId);
+        $message = $wasEditing ? 'Cliente actualizado correctamente.' : 'Cliente creado y seleccionado correctamente.';
+
+        // Cerrar modal y limpiar variables
         $this->closeCustomerModal();
         $this->selectCustomer($customerId);
-        session()->flash('success', 'Cliente creado y seleccionado correctamente.');
+        $this->showClientSearch = false; // Salir del modo búsqueda
+        $this->customerSearch = ''; // Limpiar búsqueda
+        $this->customerSearchResults = []; // Limpiar resultados
+
+        $this->dispatch('swal:toast', [
+            'type' => 'success',
+            'message' => $message
+        ]);
+
+        // Asegurar que la búsqueda se desactive
+        $this->showClientSearch = false;
+
+        Log::info('Cliente procesado correctamente', [
+            'customerId' => $customerId,
+            'wasEditing' => $wasEditing,
+            'showCustomerModal' => $this->showCustomerModal
+        ]);
     }
 
     /**
@@ -910,7 +1421,13 @@ class QuoterView extends Component
      */
     public function handleCustomerModalClosed()
     {
+        Log::info('handleCustomerModalClosed ejecutado');
         $this->closeCustomerModal();
+
+        Log::info('Modal cerrado por listener', [
+            'showCustomerModal' => $this->showCustomerModal,
+            'showClientSearch' => $this->showClientSearch
+        ]);
     }
 
     /**
@@ -931,12 +1448,19 @@ class QuoterView extends Component
                 $this->selectedCustomer = $restoredCustomer;
             }
 
+            // Cargar ID de la venta actual para edición
+            $restoredQuoteId = session('quoter_quote_id');
+            if ($restoredQuoteId) {
+                $this->currentQuoteId = $restoredQuoteId;
+            }
+
             // Limpiar las sesiones de restauración
-            session()->forget(['quoter_restored', 'quoter_customer']);
+            session()->forget(['quoter_restored', 'quoter_customer', 'quoter_quote_id']);
 
             Log::info('Datos restaurados desde pago cancelado', [
                 'cartItems' => count($this->cartItems),
-                'customer' => $this->selectedCustomer ? $this->selectedCustomer['identification'] : null
+                'customer' => $this->selectedCustomer ? $this->selectedCustomer['identification'] : null,
+                'quoteId' => $this->currentQuoteId
             ]);
         }
     }
@@ -947,6 +1471,34 @@ class QuoterView extends Component
     public function getCompanyConfigProperty()
     {
         return $this->companyConfig;
+    }
+
+    /**
+     * Obtener texto del botón según el contexto
+     */
+    public function getSaveButtonTextProperty()
+    {
+        Log::info('getSaveButtonTextProperty llamado', [
+            'currentQuoteId' => $this->currentQuoteId,
+            'editingQuoteId' => $this->editingQuoteId,
+            'isEditing' => $this->isEditing
+        ]);
+
+        if ($this->currentQuoteId || $this->editingQuoteId) {
+            return 'Actualizar Venta';
+        }
+        return 'Pagar Venta';
+    }
+
+    /**
+     * Obtener texto para el loading del botón
+     */
+    public function getSaveButtonLoadingTextProperty()
+    {
+        if ($this->currentQuoteId || $this->editingQuoteId) {
+            return 'Actualizando...';
+        }
+        return 'Guardando...';
     }
 
     public function render()

@@ -123,8 +123,26 @@ class PaymentQuote extends Component
         // Simular anticipos existentes (opcional)
         $this->loadAdvances();
 
+        // Configurar efectivo como método principal con el total por defecto
+        $this->setDefaultCashAmount();
+
         // Calcular balances iniciales
         $this->calculateBalances();
+    }
+
+    private function setDefaultCashAmount()
+    {
+        // Establecer el efectivo como el total de la venta por defecto
+        $this->paymentMethods['efectivo']['value'] = $this->quoteTotal;
+        $this->paymentMethods['efectivo']['selected'] = true;
+
+        // Asegurar que otros métodos empiecen en 0
+        foreach ($this->paymentMethods as $key => $method) {
+            if ($key !== 'efectivo') {
+                $this->paymentMethods[$key]['value'] = 0;
+                $this->paymentMethods[$key]['selected'] = false;
+            }
+        }
     }
 
     private function ensureTenantConnection()
@@ -297,6 +315,46 @@ class PaymentQuote extends Component
         $this->calculateBalances();
     }
 
+    public function autoDistributePayments()
+    {
+        // Calcular total pagado con otros métodos (excluyendo efectivo)
+        $totalOtherMethods = 0;
+        foreach ($this->paymentMethods as $key => $method) {
+            if ($key !== 'efectivo') {
+                $totalOtherMethods += (float) ($method['value'] ?? 0);
+            }
+        }
+
+        // El efectivo debe cubrir lo que falta para completar el total
+        $remainingAmount = $this->quoteTotal - $totalOtherMethods;
+
+        // Si la cantidad restante es negativa, significa que los otros métodos superan el total
+        if ($remainingAmount < 0) {
+            // En este caso, el efectivo debe ser 0 y necesitamos ajustar otros métodos
+            $this->paymentMethods['efectivo']['value'] = 0;
+            // Opcional: redistribuir proporcionalmente los otros métodos
+            $this->redistributeOtherMethods($totalOtherMethods);
+        } else {
+            // Asignar lo que falta al efectivo
+            $this->paymentMethods['efectivo']['value'] = $remainingAmount;
+        }
+    }
+
+    private function redistributeOtherMethods($totalOtherMethods)
+    {
+        if ($totalOtherMethods <= 0) return;
+
+        // Calcular factor de redistribución
+        $factor = $this->quoteTotal / $totalOtherMethods;
+
+        // Redistribuir proporcionalmente todos los métodos excepto efectivo
+        foreach ($this->paymentMethods as $key => $method) {
+            if ($key !== 'efectivo') {
+                $this->paymentMethods[$key]['value'] = round(($method['value'] ?? 0) * $factor, 2);
+            }
+        }
+    }
+
     public function autoDistributeFromCash()
     {
         // Calcular total de todos los métodos EXCEPTO efectivo
@@ -320,20 +378,6 @@ class PaymentQuote extends Component
         $this->paymentMethods['efectivo']['value'] = max(0, $cashAmount);
     }
 
-    public function autoDistributePayments()
-    {
-        // Calcular total actual de todos los métodos
-        $totalCurrentPayments = 0;
-        foreach ($this->paymentMethods as $method) {
-            $totalCurrentPayments += (float) ($method['value'] ?? 0);
-        }
-
-        // Si el total excede la venta, ajustar proporcionalmente
-        if ($totalCurrentPayments > $this->quoteTotal) {
-            $this->redistributePayments($totalCurrentPayments);
-        }
-        // Si es menor al total, no hacer nada (permitir combinaciones manuales)
-    }
 
     private function redistributePayments($overAmount)
     {
@@ -560,7 +604,10 @@ class PaymentQuote extends Component
                         'subtotal' => $subtotalWithTax,
                         'stock' => $item->stock,
                         'tax_name' => $quoteItem->tax_percentage ? $quoteItem->tax_percentage . '%' : 'N/A',
-                        'tax_percentage' => $taxPercentage
+                        'tax_percentage' => $taxPercentage,
+                        'img_path' => $item->img_path ?? null,
+                        'initials' => $this->getProductInitials($item->name),
+                        'avatar_color' => $this->getAvatarColorClass($item->name)
                     ];
                 }
             }
@@ -573,10 +620,11 @@ class PaymentQuote extends Component
                 'typePerson' => $quote->customer->typePerson ?? 'Natural'
             ];
 
-            // Guardar en sesión para que el QuoterView los cargue
+            // Guardar en sesión para que el QuoterView los cargue (incluyendo el ID de la venta para edición)
             session([
                 'quoter_cart' => $cartItems,
                 'quoter_customer' => $customerData,
+                'quoter_quote_id' => $this->quoteId, // ID de la venta para editar
                 'quoter_restored' => true
             ]);
 
@@ -605,6 +653,46 @@ class PaymentQuote extends Component
                 return redirect()->route('tenant.tat.quoter.index');
             }
         }
+    }
+
+    /**
+     * Obtener iniciales del nombre del producto
+     */
+    private function getProductInitials($name)
+    {
+        if (!$name) return '??';
+
+        // Limpiar y dividir el nombre en palabras
+        $words = explode(' ', trim($name));
+
+        if (count($words) == 1) {
+            // Si es una sola palabra, tomar las primeras 2 letras
+            return strtoupper(substr($words[0], 0, 2));
+        } else {
+            // Si son múltiples palabras, tomar la primera letra de las primeras 2 palabras
+            return strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
+        }
+    }
+
+    /**
+     * Obtener color de avatar basado en el nombre del producto
+     */
+    private function getAvatarColorClass($name)
+    {
+        $colors = [
+            'bg-gradient-to-br from-blue-500 to-indigo-600',
+            'bg-gradient-to-br from-purple-500 to-pink-600',
+            'bg-gradient-to-br from-green-500 to-teal-600',
+            'bg-gradient-to-br from-yellow-500 to-orange-600',
+            'bg-gradient-to-br from-red-500 to-pink-600',
+            'bg-gradient-to-br from-indigo-500 to-purple-600',
+            'bg-gradient-to-br from-teal-500 to-cyan-600',
+            'bg-gradient-to-br from-orange-500 to-red-600',
+        ];
+
+        // Usar el primer caracter del nombre para determinar el color
+        $index = ord(strtoupper($name[0])) % count($colors);
+        return $colors[$index];
     }
 
     public function render()

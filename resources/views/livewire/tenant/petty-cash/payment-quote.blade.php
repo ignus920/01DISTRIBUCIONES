@@ -1,19 +1,44 @@
-<div class="min-h-screen bg-gray-900/80 dark:bg-black/90 lg:fixed lg:inset-0 lg:backdrop-blur-sm lg:flex lg:items-center lg:justify-center lg:z-50 lg:p-4"
+<div class="payment-modal-container min-h-screen bg-gray-900/80 dark:bg-black/90 lg:fixed lg:inset-0 lg:backdrop-blur-sm lg:flex lg:items-center lg:justify-center lg:z-50 lg:p-4"
+     style="min-height: 100vh; min-height: 100dvh;"
      x-data="paymentKeyboard()"
      x-init="init()">
 
     <!-- Modal Principal -->
-    <div class="w-full lg:max-w-7xl h-screen lg:h-[90vh] bg-white dark:bg-slate-900 lg:rounded-2xl lg:shadow-2xl overflow-hidden flex flex-col lg:border border-gray-200 dark:border-slate-700">
+    <div class="w-full lg:max-w-7xl h-screen lg:h-[90vh] bg-white dark:bg-slate-900 lg:rounded-2xl lg:shadow-2xl overflow-hidden flex flex-col lg:border border-gray-200 dark:border-slate-700"
+         style="height: 100vh; height: 100dvh;">
 
         <!-- Header -->
-        <div class="bg-gray-900 dark:bg-black text-white px-4 lg:px-6 py-3 lg:py-4 flex-none">
-            <div class="flex flex-col lg:flex-row justify-between items-center gap-2 lg:gap-4">
-                <div class="text-center lg:text-left">
-                    <h1 class="text-xl lg:text-2xl font-bold tracking-tight text-white/90">CAJA REGISTRADORA</h1>
-                    <div class="flex items-center gap-2 text-xs lg:text-sm text-gray-400 justify-center lg:justify-start">
+        <div class="bg-gray-900 dark:bg-black text-white px-2 lg:px-6 py-2 lg:py-4 flex-none">
+            <!-- Móvil: Todo en una fila compacta -->
+            <div class="flex lg:hidden items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <h1 class="text-sm font-bold tracking-tight text-white/90 whitespace-nowrap">CAJA REG.</h1>
+                    <span class="font-mono bg-gray-800 px-1.5 py-0.5 rounded text-xs">{{ $quoteNumber }}</span>
+                    <span class="text-xs text-gray-400 truncate max-w-[80px]" title="{{ $quoteCustumer }}">{{ $quoteCustumer }}</span>
+                </div>
+                <div class="flex-shrink-0">
+                    @if($activePettyCash)
+                        <div class="inline-flex items-center gap-1 bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-1 rounded-full text-xs font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                            Caja {{ $activePettyCash['consecutive'] }}
+                        </div>
+                    @else
+                        <div class="inline-flex items-center gap-1 bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded-full text-xs font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                            Cerrada
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Desktop: Layout original -->
+            <div class="hidden lg:flex flex-row justify-between items-center gap-4">
+                <div class="text-left">
+                    <h1 class="text-2xl font-bold tracking-tight text-white/90">CAJA REGISTRADORA</h1>
+                    <div class="flex items-center gap-2 text-sm text-gray-400 justify-start">
                         <span class="font-mono bg-gray-800 px-2 py-0.5 rounded">{{ $quoteNumber }}</span>
                         <span>•</span>
-                        <span class="font-medium truncate max-w-[120px] lg:max-w-md" title="{{ $quoteCustumer }}">{{ $quoteCustumer }}</span>
+                        <span class="font-medium truncate max-w-md" title="{{ $quoteCustumer }}">{{ $quoteCustumer }}</span>
                     </div>
                 </div>
                 <div class="text-right">
@@ -188,7 +213,7 @@
                                                 >
                                             <!-- Indicador de acción rápida -->
                                             @if($currentMethod === $key)
-                                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <div class="absolute inset-y-0 right-0 pr-3 items-center pointer-events-none hidden lg:flex">
                                                     <span class="text-[10px] text-blue-500 uppercase font-bold tracking-tight bg-blue-50 dark:bg-blue-900/50 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800">TAB: Pagar Todo</span>
                                                 </div>
                                             @endif
@@ -240,6 +265,36 @@
         </div>
 
     </div>
+
+    <!-- CSS para ocultar barra del navegador en móvil -->
+    <style>
+        @media (max-width: 1024px) {
+            body {
+                overflow: hidden;
+            }
+
+            /* Usar toda la pantalla disponible */
+            html, body {
+                height: 100vh;
+                height: 100dvh;
+                margin: 0;
+                padding: 0;
+                position: fixed;
+                width: 100%;
+                overflow: hidden;
+            }
+
+            /* Hacer que el contenido use toda la pantalla */
+            .payment-modal-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 9999;
+            }
+        }
+    </style>
 
     <!-- JavaScript simplificado -->
     <script>

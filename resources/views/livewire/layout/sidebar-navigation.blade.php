@@ -40,8 +40,11 @@ new class extends Component
     <div class="flex shrink-0 items-center px-4 py-4 border-b border-gray-200 dark:border-gray-700"
         :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
         <div class="flex items-center">
-            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-                <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="flex items-center justify-center rounded-lg bg-indigo-600 transition-all duration-200"
+                 :class="sidebarCollapsed ? 'h-10 w-10' : 'h-8 w-8'">
+                <svg class="text-white transition-all duration-200"
+                     :class="sidebarCollapsed ? 'h-6 w-6' : 'h-5 w-5'"
+                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
@@ -480,31 +483,66 @@ new class extends Component
             <!-- Spacer -->
             <div class="flex-1"></div>
 
-            <!-- Logout -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <button wire:click="logout"
-                    class="group flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400"
-                    :class="sidebarCollapsed ? 'justify-center' : 'justify-start'" x-data="{ tooltip: false }"
-                    @mouseenter="tooltip = sidebarCollapsed" @mouseleave="tooltip = false">
-                    <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 translate-x-4"
-                        x-transition:enter-end="opacity-100 translate-x-0"
-                        x-transition:leave="transition ease-in duration-150"
-                        x-transition:leave-start="opacity-100 translate-x-0"
-                        x-transition:leave-end="opacity-0 translate-x-4" class="ml-3">
-                        Cerrar Sesión
-                    </span>
+            <!-- User Menu -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4" x-data="{ userMenuOpen: false }">
 
-                    <!-- Tooltip -->
-                    <div x-show="tooltip" x-transition
-                        class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                        Cerrar Sesión
+                <!-- Sidebar expandido: Menú completo con avatar -->
+                <div x-show="!sidebarCollapsed" class="w-full">
+                    <button @click="userMenuOpen = !userMenuOpen"
+                        class="group flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white">
+
+                        <!-- Avatar -->
+                        <img class="h-8 w-8 rounded-full bg-gray-50 dark:bg-gray-700 ring-2 ring-gray-200 dark:ring-gray-600 object-cover shrink-0"
+                             src="{{ auth()->user()->getAvatarUrl() }}"
+                             alt="{{ auth()->user()->name }}">
+
+                        <!-- Información del usuario -->
+                        <div class="ml-3 flex-1 text-left min-w-0">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ auth()->user()->name }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ auth()->user()->email }}</p>
+                        </div>
+
+                        <!-- Icono desplegable -->
+                        <svg :class="userMenuOpen ? 'rotate-180' : ''" class="w-4 h-4 ml-2 transition-transform duration-200 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div x-show="userMenuOpen" x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="mt-2 ml-3 mr-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 dark:ring-gray-700 py-1">
+
+                        <a href="{{ route('profile') }}" class="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md mx-1" @click="userMenuOpen = false">
+                            <svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            Tu Perfil
+                        </a>
+
+                        <a href="{{ route('tenant.select') }}" class="flex items-center px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-md mx-1" @click="userMenuOpen = false">
+                            <svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            Cambiar Empresa
+                        </a>
+
+                        <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
+                        <button wire:click="logout" class="flex items-center w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors rounded-md mx-1" @click="userMenuOpen = false">
+                            <svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Cerrar Sesión
+                        </button>
                     </div>
-                </button>
+                </div>
+
+                <!-- Sidebar colapsado: Ocultar menú de usuario completamente -->
             </div>
     </nav>
 </div>

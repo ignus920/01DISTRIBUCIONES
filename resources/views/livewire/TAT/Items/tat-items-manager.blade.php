@@ -1,5 +1,5 @@
-<div class="p-6 bg-gray-50 dark:bg-slate-900 min-h-screen transition-colors">
-    <div class="max-w-12xl mx-auto">
+<div class="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-200">
+    <div class="px-4 sm:px-6 lg:px-8 py-6">
         <!-- Header -->
         <div
             class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
@@ -87,6 +87,9 @@
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                     <tr>
+                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Imagen
+                            </th>
                             <th wire:click="sortBy('sku')"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
                                 <div class="flex items-center gap-1">
@@ -108,6 +111,7 @@
                                     @endif
                                 </div>
                             </th>
+                            
                             <th wire:click="sortBy('name')"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
                                 <div class="flex items-center gap-1">
@@ -206,9 +210,24 @@
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     @forelse($items as $item)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    @if($item->img_path && file_exists(public_path('storage/' . $item->img_path)))
+                                        <img src="{{ asset('storage/' . $item->img_path) }}"
+                                             alt="{{ $item->name }}"
+                                             class="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-600">
+                                    @else
+                                        <div class="w-10 h-10 rounded-lg {{ $this->getAvatarColorClass($item->name) }} flex items-center justify-center text-white text-sm font-semibold border border-gray-200 dark:border-gray-600">
+                                            {{ $this->getProductInitials($item->name) }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {{ $item->sku }}
                             </td>
+                        
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $item->name }}</div>
                             </td>
@@ -261,7 +280,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="9" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                 <div class="flex flex-col items-center">
                                     <svg class="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
