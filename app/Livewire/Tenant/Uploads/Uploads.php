@@ -16,7 +16,7 @@ use App\Models\Tenant\DeliveriesList\DisDeliveries;
 //Services
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class Uploads extends Component
 {
