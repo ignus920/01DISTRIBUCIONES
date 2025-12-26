@@ -42,6 +42,8 @@ class QuoterView extends Component
 
     // Propiedades para manejo de venta
     public $currentQuoteId = null; // ID de la venta actual (para edición)
+    public $editingQuoteId = null; // ID de la cotización que se está editando
+    public $isEditing = false; // Flag para indicar si estamos en modo edición
 
     // Propiedades para paginación
     protected $paginationTheme = 'bootstrap';
@@ -52,8 +54,13 @@ class QuoterView extends Component
         'customer-modal-closed' => 'handleCustomerModalClosed'
     ];
 
-    public function mount()
+    public function mount($edit = null)
     {
+        // Si no se pasa edit como parámetro, intentar obtenerlo de la query string
+        if (!$edit) {
+            $edit = request('edit');
+        }
+
         // Obtener company_id del usuario autenticado
         $user = Auth::user();
         $this->companyId = $this->getUserCompanyId($user);
@@ -62,7 +69,10 @@ class QuoterView extends Component
             'user_id' => $user->id,
             'user_profile_id' => $user->profile_id,
             'user_contact_id' => $user->contact_id,
-            'companyId' => $this->companyId
+            'companyId' => $this->companyId,
+            'edit_parameter' => $edit,
+            'request_edit' => request('edit'),
+            'all_request' => request()->all()
         ]);
 
         if (!$this->companyId) {
@@ -74,13 +84,20 @@ class QuoterView extends Component
         // Cargar configuración de la empresa
         $this->loadCompanyConfig();
 
-        $this->loadCartFromSession();
-        $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
-        $this->calculateTotal();
+        // Si se está editando una venta existente, cargarla
+        if ($edit) {
+            Log::info('Iniciando carga de cotización existente', ['quote_id' => $edit]);
+            $this->loadExistingQuote($edit);
+        } else {
+            Log::info('Iniciando nueva cotización');
+            $this->loadCartFromSession();
+            $this->loadRestoredData(); // Cargar datos restaurados del pago cancelado
+            $this->calculateTotal();
 
-        // Solo cargar cliente por defecto si no hay uno restaurado
-        if (!$this->selectedCustomer) {
-            $this->loadDefaultCustomer();
+            // Solo cargar cliente por defecto si no hay uno restaurado
+            if (!$this->selectedCustomer) {
+                $this->loadDefaultCustomer();
+            }
         }
 
         Log::info('QuoterView mounted successfully', [
@@ -789,6 +806,131 @@ class QuoterView extends Component
     }
 
     /**
+     * Cargar una cotización existente para edición
+     */
+    protected function loadExistingQuote($quoteId)
+    {
+        Log::info('Ejecutando loadExistingQuote', [
+            'quote_id' => $quoteId,
+            'company_id' => $this->companyId
+        ]);
+
+        try {
+            $quote = DB::table('tat_quotes')
+                ->where('id', $quoteId)
+                ->where('company_id', $this->companyId)
+                ->first();
+
+            Log::info('Resultado de búsqueda de cotización', [
+                'quote_found' => $quote ? 'SI' : 'NO',
+                'quote_data' => $quote
+            ]);
+
+            if (!$quote) {
+                Log::error('Cotización no encontrada', ['quote_id' => $quoteId]);
+                session()->flash('error', 'Cotización no encontrada.');
+                return;
+            }
+
+            // Verificar que no esté pagada
+            if ($quote->status === 'Pagado') {
+                Log::error('Intento de editar cotización pagada', ['quote_id' => $quoteId]);
+                session()->flash('error', 'No se puede editar una venta que ya está pagada.');
+                return;
+            }
+
+            // Cargar cliente
+            if ($quote->customerId) {
+                $customer = DB::table('tat_customers')
+                    ->where('id', $quote->customerId)
+                    ->where(function($query) {
+                        $query->where('company_id', $this->companyId)
+                              ->orWhere('company_id', 0) // Para clientes generales
+                              ->orWhereNull('company_id');
+                    })
+                    ->first();
+
+                Log::info('Búsqueda de cliente', [
+                    'customerId' => $quote->customerId,
+                    'company_id' => $this->companyId,
+                    'customer_found' => $customer ? 'SI' : 'NO',
+                    'customer_data' => $customer
+                ]);
+
+                if ($customer) {
+                    $this->selectedCustomer = [
+                        'id' => $customer->id,
+                        'identification' => $customer->identification,
+                        'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
+                        'full_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
+                        'phone' => $customer->business_phone,
+                        'email' => $customer->billingEmail,
+                        'address' => $customer->address
+                    ];
+                }
+            }
+
+            // Cargar productos
+            $quoteItems = DB::table('tat_detail_quotes as qi')
+                ->join('tat_items as i', 'qi.itemId', '=', 'i.id')
+                ->where('qi.quoteId', $quoteId)
+                ->select([
+                    'qi.*',
+                    'i.id as product_id',
+                    'i.name as product_name',
+                    'i.sku',
+                    'i.img_path',
+                    'i.stock'
+                ])
+                ->get();
+
+            $this->cartItems = [];
+            foreach ($quoteItems as $item) {
+                // Generar avatar color e iniciales
+                $avatarColor = $this->getAvatarColorClass($item->product_name);
+                $initials = $this->getProductInitials($item->product_name);
+
+                $this->cartItems[] = [
+                    'id' => $item->product_id,
+                    'name' => $item->product_name,
+                    'sku' => $item->sku,
+                    'price' => $item->price,
+                    'quantity' => $item->quantity,
+                    'subtotal' => $item->quantity * $item->price,
+                    'stock' => $item->stock,
+                    'img_path' => $item->img_path,
+                    'avatar_color' => $avatarColor,
+                    'initials' => $initials,
+                    'tax_name' => '5%' // Valor por defecto temporal
+                ];
+            }
+
+            // Establecer modo edición y ID de la cotización
+            $this->editingQuoteId = $quoteId;
+            $this->isEditing = true;
+
+            // Calcular total
+            $this->calculateTotal();
+
+            Log::info('Cotización cargada para edición', [
+                'quote_id' => $quoteId,
+                'customerId' => $quote->customerId,
+                'items_count' => count($this->cartItems),
+                'total' => $this->total,
+                'editingQuoteId' => $this->editingQuoteId,
+                'isEditing' => $this->isEditing
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error cargando cotización para edición', [
+                'quote_id' => $quoteId,
+                'error' => $e->getMessage()
+            ]);
+            session()->flash('error', 'Error al cargar la cotización para edición.');
+        }
+    }
+
+    /**
      * Método público para verificar caja desde el frontend
      */
     public function verifyPettyCash()
@@ -873,9 +1015,17 @@ class QuoterView extends Component
             $observations = 'Venta registrada para: ' . $customerInfo . ' - Total productos: ' . count($this->cartItems);
 
             // Verificar si estamos editando una venta existente
-            if ($this->currentQuoteId) {
+            Log::info('Verificando modo de edición en saveQuote', [
+                'currentQuoteId' => $this->currentQuoteId,
+                'editingQuoteId' => $this->editingQuoteId,
+                'isEditing' => $this->isEditing
+            ]);
+
+            if ($this->currentQuoteId || $this->editingQuoteId) {
                 // EDITAR VENTA EXISTENTE
-                $quote = Quote::find($this->currentQuoteId);
+                Log::info('Modo edición detectado en saveQuote');
+                $quoteId = $this->currentQuoteId ?: $this->editingQuoteId;
+                $quote = Quote::find($quoteId);
 
                 if (!$quote) {
                     throw new \Exception('La venta a editar no fue encontrada.');
@@ -925,6 +1075,7 @@ class QuoterView extends Component
 
             } else {
                 // CREAR NUEVA VENTA
+                Log::info('Modo nueva venta detectado en saveQuote');
                 $lastQuote = Quote::byCompany($this->companyId)->orderBy('consecutive', 'desc')->first();
                 $consecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
 
@@ -1327,7 +1478,16 @@ class QuoterView extends Component
      */
     public function getSaveButtonTextProperty()
     {
-        return $this->currentQuoteId ? 'Actualizar Venta' : 'Registrar Venta';
+        Log::info('getSaveButtonTextProperty llamado', [
+            'currentQuoteId' => $this->currentQuoteId,
+            'editingQuoteId' => $this->editingQuoteId,
+            'isEditing' => $this->isEditing
+        ]);
+
+        if ($this->currentQuoteId || $this->editingQuoteId) {
+            return 'Actualizar Venta';
+        }
+        return 'Pagar Venta';
     }
 
     /**
@@ -1335,7 +1495,10 @@ class QuoterView extends Component
      */
     public function getSaveButtonLoadingTextProperty()
     {
-        return $this->currentQuoteId ? 'Actualizando...' : 'Guardando...';
+        if ($this->currentQuoteId || $this->editingQuoteId) {
+            return 'Actualizando...';
+        }
+        return 'Guardando...';
     }
 
     public function render()

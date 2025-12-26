@@ -8,8 +8,13 @@
      
 
         <!-- Total -->
-        <div class="hidden lg:block bg-black dark:bg-gray-950 text-white p-4 lg:p-6 rounded mb-3 ring-2 ring-blue-500 dark:ring-blue-600">
+        <div class="hidden lg:block bg-black dark:bg-gray-950 text-white p-4 lg:p-6 rounded mb-3 ring-2 ring-blue-500 dark:ring-blue-600 relative">
     <div class="text-right lg:text-center text-2xl lg:text-4xl font-bold text-white">${{ number_format($total, 0, '.', '.') }}</div>
+    @if($editingQuoteId || $isEditing)
+        <div class="absolute top-2 left-2 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+            ✏️ EDITANDO VENTA #{{ $editingQuoteId }}
+        </div>
+    @endif
 </div>
 
         <!-- Cliente -->
@@ -141,7 +146,7 @@
                 <div class="relative">
                     <input type="text"
                            wire:model.live.debounce.250ms="currentSearch"
-                           placeholder="Buscar por nombre o SKU (mín. 2 caracteres)..."
+                           placeholder="Buscar Producto (mín. 2 caracteres)"
                            class="w-full px-3 py-3 sm:px-4 sm:py-3 text-sm sm:text-base bg-white dark:bg-gray-700 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-sm transition-all duration-200 touch-manipulation"
                            autocomplete="off"
                            id="product-search-input"

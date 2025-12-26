@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\PDF;
 
+
 class Uploads extends Component
 {
     //Propiedades para la tabla

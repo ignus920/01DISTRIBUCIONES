@@ -100,6 +100,30 @@ class SalesList extends Component
         }
     }
 
+    /**
+     * Editar una venta existente
+     */
+    public function editSale($quoteId)
+    {
+        $quote = Quote::with(['customer', 'items.item'])
+            ->where('id', $quoteId)
+            ->where('company_id', $this->companyId)
+            ->first();
+
+        if ($quote) {
+            // Verificar que la venta no esté pagada
+            if ($quote->status === 'Pagado') {
+                session()->flash('error', 'No se puede editar una venta que ya está pagada.');
+                return;
+            }
+
+            // Redirigir a QuoterView con el ID de la cotización para editar
+            return redirect()->route('tenant.tat.quoter.index', ['edit' => $quoteId]);
+        } else {
+            session()->flash('error', 'No se encontró la cotización.');
+        }
+    }
+
 
     public function render()
 {
