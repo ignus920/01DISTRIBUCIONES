@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Services\Tenant\TenantManager;
 use App\Traits\HasCompanyConfiguration;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -394,7 +394,7 @@ class PettyCash extends Component
             ];
 
             // Forzar encabezados UTF-8 en la respuesta
-            $pdf = PDF::loadView('livewire.tenant.petty-cash.petty-cash-pdf', $data)
+            $pdf = Pdf::loadView('livewire.tenant.petty-cash.petty-cash-pdf', $data)
                 ->setPaper('a4', 'portrait')
                 ->setOption('defaultFont', 'Arial')
                 ->setOption('isHtml5ParserEnabled', true)

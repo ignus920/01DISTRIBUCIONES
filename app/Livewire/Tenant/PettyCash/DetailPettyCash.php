@@ -290,7 +290,6 @@ class DetailPettyCash extends Component
 
     public function save()
     {
-        dd('llego');
         try {
             $this->ensureTenantConnection();
             $this->validate();
