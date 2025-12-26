@@ -16,8 +16,7 @@ use App\Models\Tenant\DeliveriesList\DisDeliveries;
 //Services
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
-
+use Barryvdh\DomPDF\Facade\PDF;
 
 class Uploads extends Component
 {
@@ -382,7 +381,7 @@ class Uploads extends Component
                 'total' => $cleanedTotal,
             ];
 
-            $pdf = Pdf::loadView('tenant.uploads.pre-charge-pdf', $data);
+            $pdf = PDF::loadView('tenant.uploads.pre-charge-pdf', $data);
             return response()->streamDownload(function () use ($pdf) {
                 echo $pdf->stream();
             }, 'pre-charge.pdf');
