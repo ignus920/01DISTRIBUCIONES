@@ -1543,10 +1543,18 @@ public function validateQuantity($index)
                 // Migrar a cotizaciones
                 $quote = $this->migrateRestockToQuotes($existing->order_number, $companyId);
 
+                // Crear remisión automáticamente
+                $remission = $this->createRemissionFromRestock($existing->order_number, $companyId, $quote);
+
                 if ($quote) {
+                    $message = "Solicitud confirmada y migrada a cotización #{$quote->consecutive}";
+                    if ($remission) {
+                        $message .= " y remisión #{$remission->consecutive} creada";
+                    }
+
                     $this->dispatch('show-toast', [
                         'type' => 'success',
-                        'message' => "Solicitud confirmada y migrada a cotización #{$quote->consecutive}"
+                        'message' => $message
                     ]);
                 }
             }
@@ -1841,6 +1849,141 @@ public function searchCustomersLive()
     {
         $this->customerSearch = '';
         $this->customerSearchResults = [];
+    }
+
+    /**
+     * Crear remisión automáticamente cuando se confirma una solicitud de reabastecimiento
+     */
+    private function createRemissionFromRestock($orderNumber, $companyId, $quote = null)
+    {
+        Log::info('🚀 Iniciando createRemissionFromRestock', [
+            'order_number' => $orderNumber,
+            'company_id' => $companyId,
+            'quote_id' => $quote ? $quote->id : null
+        ]);
+
+        try {
+            // Obtener todos los productos confirmados de esta orden
+            $restockItems = TatRestockList::where('order_number', $orderNumber)
+                ->where('company_id', $companyId)
+                ->where('status', 'Confirmado')
+                ->get();
+
+            Log::info('Items de restock consultados', [
+                'order_number' => $orderNumber,
+                'company_id' => $companyId,
+                'items_found' => $restockItems->count(),
+                'raw_query' => TatRestockList::where('order_number', $orderNumber)
+                    ->where('company_id', $companyId)
+                    ->where('status', 'Confirmado')
+                    ->toSql()
+            ]);
+
+            if ($restockItems->isEmpty()) {
+                Log::info('No hay items confirmados para crear remisión', ['order_number' => $orderNumber]);
+                return null;
+            }
+
+            // Obtener el siguiente consecutivo para la remisión
+            $lastRemission = DB::table('inv_remissions')->max('consecutive');
+            $consecutive = $lastRemission ? $lastRemission + 1 : 1;
+
+            // Obtener user_id del usuario autenticado
+            $userId = auth()->id();
+
+            // Crear la remisión
+            $remissionId = DB::table('inv_remissions')->insertGetId([
+                'consecutive' => $consecutive,
+                'status' => 'REGISTRADO',
+                'quoteId' => $quote ? $quote->id : null,
+                'warehouseId' => 1, // Puedes ajustar esto según tu lógica
+                'deliveryTypeId' => 1, // Puedes ajustar esto según tu lógica
+                'methodPaymentId' => 1, // Puedes ajustar esto según tu lógica
+                'userId' => $userId,
+                'deliveryDate' => now()->format('Y-m-d'),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            Log::info('Remisión creada', [
+                'remission_id' => $remissionId,
+                'consecutive' => $consecutive,
+                'order_number' => $orderNumber
+            ]);
+
+            // Crear los detalles de la remisión
+            Log::info('Iniciando creación de detalles de remisión', [
+                'remission_id' => $remissionId,
+                'items_count' => $restockItems->count(),
+                'items_data' => $restockItems->toArray()
+            ]);
+
+            foreach ($restockItems as $index => $item) {
+                Log::info('Procesando item para detalle', [
+                    'index' => $index,
+                    'item_id' => $item->itemId,
+                    'quantity_request' => $item->quantity_request,
+                    'order_number' => $item->order_number
+                ]);
+
+                // Obtener información del producto para el valor
+                $product = DB::table('vnt_items')->where('id', $item->itemId)->first();
+                $value = $product ? $product->cost : 0;
+
+                Log::info('Producto encontrado para detalle', [
+                    'item_id' => $item->itemId,
+                    'product_found' => $product ? 'YES' : 'NO',
+                    'value' => $value
+                ]);
+
+                try {
+                    $detailId = DB::table('inv_detail_remissions')->insertGetId([
+                        'quantity' => $item->quantity_request,
+                        'tax' => 0,
+                        'value' => $value,
+                        'itemId' => $item->itemId,
+                        'remissionId' => $remissionId,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+                    Log::info('Detalle de remisión creado exitosamente', [
+                        'detail_id' => $detailId,
+                        'remission_id' => $remissionId,
+                        'item_id' => $item->itemId,
+                        'quantity' => $item->quantity_request,
+                        'value' => $value
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Error creando detalle de remisión', [
+                        'remission_id' => $remissionId,
+                        'item_id' => $item->itemId,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    throw $e; // Re-lanzar la excepción para que sea capturada en el catch principal
+                }
+            }
+
+            Log::info('Finalizada creación de detalles de remisión', [
+                'remission_id' => $remissionId,
+                'total_items_processed' => $restockItems->count()
+            ]);
+
+            // Devolver el objeto de remisión creado
+            return (object) [
+                'id' => $remissionId,
+                'consecutive' => $consecutive,
+                'status' => 'REGISTRADO'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error creating remission from restock: ' . $e->getMessage(), [
+                'order_number' => $orderNumber,
+                'company_id' => $companyId
+            ]);
+            return null;
+        }
     }
 
 }
