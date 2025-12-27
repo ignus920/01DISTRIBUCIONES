@@ -38,6 +38,7 @@ class QuoterView extends Component
     public $showCustomerModal = false;
     public $searchedIdentification = '';
     public $editingCustomerId = null;
+    public $showMobileSearch = false; // Controlar modo búsqueda en móviles
     public $modalClosing = false;
 
     // Propiedades para manejo de venta
@@ -444,6 +445,18 @@ class QuoterView extends Component
         $this->searchResults = [];
         $this->additionalSuggestions = [];
         $this->selectedIndex = -1;
+        $this->showMobileSearch = false; // También cerrar buscador móvil al limpiar
+    }
+
+    /**
+     * Activar/Desactivar buscador móvil
+     */
+    public function toggleMobileSearch($value)
+    {
+        $this->showMobileSearch = $value;
+        if ($value) {
+            $this->dispatch('focus-fullscreen-input');
+        }
     }
 
     /**
@@ -538,14 +551,17 @@ class QuoterView extends Component
             $this->selectedIndex = -1;
             $this->dispatch('product-selected');
         } else {
-            // En móvil: mantener el texto de búsqueda Y los resultados para permitir múltiples toques
+            // En móvil: Ahora también limpiamos para salir del modo búsqueda y volver al carrito
+            $this->currentSearch = '';
+            $this->searchResults = [];
+            $this->additionalSuggestions = [];
             $this->selectedIndex = -1;
-            $this->dispatch('product-selected-keep-search');
+            $this->showMobileSearch = false; // OCULTAR MODO BÚSQUEDA MÓVIL
+            
+            // Emitir evento para cerrar pantalla completa en el frontend
+            $this->dispatch('close-mobile-search');
 
-            Log::info('MÓVIL DETECTADO - Manteniendo resultados para toques múltiples', [
-                'current_search' => $this->currentSearch,
-                'search_results_count' => count($this->searchResults)
-            ]);
+            Log::info('MÓVIL DETECTADO - Cerrando búsqueda y volviendo al carrito');
         }
     }
 
@@ -598,34 +614,34 @@ class QuoterView extends Component
         });
 
         if ($existingItemIndex !== false) {
-            // Si ya existe, incrementar cantidad
-            $oldQuantity = $this->cartItems[$existingItemIndex]['quantity'];
+            // Si ya existe, obtener el item y removerlo de su posición actual
+            $item = $this->cartItems[$existingItemIndex];
+            unset($this->cartItems[$existingItemIndex]);
+            $this->cartItems = array_values($this->cartItems); // Reindexar
+
+            // Incrementar cantidad
+            $oldQuantity = $item['quantity'];
             $newQuantity = $oldQuantity + 1;
 
             // Verificar stock solo si no se permite vender sin saldo
             if ($this->companyConfig && !$this->companyConfig->canSellWithoutStock() && $newQuantity > $product->stock) {
-                Log::info('STOCK INSUFICIENTE DETECTADO', [
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'product_stock' => $product->stock,
-                    'old_quantity' => $oldQuantity,
-                    'new_quantity' => $newQuantity,
-                    'can_sell_without_stock' => $this->companyConfig->canSellWithoutStock()
-                ]);
-
-                // En lugar de hacer return, mantener la cantidad máxima permitida
                 $newQuantity = $product->stock;
-
                 $this->dispatch('swal:warning', [
                     'title' => 'Stock Limitado',
                     'text' => "Solo hay {$product->stock} unidades disponibles. Cantidad ajustada automáticamente.",
                 ]);
             }
 
-            $this->cartItems[$existingItemIndex]['quantity'] = $newQuantity;
-            $baseSubtotal = $this->cartItems[$existingItemIndex]['quantity'] * $this->cartItems[$existingItemIndex]['price'];
-            $taxAmount = $baseSubtotal * ($this->cartItems[$existingItemIndex]['tax_percentage'] / 100);
-            $this->cartItems[$existingItemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
+            $item['quantity'] = $newQuantity;
+            $baseSubtotal = $item['quantity'] * $item['price'];
+            $taxAmount = $baseSubtotal * ($item['tax_percentage'] / 100);
+            $item['subtotal'] = $baseSubtotal + $taxAmount;
+
+            // Mover al principio (prepend)
+            array_unshift($this->cartItems, $item);
+            
+            // Re-obtener el índice para mensajes posteriores
+            $existingItemIndex = 0; 
         } else {
             // Agregar nuevo item
             $basePrice = $product->price;
@@ -633,7 +649,7 @@ class QuoterView extends Component
             $taxAmount = $basePrice * ($taxPercentage / 100);
             $subtotalWithTax = $basePrice + $taxAmount;
 
-            $this->cartItems[] = [
+            $newItem = [
                 'id' => $product->id,
                 'name' => $product->name,
                 'sku' => $product->sku,
@@ -647,6 +663,9 @@ class QuoterView extends Component
                 'initials' => $this->getProductInitials($product->name),
                 'avatar_color' => $this->getAvatarColorClass($product->name)
             ];
+
+            // Usar array_unshift para agregar al principio
+            array_unshift($this->cartItems, $newItem);
         }
 
         $this->calculateTotal();

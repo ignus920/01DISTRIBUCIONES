@@ -24,13 +24,13 @@
                 <div class="space-y-2">
                     <div class="flex gap-1">
                         <!-- Botón hamburguesa solo en móvil -->
-                        <button
-                            @click="if (window.openMobileSidebar) window.openMobileSidebar();"
-                            class="lg:hidden flex items-center justify-center w-10 h-10 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-all duration-200 mr-1 shadow-md hover:shadow-lg active:scale-95"
-                            title="Abrir menú de navegación"
+                        <!-- Botón hamburguesa estandarizado -->
+                        <button type="button" 
+                            @click="sidebarOpen = true"
+                            class="lg:hidden flex items-center justify-center p-2 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/50 rounded-lg transition-colors"
                         >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                             </svg>
                         </button>
 
@@ -78,13 +78,13 @@
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2 flex-1">
                         <!-- Botón hamburguesa solo en móvil -->
-                        <button
-                            @click="if (window.openMobileSidebar) window.openMobileSidebar();"
-                            class="lg:hidden flex items-center justify-center w-10 h-10 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg active:scale-95"
-                            title="Abrir menú de navegación"
+                        <!-- Botón hamburguesa estandarizado -->
+                        <button type="button" 
+                            @click="sidebarOpen = true"
+                            class="lg:hidden flex items-center justify-center p-2 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/50 rounded-lg transition-colors"
                         >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                            <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                             </svg>
                         </button>
 
@@ -141,7 +141,38 @@
         <!-- Input de búsqueda de productos - Ahora debajo del cliente -->
         <div class="space-y-1 mt-3">
             <!-- Input de búsqueda optimizado -->
-            <div class="relative" x-data="{ isLoading: false, fullscreenSearch: false }" @keydown.escape="fullscreenSearch = false">
+            <div class="relative" x-data="{ 
+                isLoading: false, 
+                showMobileSearch: @entangle('showMobileSearch'),
+                manageFocus() {
+                    if (this.showMobileSearch) {
+                        // Intentar enfocar el input de pantalla completa de forma persistente
+                        let attempts = 0;
+                        const focusInterval = setInterval(() => {
+                            const fsInput = document.getElementById('fullscreen-search-input');
+                            if (fsInput) {
+                                if (document.activeElement !== fsInput) {
+                                    fsInput.focus();
+                                }
+                                // Si ya tiene el foco o llevamos muchos intentos, parar
+                                if (document.activeElement === fsInput || attempts > 20) {
+                                    clearInterval(focusInterval);
+                                }
+                            }
+                            attempts++;
+                        }, 50);
+                    } else {
+                        // Al cerrar, asegurar que nada tenga foco para bajar teclado
+                        setTimeout(() => {
+                            if (document.activeElement instanceof HTMLElement) {
+                                document.activeElement.blur();
+                            }
+                        }, 100);
+                    }
+                }
+            }" 
+            x-init="$watch('showMobileSearch', value => manageFocus())"
+            @keydown.escape="showMobileSearch = false">
                 <!-- Input principal con indicador de carga -->
                 <div class="relative">
                     <input type="text"
@@ -155,8 +186,9 @@
                            wire:target="updatedCurrentSearch"
                            inputmode="search"
                            enterkeyhint="search"
-                           @focus="if (window.innerWidth < 1024) fullscreenSearch = true"
-                           x-ref="searchInput">
+                           @focus="if (window.innerWidth < 1024) { showMobileSearch = true; }"
+                           x-ref="searchInput"
+                           wire:key="main-search-input">
 
                     <!-- Spinner de carga -->
                     <div wire:loading wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -175,7 +207,7 @@
                 </div>
 
                 <!-- Interfaz de búsqueda fullscreen para móvil -->
-                <div x-show="fullscreenSearch"
+                <div x-show="showMobileSearch"
                      x-transition:enter="transition ease-out duration-300"
                      x-transition:enter-start="opacity-0"
                      x-transition:enter-end="opacity-100"
@@ -183,14 +215,14 @@
                      x-transition:leave-start="opacity-100"
                      x-transition:leave-end="opacity-0"
                      class="fixed inset-0 z-50 lg:hidden bg-white dark:bg-gray-900"
-                     @click.self="fullscreenSearch = false">
+                     @click.self="showMobileSearch = false">
 
                     <div class="h-full flex flex-col">
                         <!-- Header del fullscreen con input y botón cerrar -->
                         <div class="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                             <div class="flex items-center gap-3">
                                 <!-- Botón cerrar -->
-                                <button @click="fullscreenSearch = false; $wire.set('currentSearch', '')"
+                                <button @click="showMobileSearch = false; $wire.set('currentSearch', '')"
                                         class="flex-shrink-0 w-10 h-10 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -202,8 +234,9 @@
                                        wire:model.live.debounce.250ms="currentSearch"
                                        placeholder="Buscar productos..."
                                        class="flex-1 px-4 py-3 text-base bg-gray-100 dark:bg-gray-700 dark:text-white border-0 rounded-lg focus:outline-none focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 shadow-sm"
-                                       autocomplete="off"
+                                       id="fullscreen-search-input"
                                        x-ref="fullscreenInput"
+                                       wire:key="fullscreen-search-input"
                                        inputmode="search"
                                        enterkeyhint="search">
                             </div>
@@ -253,9 +286,8 @@
                                                     {{ $stockLevel === 'agotado' && !$canSelect ? 'bg-red-50 dark:bg-red-900/20' : '' }}
                                                     {{ $stockLevel === 'bajo' ? 'bg-yellow-50 dark:bg-yellow-900/20' : '' }}"
                                              {{ $canSelect ? 'wire:click=selectProduct(' . $product['id'] . ')' : '' }}
-                                             @click="if ($event.target.dataset.canSelect) {
-                                                 // En móvil mantener el fullscreen abierto para facilitar re-selección
-                                                 if (window.innerWidth >= 1024) fullscreenSearch = false;
+                                             @click="if ($event.target.closest('[data-can-select=true]')) {
+                                                 showMobileSearch = false;
                                              }"
                                              data-can-select="{{ $canSelect ? 'true' : 'false' }}">
 
@@ -757,8 +789,9 @@
         @endif
 
     </div>
+    <!-- Contenedor para Toasts Personalizados -->
+    <div id="custom-toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none min-w-[300px] max-w-[90vw]"></div>
 </div>
-
 
 @push('scripts')
 <style>
@@ -1049,32 +1082,7 @@
             }
         });
 
-        // Manejar búsqueda fullscreen en móviles
-        document.addEventListener('alpine:init', () => {
-            // Escuchar cuando se abre la búsqueda fullscreen
-            document.addEventListener('alpine:init', () => {
-                // Observar cambios en fullscreenSearch
-                setTimeout(() => {
-                    const observer = new MutationObserver(() => {
-                        const fullscreenElement = document.querySelector('[x-show="fullscreenSearch"]');
-                        if (fullscreenElement && !fullscreenElement.style.display.includes('none')) {
-                            // Enfocar el input fullscreen
-                            setTimeout(() => {
-                                const fullscreenInput = document.querySelector('[x-ref="fullscreenInput"]');
-                                if (fullscreenInput) {
-                                    fullscreenInput.focus();
-                                    // Prevenir zoom en iOS
-                                    fullscreenInput.setAttribute('readonly', 'readonly');
-                                    setTimeout(() => fullscreenInput.removeAttribute('readonly'), 100);
-                                }
-                            }, 100);
-                        }
-                    });
-
-                    observer.observe(document.body, { childList: true, subtree: true });
-                }, 500);
-            });
-        });
+        // Gestión de búsqueda fullscreen - Simplificada y movida a Alpine.js
 
         // Test básico de SweetAlert al cargar
         setTimeout(() => {
@@ -1098,57 +1106,55 @@
             }
         }, 1000);
 
-        // Listener para toasts no invasivos - Configuración simplificada
-        Livewire.on('swal:toast', (data) => {
-            console.log('🔥 Evento swal:toast recibido:', data);
-            const toastData = Array.isArray(data) ? data[0] : data;
+        // Función para mostrar Toast personalizado
+        window.showCustomToast = function(message, type = 'success') {
+            const container = document.getElementById('custom-toast-container');
+            if (!container) return;
 
-            if (typeof Swal !== 'undefined') {
-                console.log('✅ SweetAlert2 está disponible, mostrando toast');
-                const isMobile = window.innerWidth < 768;
-
-                // Configuración ultra-simple para garantizar funcionamiento
-                const config = {
-                    toast: true,
-                    position: isMobile ? 'top' : 'top-end',
-                    showConfirmButton: false,
-                    timer: isMobile ? 1500 : 2500,
-                    timerProgressBar: true,
-                    title: toastData.message,
-                    background: isMobile ? 'rgba(0, 0, 0, 0.85)' : undefined,
-                    color: isMobile ? 'white' : undefined
-                };
-
-                // Agregar ícono según tipo
-                if (toastData.type === 'success') {
-                    config.icon = 'success';
-                } else if (toastData.type === 'error') {
-                    config.icon = 'error';
-                } else if (toastData.type === 'info') {
-                    config.icon = 'info';
-                } else {
-                    config.icon = 'success';
-                }
-
-                // Disparar el toast
-                Swal.fire(config);
-
-                // Debug
-                console.log('Toast disparado con timer:', config.timer + 'ms');
+            // Crear el elemento del toast
+            const toast = document.createElement('div');
+            toast.className = `transform translate-x-full transition-all duration-300 ease-out flex items-center p-4 mb-4 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800 border-l-4 ${
+                type === 'success' ? 'border-green-500' : (type === 'error' ? 'border-red-500' : 'border-blue-500')
+            }`;
+            
+            // Icono según tipo
+            let icon = '';
+            if (type === 'success') {
+                icon = '<svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
+            } else if (type === 'error') {
+                icon = '<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>';
             } else {
-                console.error('❌ SweetAlert2 NO está disponible, usando fallback');
-                console.log(`${toastData.type.toUpperCase()}: ${toastData.message}`);
-
-                // Fallback básico si no hay SweetAlert
-                const notification = document.createElement('div');
-                notification.className = 'fixed top-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg z-50';
-                notification.textContent = toastData.message;
-                document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.remove();
-                }, 3000);
+                icon = '<svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>';
             }
+
+            toast.innerHTML = `
+                <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg">
+                    ${icon}
+                </div>
+                <div class="ml-3 text-sm font-normal">${message}</div>
+            `;
+
+            container.appendChild(toast);
+
+            // Trigger animación de entrada
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 10);
+
+            // Temporizador para eliminar
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        };
+
+        // Listener para toasts no invasivos - Reemplazado por versión personalizada
+        Livewire.on('swal:toast', (data) => {
+            const toastData = Array.isArray(data) ? data[0] : data;
+            window.showCustomToast(toastData.message, toastData.type);
+            console.log('🔥 Custom Toast mostrado:', toastData);
         });
 
         // Listener para validar caja abierta
@@ -1193,16 +1199,23 @@
                 }
             });
 
-            // Manejar selección de producto en móvil (mantener search)
-            Livewire.on('product-selected-keep-search', () => {
-                // En móvil NO enfocamos el input automáticamente para evitar problemas con el teclado
-                // El usuario puede tocar el input cuando quiera cambiar el término de búsqueda
+            // Manejar selección de producto en móvil (cerrar buscador)
+            Livewire.on('close-mobile-search', () => {
                 const isMobile = window.innerWidth < 1024;
-                if (!isMobile) {
-                    // Si por alguna razón esto se dispara en desktop, comportarse normalmente
-                    setTimeout(() => {
-                        searchInput.focus();
-                    }, 100);
+                if (isMobile) {
+                    // Signal Alpine to close fullscreen search
+                    window.dispatchEvent(new CustomEvent('close-fullscreen'));
+                    
+                    // Asegurar que el input pierda el foco para que baje el teclado
+                    if (searchInput) {
+                        searchInput.blur();
+                    }
+                    
+                    // También buscar el input de pantalla completa y quitarle el foco
+                    const fullscreenInput = document.querySelector('[x-ref="fullscreenInput"]');
+                    if (fullscreenInput) {
+                        fullscreenInput.blur();
+                    }
                 }
             });
 

@@ -829,6 +829,52 @@ public function validateQuantity($index)
         }
     }
 
+    public function decreaseQuantity($productId)
+    {
+        $this->ensureTenantConnection();
+
+        $existingIndex = $this->findProductInQuoter($productId);
+
+        if ($existingIndex !== false) {
+            $this->quoterItems[$existingIndex]['quantity']--;
+
+            if ($this->quoterItems[$existingIndex]['quantity'] <= 0) {
+                $this->removeFromQuoter($existingIndex);
+            } else {
+                session(['quoter_items' => $this->quoterItems]);
+                $this->calculateTotal();
+                
+                $this->dispatch('show-toast', [
+                    'type' => 'info',
+                    'message' => 'Cantidad disminuida'
+                ]);
+            }
+        }
+    }
+
+    public function updateQuantityById($productId, $quantity)
+    {
+        $this->ensureTenantConnection();
+        $existingIndex = $this->findProductInQuoter($productId);
+
+        if ($existingIndex !== false) {
+            $quantity = intval($quantity);
+            
+            if ($quantity <= 0) {
+                $this->removeFromQuoter($existingIndex);
+            } else {
+                $this->quoterItems[$existingIndex]['quantity'] = $quantity;
+                session(['quoter_items' => $this->quoterItems]);
+                $this->calculateTotal();
+
+                $this->dispatch('show-toast', [
+                    'type' => 'info',
+                    'message' => 'Cantidad actualizada'
+                ]);
+            }
+        }
+    }
+
     public function loadQuoteForEditing($quoteId)
     {
         $this->ensureTenantConnection();

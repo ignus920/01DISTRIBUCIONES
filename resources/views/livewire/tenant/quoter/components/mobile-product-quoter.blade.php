@@ -3,11 +3,11 @@
 $header = 'Seleccionar productos';
 @endphp
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-    <!-- Header fijo con búsqueda y carrito -->
-    <div class="sticky top-0 z-5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+<div class="fixed inset-0 z-[35] bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <!-- Header fijo con búsqueda y categorías -->
+    <div class="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-md">
         <div class="px-4 py-3">
-            <!-- Barra superior con botón regresar y carrito -->
+            <!-- Barra superior con botón regresar y menú -->
             <div class="flex items-center justify-between mb-3">
                 @if(auth()->check() && auth()->user()->profile_id == 17)
                 <a
@@ -35,8 +35,12 @@ $header = 'Seleccionar productos';
                 </a>
                 @endif
 
-                <!-- Carrito flotante (header) -->
-
+                <!-- Mobile menu button (Hamburger) -->
+                <button type="button" class="-m-2.5 p-2.5 text-gray-700 dark:text-gray-300 lg:hidden" @click="sidebarOpen = true">
+                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Contenedor principal con elementos verticales -->
@@ -56,15 +60,14 @@ $header = 'Seleccionar productos';
                         </svg>
                     </div>
                     <input wire:model.live.debounce.500ms="search"
+                        wire:key="mobile-search-input"
                         type="text"
                         placeholder="Buscar productos..."
                         class="block w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         autocomplete="off"
                         inputmode="search"
                         onkeydown="handleProductSearchKeydown(event)"
-                        id="productSearchInput"
-                        wire:loading.attr="disabled"
-                        wire:target="search">
+                        id="productSearchInput">
                 </div>
 
                 <!-- Filtro de Categorías -->
@@ -82,140 +85,134 @@ $header = 'Seleccionar productos';
         </div>
     </div>
 
-    <!-- Lista de productos -->
-    <div class="px-4 py-4 space-y-3">
+    <!-- Lista de productos con scroll independiente -->
+    <div class="flex-1 overflow-y-auto pb-20">
+
+    <!-- Lista de productos en Grid de 2 columnas -->
+    <div class="px-3 py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
         @forelse($products as $product)
         @php
         $quantity = $this->getProductQuantity($product->id);
         $isSelected = $quantity > 0;
         @endphp
 
-        <div @if($isSelected) wire:click="increaseQuantity({{ $product->id }})" @endif
-            class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-colors
-                        {{ $isSelected ? 'ring-2 ring-indigo-500 border-indigo-300 cursor-pointer' : '' }}">
+        <div class="relative flex flex-col bg-white dark:bg-gray-800 rounded-xl border-2 transition-all duration-300 overflow-hidden
+                        {{ $isSelected 
+                            ? 'border-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-900/40 shadow-md scale-[1.02]' 
+                            : 'border-transparent shadow-sm hover:border-gray-200 dark:hover:border-gray-700' }}">
 
-            <!-- Fila 1: Imagen + Información + Contador -->
-            <div class="flex items-center justify-between mb-3">
-                <!-- Imagen del producto -->
-                <div class="mr-3 flex-shrink-0">
-                    @if($product->principalImage)
-                    <img class="w-12 h-12 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
-                        src="{{ $product->principalImage->getImageUrl() }}"
-                        alt="{{ $product->display_name }}">
-                    @else
-                    <div class="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                        <span class="text-lg font-bold text-gray-400 dark:text-gray-500">
-                            {{ strtoupper(substr($product->name, 0, 1)) }}
-                        </span>
+            <!-- Badge de cantidad (Flotante) -->
+            @if($quantity > 0)
+            <div class="absolute top-2 right-2 z-10">
+                <span class="flex items-center justify-center w-7 h-7 bg-indigo-600 dark:bg-indigo-500 text-white text-xs font-bold rounded-full shadow-lg border-2 border-white dark:border-gray-800 animate-in zoom-in duration-300">
+                    {{ $quantity }}
+                </span>
+            </div>
+            @endif
+
+            <!-- Imagen del producto -->
+            <div class="aspect-square bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center p-2 relative group">
+                @if($product->principalImage)
+                <img class="w-full h-full object-contain rounded-lg transition-transform duration-300 group-hover:scale-110"
+                    src="{{ $product->principalImage->getImageUrl() }}"
+                    alt="{{ $product->display_name }}">
+                @else
+                <div class="w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-2xl flex items-center justify-center shadow-inner">
+                    <span class="text-2xl font-bold text-gray-400 dark:text-gray-500">
+                        {{ strtoupper(substr($product->name, 0, 1)) }}
+                    </span>
+                </div>
+                @endif
+                
+                @if($isSelected)
+                <div class="absolute inset-0 bg-indigo-500/5 transition-opacity"></div>
+                @endif
+            </div>
+
+            <!-- Información del producto -->
+            <div class="p-3 flex-1 flex flex-col">
+                <!-- SKU y Nombre -->
+                <div class="mb-3">
+                    <div class="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-semibold truncate mb-1">
+                        {{ $product->sku ?: 'Sin SKU' }}
                     </div>
-                    @endif
+                    <div class="font-bold text-gray-900 dark:text-white text-xs line-clamp-2 leading-tight min-h-[2rem]">
+                        {{ $product->display_name }}
+                    </div>
                 </div>
 
-                <!-- Información del producto -->
-                <div class="flex-1">
-                    <!-- Código y nombre -->
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <div class="font-medium text-gray-900 dark:text-white text-sm">
-                                {{ $product->sku ? $product->sku . ' - ' : '' }}{{ $product->display_name }}
-                            </div>
-                            <!-- SKU (con altura fija para mantener estructura) -->
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                @if($product->sku && trim($product->sku) !== '')
-                                SKU: {{ $product->sku }}
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Precio -->
-                    @php
-                    $allPrices = $product->all_prices;
-                    @endphp
-                    @if(!empty($allPrices))
-                    @php
-                    $filteredPrices = auth()->user()->profile_id == 17
-                        ? collect($allPrices)->filter(fn($price, $label) => $label === 'Precio Regular')
-                        : collect($allPrices);
-                    $priceCount = $filteredPrices->count();
-                    @endphp
-                    <div class="mb-2 mt-3 flex gap-2 {{ $priceCount == 1 ? 'justify-center' : 'flex-wrap' }}">
-                        @foreach($allPrices as $label => $price)
-                        @if(auth()->user()->profile_id == 17)
-                        {{-- Solo mostrar Precio Regular para perfil 17 --}}
-                        @if($label === 'Precio Regular')
-                        @php
-                        $isDisabled = $isSelected;
-                        @endphp
-                        <button
-                            title="{{ $label }}"
-                            wire:click="addToQuoter({{ $product->id }}, {{ $price }}, '{{ $label }}')"
-                            wire:loading.attr="disabled"
-                            wire:target="addToQuoter"
-                            x-on:click.stop
-                            @if($isDisabled) disabled @endif
-                            class="px-4 py-3 text-center rounded-xl border-2 transition-all duration-200 min-h-[44px] flex items-center justify-center font-semibold shadow-sm
-                           {{ $isDisabled
-                           ? 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-300 dark:border-gray-500'
-                            : 'bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 cursor-pointer border-green-300 dark:border-green-700 hover:border-green-400 dark:hover:border-green-600 text-green-800 dark:text-green-300 hover:shadow-md'
-                           }}">
-
-                            <!-- Contenido normal -->
-                            <div wire:loading.remove wire:target="addToQuoter" class="flex items-center gap-2">
-                                @if(!$isDisabled)
+                <!-- Precios/Botón o Selector de cantidad -->
+                <div class="mt-auto pt-2">
+                    @if($isSelected)
+                        <!-- Selector de cantidad Inline -->
+                        <div class="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-1 border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <!-- Botón Menos -->
+                            <button wire:click="decreaseQuantity({{ $product->id }})"
+                                    class="w-8 h-8 flex items-center justify-center bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 rounded-md shadow-sm border border-indigo-100 dark:border-indigo-800 active:scale-90 transition-transform">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path>
                                 </svg>
-                                @endif
-                                <span class="text-sm font-bold">
-                                    ${{ number_format($price) }}
-                                </span>
-                            </div>
+                            </button>
 
-                            <!-- Spinner de carga -->
-                            <svg wire:loading wire:target="addToQuoter" class="w-4 h-4 animate-spin text-green-500" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </button>
-                                @endif
-                            @else
-                                {{-- Mostrar todos los precios para otros perfiles --}}
-                                @php
-                                $isDisabled = $isSelected;
-                                @endphp
+                            <!-- Input de cantidad -->
+                            <input type="number" 
+                                   value="{{ $quantity }}"
+                                   wire:change="updateQuantityById({{ $product->id }}, $event.target.value)"
+                                   onfocus="this.select()"
+                                   class="w-12 text-center bg-transparent border-none text-gray-900 dark:text-white font-black text-sm p-0 focus:ring-0"
+                                   inputmode="numeric">
+
+                            <!-- Botón Más -->
+                            <button wire:click="increaseQuantity({{ $product->id }})"
+                                    class="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-md shadow-sm active:scale-90 transition-transform">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    @else
+                        @php
+                        $allPrices = $product->all_prices;
+                        @endphp
+
+                        @if(!empty($allPrices))
+                            @php
+                            $filteredPrices = auth()->user()->profile_id == 17
+                                ? collect($allPrices)->filter(fn($price, $label) => $label === 'Precio Regular')
+                                : collect($allPrices);
+                            @endphp
+
+                            @foreach($filteredPrices as $label => $price)
                                 <button
-                                    title="{{ $label }}"
                                     wire:click="addToQuoter({{ $product->id }}, {{ $price }}, '{{ $label }}')"
                                     wire:loading.attr="disabled"
-                                    wire:target="addToQuoter"
-                                    x-on:click.stop
-                                    @if($isDisabled) disabled @endif
-                                    class="px-2 py-1 text-center rounded border transition-colors min-h-[28px] flex items-center justify-center
-                                   {{ $isDisabled
-                                   ? 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-300 dark:border-gray-500'
-                                    : 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 cursor-pointer border-blue-300 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-600 text-blue-800 dark:text-blue-300 hover:shadow-md'
-                                   }}">
-
-                                    <!-- Contenido normal -->
-                                    <div wire:loading.remove wire:target="addToQuoter" class="font-bold text-xs {{ $isDisabled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white' }}">
-                                        ${{ number_format($price) }}
+                                    class="w-full py-2 px-2 text-center rounded-lg border-2 transition-all duration-200 flex flex-col items-center justify-center gap-0.5
+                                    bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20 active:scale-95">
+                                    
+                                    <span class="text-[9px] uppercase font-bold opacity-60">{{ $label == 'Precio Regular' ? 'Precio' : $label }}</span>
+                                    <span class="text-sm font-black tracking-tight">${{ number_format($price) }}</span>
+                                    
+                                    <div wire:loading wire:target="addToQuoter" class="absolute inset-0 flex items-center justify-center bg-inherit rounded-lg">
+                                        <svg class="w-5 h-5 animate-spin text-current" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
                                     </div>
-
-                                    <!-- Spinner de carga -->
-                                    <svg wire:loading wire:target="addToQuoter" class="w-3 h-3 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
                                 </button>
-                            @endif
-                        @endforeach
-                    </div>
-                    @else
-                    <div class="font-bold text-lg text-gray-400 dark:text-gray-500 mb-1">
-                        Sin precio
-                    </div>
+                            @endforeach
+                        @else
+                            <div class="text-[10px] font-bold text-gray-400 dark:text-gray-500 italic text-center py-2 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                                Sin precio
+                            </div>
+                        @endif
                     @endif
+                </div>
+            </div>
 
+            <!-- Efecto de pulso si está seleccionado -->
+            @if($isSelected)
+            <div class="absolute -inset-0.5 rounded-xl border border-indigo-500/20 animate-pulse pointer-events-none"></div>
+            @endif
         </div>
         @empty
         <div class="text-center py-12">
@@ -240,6 +237,7 @@ $header = 'Seleccionar productos';
         {{ $products->links() }}
     </div>
     @endif
+</div>
 
     <!-- Modal del carrito -->
     @if($showCartModal)
@@ -745,7 +743,6 @@ $header = 'Seleccionar productos';
         </button>
     </div>
     @endif
-
 </div>
 
 @push('scripts')
