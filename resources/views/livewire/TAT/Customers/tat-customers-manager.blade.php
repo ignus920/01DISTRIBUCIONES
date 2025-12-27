@@ -67,6 +67,9 @@
                                 <option value="100">100</option>
                             </select>
                         </div>
+
+                        <!-- Botones de exportar -->
+                        <x-export-buttons />
                     </div>
                 </div>
             </div>

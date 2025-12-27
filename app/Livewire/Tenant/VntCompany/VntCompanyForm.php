@@ -4,30 +4,31 @@ namespace App\Livewire\Tenant\VntCompany;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\Livewire\WithExport;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
+use App\Models\Auth\User;
+use App\Models\Auth\Tenant;
+use App\Services\Tenant\TenantManager;
+use App\Models\Tenant\Customer\TatCompanyRoute;
+use Illuminate\Support\Facades\Hash;
+use App\Models\Central\CnfFiscalResponsability;
 use App\Livewire\Tenant\VntCompany\Services\CompanyService;
 use App\Livewire\Tenant\VntCompany\Services\WarehouseService;
 use App\Livewire\Tenant\VntCompany\Services\CompanyQueryService;
 use App\Livewire\Tenant\VntCompany\Services\CompanyValidationService;
-use App\Livewire\Tenant\VntCompany\Services\ExportService;
-use App\Models\Auth\User;
-use App\Models\Tenant\Customer\TatCompanyRoute;
-use Illuminate\Support\Facades\Hash;
-use App\Models\Central\CnfFiscalResponsability;
 
 
 class VntCompanyForm extends Component
 {
-    use WithPagination;
+    use WithPagination, WithExport;
 
     // Services
     protected $companyService;
     protected $warehouseService;
     protected $queryService;
     protected $validationService;
-    protected $exportService;
     protected $listeners = [
         'type-identification-changed' => 'updateTypeIdentification',
         'regime-changed' => 'updateRegime',
@@ -136,17 +137,15 @@ class VntCompanyForm extends Component
 
 
     public function boot(
-        CompanyService $companyService,
-        WarehouseService $warehouseService,
-        CompanyQueryService $queryService,
-        CompanyValidationService $validationService,
-        ExportService $exportService
+        \App\Livewire\Tenant\VntCompany\Services\CompanyService $companyService,
+        \App\Livewire\Tenant\VntCompany\Services\WarehouseService $warehouseService,
+        \App\Livewire\Tenant\VntCompany\Services\CompanyQueryService $queryService,
+        \App\Livewire\Tenant\VntCompany\Services\CompanyValidationService $validationService
     ) {
         $this->companyService = $companyService;
         $this->warehouseService = $warehouseService;
         $this->queryService = $queryService;
         $this->validationService = $validationService;
-        $this->exportService = $exportService;
     }
 
     /**
@@ -671,31 +670,67 @@ class VntCompanyForm extends Component
         $this->showMoveDistrictModal = false;
     }
 
-    public function exportExcel()
+    public function getExportData()
     {
-        $result = $this->exportService->exportToExcel($this->search);
-        $this->dispatch('show-toast', [
-            'type' => $result['success'] ? 'success' : 'info',
-            'message' => $result['message']
-        ]);
+        $this->ensureTenantConnection();
+        return \App\Models\Tenant\Customer\VntCompany::query()
+            ->with(['warehouses', 'mainWarehouse.contacts'])
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('businessName', 'like', '%' . $this->search . '%')
+                      ->orWhere('identification', 'like', '%' . $this->search . '%')
+                      ->orWhere('firstName', 'like', '%' . $this->search . '%')
+                      ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                      ->orWhere('billingEmail', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
     }
 
-    public function exportPdf()
+    public function getExportHeadings(): array
     {
-        $result = $this->exportService->exportToPdf($this->search);
-        $this->dispatch('show-toast', [
-            'type' => $result['success'] ? 'success' : 'info',
-            'message' => $result['message']
-        ]);
+        return [
+            'ID',
+            'Razón Social',
+            'Identificación',
+            'Tipo Persona',
+            'Nombres',
+            'Apellidos',
+            'Email Facturación',
+            'Teléfono',
+            'Sucursales',
+            'Estado',
+            'Fecha Registro'
+        ];
     }
 
-    public function exportCsv()
+    public function getExportMapping($company): array
     {
-        $result = $this->exportService->exportToCsv($this->search);
-        $this->dispatch('show-toast', [
-            'type' => $result['success'] ? 'success' : 'info',
-            'message' => $result['message']
-        ]);
+        $phone = '';
+        if ($company->mainWarehouse && $company->mainWarehouse->contacts->isNotEmpty()) {
+            $contact = $company->mainWarehouse->contacts->first();
+            $phone = $contact->business_phone ?? $contact->personal_phone ?? '';
+        }
+
+        return [
+            $company->id,
+            $company->businessName ?? '',
+            $company->identification,
+            $company->typePerson,
+            trim(($company->firstName ?? '') . ' ' . ($company->secondName ?? '')),
+            trim(($company->lastName ?? '') . ' ' . ($company->secondLastName ?? '')),
+            $company->billingEmail ?? '',
+            $phone,
+            $company->warehouses->count(),
+            $company->status ? 'Activo' : 'Inactivo',
+            $company->created_at ? $company->created_at->format('Y-m-d H:i') : ''
+        ];
+    }
+
+    public function getExportFilename(): string
+    {
+        return 'clientes_' . date('Y-m-d_His');
     }
 
     private function resetForm()
@@ -1537,5 +1572,28 @@ class VntCompanyForm extends Component
             'routeId' => $this->routeId === '' ? null : $this->routeId,
             'district' => $this->district,
         ];
+    }
+
+    private function ensureTenantConnection(): void
+    {
+        $tenantId = session('tenant_id');
+
+        if (!$tenantId) {
+            throw new \Exception('No tenant selected');
+        }
+
+        $tenant = Tenant::find($tenantId);
+
+        if (!$tenant) {
+            session()->forget('tenant_id');
+            throw new \Exception('Invalid tenant');
+        }
+
+        // Establecer conexión tenant
+        $tenantManager = app(TenantManager::class);
+        $tenantManager->setConnection($tenant);
+
+        // Inicializar tenancy
+        tenancy()->initialize($tenant);
     }
 }

@@ -12,6 +12,7 @@ use Carbon\Carbon;
 class Categories extends Component
 {   
     use WithPagination;
+    use \App\Traits\Livewire\WithExport;
     
     public $category_id,$name, $status, $created_at;
 
@@ -182,5 +183,42 @@ class Categories extends Component
         return view('livewire.tenant.inventory.categories',[
             'categories' => $categories
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection(); 
+        return Category::query()
+            ->when($this->search, function($query){
+                $query->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($category) {
+            return [
+                $category->id,
+                $category->name,
+                $category->status ? 'Activo' : 'Inactivo',
+                $category->created_at ? Carbon::parse($category->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'categorias_inventario_' . now()->format('Y-m-d_His');
     }
 }

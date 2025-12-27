@@ -38,4 +38,9 @@ class VntContact extends Model
     {
         return $this->belongsTo(VntWarehouse::class, 'warehouseId');
     }
+
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(CnfPosition::class, 'positionId');
+    }
 }

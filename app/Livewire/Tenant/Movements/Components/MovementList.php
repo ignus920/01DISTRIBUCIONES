@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Movements\Components;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\Livewire\WithExport;
 use App\Models\Tenant\Movements\InvInventoryAdjustment;
 use App\Models\Tenant\Items\InvItemsStore;
 use App\Models\Tenant\Items\UnitMeasurements;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class MovementList extends Component
 {
-    use WithPagination;
+    use WithPagination, WithExport;
 
     public $type = 'entrada'; // 'entrada' or 'salida'
     public $search = '';
@@ -173,5 +174,60 @@ class MovementList extends Component
         $tenantManager->setConnection($tenant);
         // Inicializar tenancy
         tenancy()->initialize($tenant);
+    }
+
+    public function getExportData()
+    {
+        $this->ensureTenantConnection();
+        return InvInventoryAdjustment::query()
+            ->byType($this->type)
+            ->with(['warehouse', 'user', 'reason'])
+            ->withCount('details')
+            ->withSum('details', 'quantity')
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('consecutive', 'like', '%' . $this->search . '%')
+                        ->orWhere('observations', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    public function getExportHeadings(): array
+    {
+        return [
+            'Consecutivo',
+            'Fecha',
+            'Bodega',
+            'Sucursal',
+            'Usuario',
+            'Razón',
+            'Cant. Items',
+            'Cantidad Total',
+            'Estado',
+            'Observaciones'
+        ];
+    }
+
+    public function getExportMapping($movement): array
+    {
+        return [
+            $movement->formatted_consecutive,
+            $movement->date->format('d/m/Y'),
+            $movement->warehouse->name ?? 'N/A',
+            $movement->warehouse_name ?? 'N/A',
+            $movement->user->name ?? 'N/A',
+            $movement->reason->name ?? 'N/A',
+            $movement->details_count ?? 0,
+            number_format($movement->details_sum_quantity ?? 0, 2),
+            $movement->status === 1 ? 'Registrado' : 'Anulado',
+            $movement->observations
+        ];
+    }
+
+    public function getExportFilename(): string
+    {
+        return ($this->type === 'entrada' ? 'entradas_inventario_' : 'salidas_inventario_') . date('Y-m-d_His');
     }
 }

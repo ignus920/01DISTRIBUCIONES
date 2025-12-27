@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class SalesList extends Component
 {
-    use WithPagination;
+    use WithPagination, \App\Traits\Livewire\WithExport;
 
     public $search = '';
     public $perPage = 10;
@@ -143,10 +143,62 @@ class SalesList extends Component
         ->orderBy('created_at', 'desc')
         ->paginate($this->perPage);
 
-    return view('livewire.TAT.quoter.sales-list', [
+        return view('livewire.TAT.quoter.sales-list', [
             'quotes' => $quotes
         ])
         ->layout('layouts.app'); // 👈 aquí agregas el layout
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        return Quote::where('company_id', $this->companyId)
+            ->with(['user', 'customer', 'items'])
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('consecutive', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('customer', function ($customerQuery) {
+                          $customerQuery->where('businessName', 'like', '%' . $this->search . '%')
+                                       ->orWhere('firstName', 'like', '%' . $this->search . '%')
+                                       ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                                       ->orWhere('identification', 'like', '%' . $this->search . '%');
+                      });
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Consecutivo', 'Cliente', 'Vendedor', 'Total', 'Estado', 'Fecha'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($quote) {
+            $customerName = $quote->customer 
+                ? ($quote->customer->businessName ?: $quote->customer->firstName . ' ' . $quote->customer->lastName)
+                : 'N/A';
+
+            return [
+                $quote->id,
+                $quote->consecutive ?: 'N/A',
+                $customerName,
+                $quote->user->name ?? 'N/A',
+                $quote->total,
+                $quote->status,
+                $quote->created_at ? $quote->created_at->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'ventas_tat_' . now()->format('Y-m-d_His');
+    }
 }
 
-}

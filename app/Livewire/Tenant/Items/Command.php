@@ -8,6 +8,7 @@ use App\Services\Tenant\Inventory\CommandsServices;
 use Livewire\Attributes\On;
 use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
+use Livewire\WithPagination;
 
 class Command extends Component
 {

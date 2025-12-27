@@ -10,6 +10,7 @@ use App\Models\Auth\Tenant;
 class TatCategoriesManager extends Component
 {
     use WithPagination;
+    use \App\Traits\Livewire\WithExport;
 
     public $showModal = false;
     public $editingId = null;
@@ -132,5 +133,41 @@ class TatCategoriesManager extends Component
     public function updatingPerPage()
     {
         $this->resetPage();
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        return TatCategories::where('company_id', $this->company_id)
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($category) {
+            return [
+                $category->id,
+                $category->name,
+                $category->status ? 'Activo' : 'Inactivo',
+                $category->created_at ? $category->created_at->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'categorias_tat_' . now()->format('Y-m-d_His');
     }
 }

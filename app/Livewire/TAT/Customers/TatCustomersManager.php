@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 class TatCustomersManager extends Component
 {
     use WithPagination;
+    use \App\Traits\Livewire\WithExport;
 
     public $showModal = false;
     public $editingId = null;
@@ -366,5 +367,50 @@ class TatCustomersManager extends Component
                 return $query->where('id', '!=', $this->editingId);
             })
             ->exists();
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        return TatCustomer::where('company_id', $this->company_id)
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('businessName', 'like', '%' . $this->search . '%')
+                      ->orWhere('firstName', 'like', '%' . $this->search . '%')
+                      ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                      ->orWhere('billingEmail', 'like', '%' . $this->search . '%')
+                      ->orWhere('business_phone', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Tipo Persona', 'Nombre/Razón Social', 'Identificación', 'Email', 'Teléfono', 'Dirección'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($customer) {
+            return [
+                $customer->id,
+                $customer->typePerson,
+                $customer->display_name,
+                $customer->identification,
+                $customer->billingEmail ?: 'N/A',
+                $customer->business_phone ?: 'N/A',
+                $customer->address ?: 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'clientes_tat_' . now()->format('Y-m-d_His');
     }
 }

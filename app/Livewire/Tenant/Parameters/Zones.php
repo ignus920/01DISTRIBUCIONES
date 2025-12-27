@@ -8,6 +8,8 @@ use Carbon\Carbon;
 
 class Zones extends Component
 {
+    use \App\Traits\Livewire\WithExport;
+
     public $zoneId, $name, $created_at, $updated_at;
 
     //Propiedades para la tabla
@@ -136,5 +138,40 @@ class Zones extends Component
         return view('livewire.tenant.parameters.zones', [
             'zones' => $zones
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        return TatZones::query()
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($zone) {
+            return [
+                $zone->id,
+                $zone->name,
+                $zone->created_at ? Carbon::parse($zone->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'zonas_' . now()->format('Y-m-d_His');
     }
 }

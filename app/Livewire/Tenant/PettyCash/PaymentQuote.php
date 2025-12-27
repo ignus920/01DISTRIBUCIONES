@@ -58,22 +58,40 @@ class PaymentQuote extends Component
     public $canProceedToPayment = false;
     public $isProcessing = false;
 
-    public function updating($name, $value)
-    {
-        // Interceptar actualizaciones de valores de métodos de pago
-        if (str_contains($name, 'paymentMethods.') && str_ends_with($name, '.value')) {
-            return max(0, (float) ($value ?? 0));
-        }
-        return $value;
-    }
-
     public function updated($name)
     {
-        // Después de actualizar cualquier valor de método de pago, recalcular
+        // Al terminar de editar (blur), recalculamos y auto-distribuimos
         if (str_contains($name, 'paymentMethods.') && str_ends_with($name, '.value')) {
-            $this->autoDistributePayments();
-            $this->calculateBalances();
+            $this->validateAndDistribute($name);
         }
+    }
+
+    private function validateAndDistribute($name)
+    {
+        $currentField = str_replace(['paymentMethods.', '.value'], '', $name);
+        $totalOtherMethods = 0;
+
+        foreach ($this->paymentMethods as $key => $method) {
+            if ($key !== $currentField) {
+                $totalOtherMethods += (float) ($method['value'] ?? 0);
+            }
+        }
+
+        $newValue = (float) $this->paymentMethods[$currentField]['value'];
+        
+        // Validar exceso total
+        if (($newValue + $totalOtherMethods) > ($this->quoteTotal + 0.01)) {
+            // Ajustar al máximo permitido para este campo
+            $this->paymentMethods[$currentField]['value'] = max(0, $this->quoteTotal - $totalOtherMethods);
+            
+            $this->dispatch('showAlert', [
+                'message' => 'El valor ingresado supera el total de la venta. Se ha ajustado al máximo permitido.'
+            ]);
+        }
+
+        // Auto-distribuir: El efectivo siempre intenta absorber el faltante
+        $this->autoDistributePayments();
+        $this->calculateBalances();
     }
 
     public function boot()
@@ -328,14 +346,11 @@ class PaymentQuote extends Component
         // El efectivo debe cubrir lo que falta para completar el total
         $remainingAmount = $this->quoteTotal - $totalOtherMethods;
 
-        // Si la cantidad restante es negativa, significa que los otros métodos superan el total
+        // Si la cantidad restante es negativa, el efectivo es 0.
+        // NO redistribuimos los otros métodos aquí porque es intrusivo mientras el usuario escribe.
         if ($remainingAmount < 0) {
-            // En este caso, el efectivo debe ser 0 y necesitamos ajustar otros métodos
             $this->paymentMethods['efectivo']['value'] = 0;
-            // Opcional: redistribuir proporcionalmente los otros métodos
-            $this->redistributeOtherMethods($totalOtherMethods);
         } else {
-            // Asignar lo que falta al efectivo
             $this->paymentMethods['efectivo']['value'] = $remainingAmount;
         }
     }

@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Items;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\Livewire\WithExport;
 //Modelos
 use App\Models\Tenant\Items\Items;
 use App\Models\Tenant\Items\Category;
@@ -26,7 +27,7 @@ use App\Traits\HasCompanyConfiguration;
 class ManageItems extends Component
 {
 
-    use WithPagination, HasCompanyConfiguration;
+    use WithPagination, HasCompanyConfiguration, WithExport;
 
     protected $listeners = [
         'command-changed' => 'onCommandSelected',
@@ -454,38 +455,68 @@ class ManageItems extends Component
         $this->consumption_unit = $value;
     }
 
-    public function exportExcel()
+    public function getExportData()
     {
-        // TODO: Implementar exportación a Excel
-        $this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Exportación a Excel - En desarrollo'
-        ]);
-        //dd('Exportación PDF ejecutada');
+        $this->ensureTenantConnection();
+        return Items::query()
+            ->with(['brand', 'tax', 'purchasingUnit', 'consumptionUnit', 'invItemsStore'])
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('sku', 'like', '%' . $this->search . '%')
+                    ->orWhere('internal_code', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
     }
 
-    public function exportPdf()
+    public function getExportHeadings(): array
     {
-        // TODO: Implementar exportación a PDF
-        $this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Exportación a PDF - En desarrollo'
-        ]);
+        return [
+            'SKU',
+            'Código Interno',
+            'Nombre',
+            'Tipo',
+            'Marca',
+            'Stock',
+            'Unidad Compra',
+            'Unidad Consumo',
+            'Impuesto',
+            'Estado'
+        ];
     }
 
-    public function exportCsv()
+    public function getExportMapping($item): array
     {
-        // TODO: Implementar exportación a CSV
-        /*$this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Exportación a CSV - En desarrollo'
-        ]);*/
-        //$this->ensureTenantConnection();
-        //return Items::disk('invoices')->download('invoice.csv');
-        return response()->download(
-            $this->item_id->file_path,
-            'items.cvs'
-        );
+        $stock = 'No maneja';
+        if ($item->inventoriable == 1) {
+            if ($item->invItemsStore->isNotEmpty()) {
+                $stocks = [];
+                foreach ($item->invItemsStore as $store) {
+                    $stocks[] = $store->stock_items_store;
+                }
+                $stock = implode(' / ', $stocks);
+            } else {
+                $stock = '0';
+            }
+        }
+
+        return [
+            $item->sku,
+            $item->internal_code ?? $item->internalCode ?? '',
+            $item->name,
+            $item->type,
+            $item->brand->name ?? 'SIN MARCA',
+            $stock,
+            $item->purchasingUnit->description ?? 'N/A',
+            $item->consumptionUnit->description ?? 'N/A',
+            $item->tax->name ?? 'Sin impuesto',
+            $item->status ? 'Activo' : 'Inactivo'
+        ];
+    }
+
+    public function getExportFilename(): string
+    {
+        return 'items_' . date('Y-m-d_His');
     }
 
     public function getTaxesProperty()

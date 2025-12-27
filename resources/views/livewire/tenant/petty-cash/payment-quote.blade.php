@@ -135,7 +135,8 @@
 
                         <div class="divide-y divide-gray-100 dark:divide-slate-700/50">
                             @foreach($paymentMethods as $key => $method)
-                                <div wire:click="selectMethod('{{ $key }}')"
+                                <div wire:key="method-{{ $key }}"
+                                     wire:click="selectMethod('{{ $key }}')"
                                      class="group sm:grid sm:grid-cols-12 gap-4 p-4 sm:px-6 sm:py-5 items-center cursor-pointer transition-all duration-200
                                         {{ $currentMethod === $key 
                                             ? 'bg-blue-50/80 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-500/50 z-10' 
@@ -169,8 +170,7 @@
                                                 <span class="text-gray-400 font-bold">$</span>
                                             </div>
                                             <input type="number"
-                                                   wire:model.live="paymentMethods.{{ $key }}.value"
-                                                   wire:change="autoDistributePayments()"
+                                                   wire:model.live.debounce.1000ms="paymentMethods.{{ $key }}.value"
                                                    id="input_{{ $key }}"
                                                    class="pl-8 block w-full rounded-lg border-0 py-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-slate-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-xl sm:font-bold font-mono bg-white dark:bg-slate-800 transition-all
                                                           {{ $currentMethod === $key ? 'ring-blue-500 dark:ring-blue-400 bg-white dark:bg-slate-800' : 'bg-gray-50 dark:bg-slate-800/50' }}"
@@ -297,6 +297,7 @@
     </style>
 
     <!-- JavaScript simplificado -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         function paymentKeyboard() {
             return {
@@ -315,9 +316,15 @@
 
         // Escuchar eventos de Livewire para alerts
         document.addEventListener('livewire:initialized', () => {
-            Livewire.on('showAlert', (message) => {
-                // Podríamos usar un modal más bonito aquí, pero alert funciona
-                alert(message);
+            Livewire.on('showAlert', (data) => {
+                const message = typeof data === 'object' ? data.message : data;
+                Swal.fire({
+                    title: 'Validación de Pago',
+                    text: message,
+                    icon: 'warning',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'Entendido'
+                });
             });
         });
     </script>

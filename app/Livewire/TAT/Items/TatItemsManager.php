@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 class TatItemsManager extends Component
 {
     use WithPagination, WithFileUploads;
+    use \App\Traits\Livewire\WithExport;
 
     // Propiedades del formulario
     public $item_id = null;
@@ -392,6 +393,51 @@ class TatItemsManager extends Component
 
         $hash = crc32($productName);
         return $colors[abs($hash) % count($colors)];
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection(); 
+        return TatItems::query()
+            ->with(['category', 'tax'])
+            ->where('company_id', $this->company_id)
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('sku', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['SKU', 'Nombre', 'Categoría', 'Stock', 'Costo', 'Precio', 'Estado'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($item) {
+            return [
+                $item->sku,
+                $item->name,
+                $item->category->name ?? 'N/A',
+                $item->stock,
+                $item->cost,
+                $item->price,
+                $item->status ? 'Activo' : 'Inactivo',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'items_tat_' . now()->format('Y-m-d_His');
     }
 
     public function render()

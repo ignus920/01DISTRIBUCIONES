@@ -12,6 +12,7 @@ use Illuminate\Validation\Rule;
 
 class Brand extends Component
 {
+    use \App\Traits\Livewire\WithExport;
     public $brand_id,$name,$status, $created_at;
 
     //Propiedades para la tabla
@@ -178,5 +179,42 @@ class Brand extends Component
         return view('livewire.tenant.inventory.brand',[
             'brands' => $brands
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection(); 
+        return BrandModel::query()
+            ->when($this->search, function($query){
+                $query->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($brand) {
+            return [
+                $brand->id,
+                $brand->name,
+                $brand->status ? 'Activo' : 'Inactivo',
+                $brand->created_at ? Carbon::parse($brand->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'marcas_' . now()->format('Y-m-d_His');
     }
 }

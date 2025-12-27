@@ -12,7 +12,7 @@ use Carbon\Carbon;
 
 class Command extends Component
 {
-    use WithPagination;
+    use WithPagination, \App\Traits\Livewire\WithExport;
 
     public $command_id, $name, $print_path, $status, $created_at;
 
@@ -189,5 +189,44 @@ class Command extends Component
         return view('livewire.tenant.inventory.command',[
             'commands' => $commands
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection(); 
+        return CommandModel::query()
+            ->when($this->search, function($query){
+                $query->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('print_path', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Ruta Impresión', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($command) {
+            return [
+                $command->id,
+                $command->name,
+                $command->print_path,
+                $command->status ? 'Activo' : 'Inactivo',
+                $command->created_at ? Carbon::parse($command->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'comandas_' . now()->format('Y-m-d_His');
     }
 }

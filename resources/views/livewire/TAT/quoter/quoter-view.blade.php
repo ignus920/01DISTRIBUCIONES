@@ -1018,106 +1018,31 @@
     window.addEventListener('resize', forceFullWidth);
     document.addEventListener('livewire:navigated', forceFullWidth);
 
-    // Mejorar la funcionalidad del input de búsqueda
-    document.addEventListener('livewire:init', () => {
-        // Forzar ancho completo después de que Livewire esté listo
-        setTimeout(forceFullWidth, 100);
-
-        // Función mejorada para abrir el sidebar móvil
-        window.openMobileSidebar = function() {
-            console.log('Attempting to open mobile sidebar');
-
-            try {
-                // Método 1: Buscar el botón hamburguesa del header
-                const headerMenuButton = document.querySelector('[\\@click*="sidebarOpen = true"]');
-                if (headerMenuButton) {
-                    console.log('Method 1: Found header button, clicking...');
-                    headerMenuButton.click();
-                    return;
-                }
-
-                // Método 2: Acceder directamente a Alpine.js en el body
-                const body = document.body;
-                if (body && body.__x && body.__x.$data) {
-                    console.log('Method 2: Found Alpine data, setting sidebarOpen...');
-                    body.__x.$data.sidebarOpen = true;
-                    return;
-                }
-
-                // Método 3: Buscar cualquier elemento con x-data que contenga sidebarOpen
-                const alpineElement = document.querySelector('[x-data*="sidebarOpen"]');
-                if (alpineElement && alpineElement.__x && alpineElement.__x.$data) {
-                    console.log('Method 3: Found Alpine element, setting sidebarOpen...');
-                    alpineElement.__x.$data.sidebarOpen = true;
-                    return;
-                }
-
-                console.log('Could not open sidebar - no method worked');
-            } catch (error) {
-                console.error('Error opening sidebar:', error);
-            }
-        };
-        // Listener para alertas de SweetAlert2
-        Livewire.on('swal:warning', (data) => {
-            // data es un array con los argumentos pasados desde el componente
-            const alertData = Array.isArray(data) ? data[0] : data;
-            
-            if (typeof Swal !== 'undefined') {
-                const isMobile = window.innerWidth < 768; // Detectar móvil
-
-                Swal.fire({
-                    icon: 'warning',
-                    title: alertData.title || 'Advertencia',
-                    text: alertData.text || '',
-                    // Configuración condicional
-                    toast: !isMobile,
-                    position: isMobile ? 'center' : 'top-end',
-                    showConfirmButton: isMobile, // En móvil mostrar botón para cerrar
-                    timer: isMobile ? null : 3000, // En móvil esperar confirmación, en PC timer
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Entendido'
-                });
-            } else {
-                alert(alertData.text);
-            }
-        });
-
-        // Gestión de búsqueda fullscreen - Simplificada y movida a Alpine.js
-
-        // Test básico de SweetAlert al cargar
-        setTimeout(() => {
-            if (typeof Swal !== 'undefined') {
-                console.log('SweetAlert2 disponible y funcionando');
-
-                // Test simple de toast
-                window.testToast = function() {
-                    Swal.fire({
-                        toast: true,
-                        position: 'top',
-                        showConfirmButton: false,
-                        timer: 2000,
-                        timerProgressBar: true,
-                        icon: 'success',
-                        title: 'Toast de prueba - debería desaparecer en 2 segundos'
-                    });
-                }
-            } else {
-                console.error('SweetAlert2 no está disponible');
-            }
-        }, 1000);
+    // Función principal de inicialización
+    window.initQuoterView = function() {
+        console.log('--- Inicializando QuoterView ---');
+        
+        // Forzar ancho completo inmediatamente
+        forceFullWidth();
+        
+        // Inicializar Toast si no existe
+        if (!document.getElementById('custom-toast-container')) {
+             console.warn('Contenedor de toast no encontrado en el primer intento - reintentando...');
+        }
 
         // Función para mostrar Toast personalizado
         window.showCustomToast = function(message, type = 'success') {
             const container = document.getElementById('custom-toast-container');
-            if (!container) return;
+            if (!container) {
+                console.error('No se pudo encontrar custom-toast-container para mostrar:', message);
+                return;
+            }
 
-            // Crear el elemento del toast
             const toast = document.createElement('div');
             toast.className = `transform translate-x-full transition-all duration-300 ease-out flex items-center p-4 mb-4 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800 border-l-4 ${
                 type === 'success' ? 'border-green-500' : (type === 'error' ? 'border-red-500' : 'border-blue-500')
             }`;
             
-            // Icono según tipo
             let icon = '';
             if (type === 'success') {
                 icon = '<svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>';
@@ -1135,449 +1060,219 @@
             `;
 
             container.appendChild(toast);
-
-            // Trigger animación de entrada
-            setTimeout(() => {
-                toast.classList.remove('translate-x-full');
-            }, 10);
-
-            // Temporizador para eliminar
+            setTimeout(() => toast.classList.remove('translate-x-full'), 10);
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'scale-95');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
+                setTimeout(() => toast.remove(), 300);
             }, 3000);
         };
 
-        // Listener para toasts no invasivos - Reemplazado por versión personalizada
-        Livewire.on('swal:toast', (data) => {
-            const toastData = Array.isArray(data) ? data[0] : data;
-            window.showCustomToast(toastData.message, toastData.type);
-            console.log('🔥 Custom Toast mostrado:', toastData);
-        });
-
-        // Listener para validar caja abierta
-        Livewire.on('swal:no-petty-cash', () => {
-            if (typeof Swal !== 'undefined') {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Caja Cerrada',
-                    html: 'No hay una caja abierta.<br>Debe aperturar una caja antes de registrar ventas.',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#6b7280',
-                    confirmButtonText: 'Ir a Aperturar Caja',
-                    cancelButtonText: 'Cancelar',
-                    allowOutsideClick: false
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Redirigir a la página de apertura de caja
-                        window.location.href = '{{ route("petty-cash.petty-cash") }}';
-                    }
-                });
-            } else {
-                if (confirm('No hay una caja abierta. Debe aperturar una caja antes de registrar ventas.\n\n¿Desea ir a aperturar una caja ahora?')) {
-                    window.location.href = '{{ route("petty-cash.petty-cash") }}';
+        // Función para abrir sidebar
+        window.openMobileSidebar = function() {
+            try {
+                const headerMenuButton = document.querySelector('[\\@click*="sidebarOpen = true"]');
+                if (headerMenuButton) {
+                    headerMenuButton.click();
+                    return;
                 }
+                const alpineElement = document.querySelector('[x-data*="sidebarOpen"]');
+                if (alpineElement && alpineElement.__x && alpineElement.__x.$data) {
+                    alpineElement.__x.$data.sidebarOpen = true;
+                }
+            } catch (error) {
+                console.error('Error al abrir sidebar:', error);
             }
-        });
+        };
 
+        // Re-adjuntar listeners de búsqueda
         const searchInput = document.getElementById('product-search-input');
-
         if (searchInput) {
-            // Mantener el foco en el input después de seleccionar un producto (desktop)
-            Livewire.on('product-selected', () => {
-                // Solo enfocar si NO estamos buscando cliente
-                const customerSearchInput = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]');
-                const isCustomerSearchActive = customerSearchInput && document.activeElement === customerSearchInput;
-
-                if (!isCustomerSearchActive) {
-                    setTimeout(() => {
-                        searchInput.focus();
-                    }, 100);
-                }
-            });
-
-            // Manejar selección de producto en móvil (cerrar buscador)
-            Livewire.on('close-mobile-search', () => {
-                const isMobile = window.innerWidth < 1024;
-                if (isMobile) {
-                    // Signal Alpine to close fullscreen search
-                    window.dispatchEvent(new CustomEvent('close-fullscreen'));
-                    
-                    // Asegurar que el input pierda el foco para que baje el teclado
-                    if (searchInput) {
-                        searchInput.blur();
-                    }
-                    
-                    // También buscar el input de pantalla completa y quitarle el foco
-                    const fullscreenInput = document.querySelector('[x-ref="fullscreenInput"]');
-                    if (fullscreenInput) {
-                        fullscreenInput.blur();
-                    }
-                }
-            });
-
-            // Prevenir que el input pierda el foco cuando se hace clic en el dropdown
             searchInput.addEventListener('blur', (e) => {
-                // Verificar si el usuario está buscando cliente
                 const customerSearchInput = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]');
                 const isCustomerSearchActive = customerSearchInput && (
                     document.activeElement === customerSearchInput ||
                     e.relatedTarget === customerSearchInput ||
                     customerSearchInput.matches(':focus-within')
                 );
-
-                // Verificar si el usuario está editando campos del carrito
                 const isEditingCartItem = e.relatedTarget && (
-                    e.relatedTarget.type === 'number' || // Inputs de cantidad y precio
-                    e.relatedTarget.closest('.space-y-2') || // Área del carrito
-                    e.relatedTarget.hasAttribute('wire:change') // Cualquier input de Livewire
+                    e.relatedTarget.type === 'number' || 
+                    e.relatedTarget.closest('.space-y-2') || 
+                    e.relatedTarget.hasAttribute('wire:change')
                 );
-
-                // Solo mantener foco si NO está buscando cliente Y NO está editando items del carrito
                 if (!isCustomerSearchActive && !isEditingCartItem && (!e.relatedTarget || !e.relatedTarget.closest('.relative'))) {
                     setTimeout(() => {
-                        // Verificar una vez más antes de enfocar
-                        const stillSearchingCustomer = document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]:focus');
-                        if (!stillSearchingCustomer) {
+                        if (!document.querySelector('input[wire\\:model\\.live\\.debounce\\.300ms="customerSearch"]:focus')) {
                             searchInput.focus();
                         }
                     }, 50);
                 }
             });
         }
+
+        // Registrar Listeners de Livewire GLOBALMENTE (Solo una vez)
+        if (!window.quoterListenersInitialized) {
+            // Listener de Toast
+            Livewire.on('swal:toast', (data) => {
+                const toastData = Array.isArray(data) ? data[0] : data;
+                window.showCustomToast(toastData.message, toastData.type);
+            });
+
+            // Alertas de Advertencia
+            Livewire.on('swal:warning', (data) => {
+                const alertData = Array.isArray(data) ? data[0] : data;
+                if (typeof Swal !== 'undefined') {
+                    const isMobile = window.innerWidth < 768;
+                    Swal.fire({
+                        icon: 'warning',
+                        title: alertData.title || 'Advertencia',
+                        text: alertData.text || '',
+                        toast: !isMobile,
+                        position: isMobile ? 'center' : 'top-end',
+                        showConfirmButton: isMobile,
+                        timer: isMobile ? null : 3000,
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Entendido'
+                    });
+                } else {
+                    alert(alertData.text);
+                }
+            });
+
+            // Caja Cerrada
+            Livewire.on('swal:no-petty-cash', () => {
+                 if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Caja Cerrada',
+                        html: 'No hay una caja abierta.<br>Debe aperturar una caja antes de registrar ventas.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ir a Aperturar Caja',
+                        cancelButtonText: 'Cancelar',
+                        allowOutsideClick: false
+                    }).then((result) => {
+                        if (result.isConfirmed) window.location.href = '{{ route("petty-cash.petty-cash") }}';
+                    });
+                }
+            });
+
+            // Foco tras selección (Usar delegación o re-buscar el elemento en cada disparo)
+            Livewire.on('product-selected', () => {
+                const input = document.getElementById('product-search-input');
+                if (input) {
+                    setTimeout(() => input.focus(), 100);
+                }
+            });
+
+            // Cerrar búsqueda móvil
+            Livewire.on('close-mobile-search', () => {
+                if (window.innerWidth < 1024) {
+                    window.dispatchEvent(new CustomEvent('close-fullscreen'));
+                    const input = document.getElementById('product-search-input');
+                    if (input) input.blur();
+                }
+            });
+
+            window.quoterListenersInitialized = true;
+            console.log('--- Listeners de Livewire registrados globalmente ---');
+        }
+        
+        console.log('--- QuoterView Inicializado (DOM vinculado) ---');
+    };
+
+    // Registrar para navegación SPA
+    document.addEventListener('livewire:navigated', () => {
+        if (typeof window.initQuoterView === 'function') {
+            window.initQuoterView();
+        }
     });
 
-    // Variables para navegación por teclado en búsqueda de clientes
-    let selectedCustomerIndex = -1;
-    let customerResults = [];
+    // Ejecutar inmediatamente (para carga inicial o si entra por primera vez)
+    if (typeof window.initQuoterView === 'function') {
+        window.initQuoterView();
+    } else {
+        // En caso de que se cargue antes de definirse
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof window.initQuoterView === 'function') window.initQuoterView();
+        });
+    }
 
-    // Función para manejar navegación por teclado en búsqueda de clientes
-    function handleCustomerSearchKeydown(event) {
+    // Funciones globales (no necesitan reinicialización constante pero no dañan)
+    window.handleCustomerSearchKeydown = function(event) {
         const resultsContainer = document.getElementById('customerSearchResults');
-
         if (!resultsContainer) return;
-
-        customerResults = Array.from(resultsContainer.querySelectorAll('.customer-result'));
-
-        if (customerResults.length === 0) return;
+        const results = Array.from(resultsContainer.querySelectorAll('.customer-result'));
+        if (results.length === 0) return;
+        
+        // Usamos una variable global o de closure para el índice
+        if (typeof window.selectedCustomerIndex === 'undefined') window.selectedCustomerIndex = -1;
 
         switch(event.key) {
             case 'ArrowDown':
                 event.preventDefault();
-                selectedCustomerIndex = Math.min(selectedCustomerIndex + 1, customerResults.length - 1);
-                updateCustomerSelection();
+                window.selectedCustomerIndex = Math.min(window.selectedCustomerIndex + 1, results.length - 1);
+                updateSelection(results, window.selectedCustomerIndex);
                 break;
-
             case 'ArrowUp':
                 event.preventDefault();
-                selectedCustomerIndex = Math.max(selectedCustomerIndex - 1, -1);
-                updateCustomerSelection();
+                window.selectedCustomerIndex = Math.max(window.selectedCustomerIndex - 1, -1);
+                updateSelection(results, window.selectedCustomerIndex);
                 break;
-
             case 'Enter':
                 event.preventDefault();
-                if (selectedCustomerIndex >= 0 && customerResults[selectedCustomerIndex]) {
-                    const customerId = customerResults[selectedCustomerIndex].dataset.customerId;
-                    // Disparar el evento de Livewire para seleccionar cliente
-                    Livewire.find('{{ $this->getId() }}').call('selectCustomer', customerId);
+                if (window.selectedCustomerIndex >= 0 && results[window.selectedCustomerIndex]) {
+                    Livewire.find('{{ $this->getId() }}').call('selectCustomer', results[window.selectedCustomerIndex].dataset.customerId);
                 }
                 break;
-
-            case 'Escape':
-                event.preventDefault();
-                selectedCustomerIndex = -1;
-                updateCustomerSelection();
-                break;
         }
-    }
+    };
 
-    // Función para actualizar la selección visual
-    function updateCustomerSelection() {
-        customerResults.forEach((result, index) => {
-            result.classList.remove('bg-green-100', 'border-green-500');
-
-            if (index === selectedCustomerIndex) {
-                result.classList.add('bg-green-100', 'border-green-500');
-                // Scroll hacia el elemento seleccionado si está fuera de vista
-                result.scrollIntoView({
-                    block: 'nearest',
-                    behavior: 'smooth'
-                });
-            }
-        });
-    }
-
-    // Reset de selección cuando cambian los resultados
-    document.addEventListener('livewire:updated', () => {
-        selectedCustomerIndex = -1;
-        customerResults = [];
-        selectedProductIndex = -1;
-        productResults = [];
-    });
-
-    // Variables para navegación por teclado en búsqueda de productos
-    let selectedProductIndex = -1;
-    let productResults = [];
-    let searchTimeout = null;
-
-    // Función mejorada para manejar navegación por teclado en búsqueda de productos
-    function handleProductSearchKeydown(event) {
+    window.handleProductSearchKeydown = function(event) {
         const resultsContainer = document.getElementById('productSearchResults');
-
         if (!resultsContainer) {
-            // Si no hay dropdown pero presiona Enter, hacer búsqueda directa
             if (event.key === 'Enter' && event.target.value.trim().length >= 2) {
-                event.preventDefault();
-                const searchTerm = event.target.value.trim();
-                Livewire.find('{{ $this->getId() }}').call('quickSearch', searchTerm);
+                Livewire.find('{{ $this->getId() }}').call('quickSearch', event.target.value.trim());
             }
             return;
         }
-
-        productResults = Array.from(resultsContainer.querySelectorAll('.product-result'));
-
-        if (productResults.length === 0) return;
-
-        // Filtrar solo productos seleccionables para navegación
-        const availableProducts = productResults.filter(result =>
-            result.dataset.canSelect === 'true'
-        );
-
-        if (availableProducts.length === 0) return;
+        const results = Array.from(resultsContainer.querySelectorAll('.product-result'));
+        if (results.length === 0) return;
+        
+        if (typeof window.selectedProductIndex === 'undefined') window.selectedProductIndex = -1;
 
         switch(event.key) {
             case 'ArrowDown':
                 event.preventDefault();
-                // Auto-seleccionar el primer elemento si no hay selección
-                if (selectedProductIndex === -1) {
-                    selectedProductIndex = productResults.findIndex(result =>
-                        result.dataset.canSelect === 'true'
-                    );
-                } else {
-                    // Encontrar el siguiente producto disponible
-                    let nextIndex = -1;
-                    for (let i = selectedProductIndex + 1; i < productResults.length; i++) {
-                        if (productResults[i].dataset.canSelect === 'true') {
-                            nextIndex = i;
-                            break;
-                        }
-                    }
-                    if (nextIndex === -1) {
-                        // Si llegamos al final, ir al primer producto disponible
-                        nextIndex = productResults.findIndex(result => result.dataset.canSelect === 'true');
-                    }
-                    selectedProductIndex = nextIndex;
-                }
-                updateProductSelection();
+                window.selectedProductIndex = Math.min(window.selectedProductIndex + 1, results.length - 1);
+                updateSelection(results, window.selectedProductIndex);
                 break;
-
             case 'ArrowUp':
                 event.preventDefault();
-                if (selectedProductIndex === -1) {
-                    // Si no hay selección, ir al último elemento
-                    for (let i = productResults.length - 1; i >= 0; i--) {
-                        if (productResults[i].dataset.canSelect === 'true') {
-                            selectedProductIndex = i;
-                            break;
-                        }
-                    }
-                } else {
-                    // Encontrar el producto anterior disponible
-                    let prevIndex = -1;
-                    for (let i = selectedProductIndex - 1; i >= 0; i--) {
-                        if (productResults[i].dataset.canSelect === 'true') {
-                            prevIndex = i;
-                            break;
-                        }
-                    }
-                    if (prevIndex === -1) {
-                        // Si llegamos al inicio, ir al último producto disponible
-                        for (let i = productResults.length - 1; i >= 0; i--) {
-                            if (productResults[i].dataset.canSelect === 'true') {
-                                prevIndex = i;
-                                break;
-                            }
-                        }
-                    }
-                    selectedProductIndex = prevIndex;
-                }
-                updateProductSelection();
+                window.selectedProductIndex = Math.max(window.selectedProductIndex - 1, -1);
+                updateSelection(results, window.selectedProductIndex);
                 break;
-
             case 'Enter':
                 event.preventDefault();
-                if (selectedProductIndex >= 0 && productResults[selectedProductIndex] &&
-                    productResults[selectedProductIndex].dataset.canSelect === 'true') {
-                    const productId = productResults[selectedProductIndex].dataset.productId;
-                    // Mostrar feedback visual
-                    productResults[selectedProductIndex].classList.add('bg-green-100', 'dark:bg-green-900/50');
-
-                    // Disparar el evento de Livewire para seleccionar producto
-                    Livewire.find('{{ $this->getId() }}').call('selectProduct', productId);
-                } else if (availableProducts.length === 1) {
-                    // Si solo hay un resultado disponible, seleccionarlo automáticamente
-                    const productId = availableProducts[0].dataset.productId;
-                    availableProducts[0].classList.add('bg-green-100', 'dark:bg-green-900/50');
-                    Livewire.find('{{ $this->getId() }}').call('selectProduct', productId);
+                if (window.selectedProductIndex >= 0 && results[window.selectedProductIndex]) {
+                    Livewire.find('{{ $this->getId() }}').call('selectProduct', results[window.selectedProductIndex].dataset.productId);
                 }
-                break;
-
-            case 'Escape':
-                event.preventDefault();
-                selectedProductIndex = -1;
-                updateProductSelection();
-                // Limpiar búsqueda y enfocar input
-                Livewire.find('{{ $this->getId() }}').call('clearSearch');
-                setTimeout(() => {
-                    const input = document.getElementById('product-search-input');
-                    if (input) input.focus();
-                }, 100);
-                break;
-
-            case 'Tab':
-                // Permitir navegación con Tab pero cerrar dropdown
-                selectedProductIndex = -1;
-                Livewire.find('{{ $this->getId() }}').call('clearSearch');
                 break;
         }
-    }
+    };
 
-    // Función mejorada para actualizar la selección visual de productos
-    function updateProductSelection() {
-        productResults.forEach((result, index) => {
-            result.classList.remove('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
-
-            if (index === selectedProductIndex && result.dataset.canSelect === 'true') {
-                result.classList.add('bg-blue-100', 'dark:bg-blue-900/50', 'ring-2', 'ring-blue-500', 'dark:ring-blue-400');
-
-                // Scroll suave hacia el elemento seleccionado
-                const container = result.closest('#productSearchResults');
-                if (container) {
-                    const containerTop = container.scrollTop;
-                    const containerBottom = containerTop + container.clientHeight;
-                    const elementTop = result.offsetTop;
-                    const elementBottom = elementTop + result.offsetHeight;
-
-                    if (elementTop < containerTop) {
-                        container.scrollTop = elementTop;
-                    } else if (elementBottom > containerBottom) {
-                        container.scrollTop = elementBottom - container.clientHeight;
-                    }
-                }
-            }
+    function updateSelection(results, index) {
+        results.forEach((r, i) => {
+            r.classList.toggle('bg-blue-100', i === index);
+            r.classList.toggle('dark:bg-blue-900/50', i === index);
+            if (i === index) r.scrollIntoView({ block: 'nearest' });
         });
     }
 
-    // Funciones adicionales para mejorar la UX
-    function resetProductSelection() {
-        selectedProductIndex = -1;
-        productResults = [];
-    }
-
-    // Auto-focus en el input después de seleccionar producto
-    document.addEventListener('livewire:updated', () => {
-        resetProductSelection();
-
-        // Si no hay resultados y el input tiene foco, mantenerlo
-        const input = document.getElementById('product-search-input');
-        const resultsContainer = document.getElementById('productSearchResults');
-
-        if (input && !resultsContainer && document.activeElement === input) {
-            // El input ya está enfocado, no hacer nada
-        } else if (input && !resultsContainer) {
-            // Auto-focus después de limpiar resultados
-            setTimeout(() => input.focus(), 100);
-        }
-    });
-
-    // Funciones para mejorar experiencia móvil
-    function isMobile() {
-        return window.innerWidth <= 640;
-    }
-
-    // Prevenir zoom automático en inputs en iOS
-    function preventZoom() {
-        const inputs = document.querySelectorAll('input[type="text"], input[type="search"], textarea, select');
-        inputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                if (isMobile()) {
-                    // Prevenir zoom en móviles ajustando el viewport temporalmente
-                    const viewport = document.querySelector('meta[name="viewport"]');
-                    const originalContent = viewport.getAttribute('content');
-                    viewport.setAttribute('content', originalContent + ', maximum-scale=1.0');
-
-                    setTimeout(() => {
-                        viewport.setAttribute('content', originalContent);
-                    }, 100);
-                }
-            });
-        });
-    }
-
-    // Manejar el redimensionamiento de la ventana cuando aparece/desaparece el teclado
-    function handleKeyboardResize() {
-        if (!isMobile()) return;
-
-        let initialViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-
-        function onViewportChange() {
-            const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            const heightDifference = initialViewportHeight - currentHeight;
-
-            // Si la diferencia es significativa, probablemente apareció el teclado
-            if (heightDifference > 150) {
-                document.body.classList.add('keyboard-visible');
-                // Ajustar la posición de los resultados de búsqueda si están visibles
-                const searchResults = document.getElementById('productSearchResults');
-                if (searchResults && searchResults.classList.contains('search-results-dropdown')) {
-                    searchResults.style.bottom = `${heightDifference + 50}px`;
-                }
-            } else {
-                document.body.classList.remove('keyboard-visible');
-                const searchResults = document.getElementById('productSearchResults');
-                if (searchResults && searchResults.classList.contains('search-results-dropdown')) {
-                    searchResults.style.bottom = '30vh';
-                }
-            }
-        }
-
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', onViewportChange);
-        } else {
-            window.addEventListener('resize', onViewportChange);
-        }
-    }
-
-    // Verificar caja cuando la página se vuelve visible
+    // Verificar caja periódicamente
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-            // La página se volvió visible, verificar caja
-            console.log('Página visible, verificando caja...');
-            Livewire.find('{{ $this->getId() }}').call('verifyPettyCash');
+        if (!document.hidden && typeof Livewire !== 'undefined') {
+            const component = Livewire.find('{{ $this->getId() }}');
+            if (component) component.call('verifyPettyCash');
         }
-    });
-
-    // También verificar cuando se hace foco en la ventana
-    window.addEventListener('focus', () => {
-        console.log('Ventana en foco, verificando caja...');
-        Livewire.find('{{ $this->getId() }}').call('verifyPettyCash');
-    });
-
-    // Verificar cuando Livewire termina de navegar a esta página
-    document.addEventListener('livewire:navigated', () => {
-        console.log('Livewire navegado, verificando caja...');
-        setTimeout(() => {
-            Livewire.find('{{ $this->getId() }}').call('verifyPettyCash');
-        }, 500); // Pequeño delay para asegurar que el componente esté listo
-    });
-
-    // Inicializar mejoras móviles cuando el DOM esté listo
-    document.addEventListener('DOMContentLoaded', () => {
-        preventZoom();
-        handleKeyboardResize();
     });
 </script>
 @endpush

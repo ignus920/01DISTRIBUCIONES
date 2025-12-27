@@ -12,7 +12,7 @@ use Carbon\Carbon;
 
 class House extends Component
 {
-    use WithPagination;
+    use WithPagination, \App\Traits\Livewire\WithExport;
     
     public $house_id,$name, $status, $created_at;
 
@@ -181,5 +181,42 @@ class House extends Component
         return view('livewire.tenant.inventory.house',[
             'houses' => $houses
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection(); 
+        return HouseModel::query()
+            ->when($this->search, function($query){
+                $query->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($house) {
+            return [
+                $house->id,
+                $house->name,
+                $house->status ? 'Activo' : 'Inactivo',
+                $house->created_at ? Carbon::parse($house->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'casas_' . now()->format('Y-m-d_His');
     }
 }

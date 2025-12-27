@@ -17,16 +17,23 @@
         </div>
 
         <!-- Per Page -->
-        <div class="flex items-center gap-2">
-            <label class="text-sm text-gray-700 dark:text-gray-300">Mostrar:</label>
-            <select wire:model.live="perPage"
-                class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="5">5</option>
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-            </select>
-        </div>
+        <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                                <label class="text-sm text-gray-700 dark:text-gray-300">Mostrar:</label>
+                                <select wire:model.live="perPage"
+                                    class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                    
+                    <div class="flex gap-2">
+                        <x-export-buttons />
+                    </div>
+                </div>
     </div>
 
     <!-- Table -->

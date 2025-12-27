@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 class RestockList extends Component
 {
     use WithPagination;
+    use \App\Traits\Livewire\WithExport;
 
     public $search = '';
     public $perPage = 10;
@@ -147,5 +148,67 @@ class RestockList extends Component
                 route($routeName)
             );
         }
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        // Replicamos la lógica del render para obtener las órdenes agrupadas
+        $confirmed = TatRestockList::where('company_id', $this->companyId)
+            ->whereIn('status', ['Confirmado', 'Recibido'])
+            ->whereNotNull('order_number')
+            ->select(
+                'order_number',
+                DB::raw('MAX(status) as status'),
+                DB::raw('MAX(created_at) as created_at'),
+                DB::raw('COUNT(*) as total_items')
+            )
+            ->groupBy('order_number');
+
+        $preliminary = TatRestockList::where('company_id', $this->companyId)
+            ->where('status', 'Registrado')
+            ->whereNull('order_number')
+            ->select(
+                DB::raw('NULL as order_number'),
+                DB::raw("'Registrado' as status"),
+                DB::raw('MAX(created_at) as created_at'),
+                DB::raw('COUNT(*) as total_items')
+            )
+            ->having('total_items', '>', 0);
+
+        $query = $confirmed->union($preliminary);
+
+        return DB::table(DB::raw("({$query->toSql()}) as restocks"))
+            ->mergeBindings($query->getQuery())
+            ->when($this->search, function ($q) {
+                $q->where('order_number', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['Orden #', 'Estado', 'Fecha Creación', 'Total Items'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($order) {
+            return [
+                $order->order_number ?: 'Lista Preliminar',
+                $order->status,
+                \Carbon\Carbon::parse($order->created_at)->format('Y-m-d H:i:s'),
+                $order->total_items,
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'solicitudes_reabastecimiento_' . now()->format('Y-m-d_His');
     }
 }

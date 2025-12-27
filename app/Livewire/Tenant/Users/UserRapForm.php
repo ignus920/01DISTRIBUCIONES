@@ -15,19 +15,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use App\Services\UserExportService;
+use App\Traits\Livewire\WithExport;
+use App\Models\Central\CnfPosition;
 use App\Traits\HasCompanyConfiguration;
-use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
-
+use App\Services\Tenant\TenantManager;
 
 class UserRapForm extends Component
 {
-    use WithPagination, HasCompanyConfiguration;
+    use WithPagination, HasCompanyConfiguration, WithExport;
     
     protected $listeners = ['positionUpdated', 'refresh-users' => 'refreshUsers'];
-    
-    protected UserExportService $exportService;
     // Table properties
     public $search = '';
     public $perPage = 10;
@@ -76,13 +74,6 @@ class UserRapForm extends Component
     public $newPassword = '';
     public $confirmPassword = '';
 
-    /**
-     * Boot method to inject dependencies
-     */
-    public function boot(UserExportService $exportService): void
-    {
-        $this->exportService = $exportService;
-    }
 
     /**
      * Mount component and load initial data
@@ -798,70 +789,82 @@ class UserRapForm extends Component
     /**
      * Export users to Excel format
      */
-    public function exportExcel()
+    // Metodos para WithExport
+    public function getExportData()
     {
-        try {
-            $result = $this->exportService->exportToExcel($this->search);
-            
-            if (!$result['success']) {
-                $this->errorMessage = $result['message'];
-                return;
-            }
-            
-            return $result['download'];
-            
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al exportar: ' . $e->getMessage();
-            Log::error('Export Excel failed in component', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $this->ensureTenantConnection();
+        return User::query()
+            ->with(['profile', 'contact.warehouse.company', 'contact.position'])
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('email', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->get();
     }
 
-    /**
-     * Export users to PDF format
-     */
-    public function exportPdf()
+    public function getExportHeadings(): array
     {
-        try {
-            $result = $this->exportService->exportToPdf($this->search);
-            
-            if (!$result['success']) {
-                $this->errorMessage = $result['message'];
-                return;
-            }
-            
-            return $result['download'];
-            
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al exportar: ' . $e->getMessage();
-            Log::error('Export PDF failed in component', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        return [
+            'ID',
+            'Nombre Completo',
+            'Email',
+            'Teléfono',
+            'Perfil',
+            'Sucursal',
+            'Empresa',
+            'Cargo',
+            'Fecha Registro'
+        ];
     }
 
-    /**
-     * Export users to CSV format
-     */
-    public function exportCsv()
+    public function getExportMapping($user): array
     {
-        try {
-            $result = $this->exportService->exportToCsv($this->search);
-            
-            if (!$result['success']) {
-                $this->errorMessage = $result['message'];
-                return;
-            }
-            
-            return $result['download'];
-            
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al exportar: ' . $e->getMessage();
-            Log::error('Export CSV failed in component', [
-                'error' => $e->getMessage(),
+        $contact = $user->contact;
+        $fullName = $user->name;
+        $warehouse = '';
+        $company = '';
+        $position = '';
+
+        if ($contact) {
+            $nameParts = array_filter([
+                $contact->firstName,
+                $contact->secondName,
+                $contact->lastName,
+                $contact->secondLastName
             ]);
+            if (!empty($nameParts)) {
+                $fullName = implode(' ', $nameParts);
+            }
+
+            if ($contact->warehouse) {
+                $warehouse = $contact->warehouse->name ?? '';
+                if ($contact->warehouse->company) {
+                    $company = $contact->warehouse->company->name ?? '';
+                }
+            }
+
+            $position = $contact->position->name ?? '';
         }
+
+        return [
+            $user->id,
+            $fullName,
+            $user->email,
+            $user->phone ?? '',
+            $user->profile->name ?? '',
+            $warehouse,
+            $company,
+            $position,
+            $user->created_at ? $user->created_at->format('Y-m-d H:i') : ''
+        ];
+    }
+
+    public function getExportFilename(): string
+    {
+        return 'usuarios_' . date('Y-m-d_His');
     }
 
     public function render()

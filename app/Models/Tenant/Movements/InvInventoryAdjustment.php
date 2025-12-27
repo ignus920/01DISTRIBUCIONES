@@ -47,6 +47,14 @@ class InvInventoryAdjustment extends Model
     // Relationships
 
     /**
+     * Get the user who made the adjustment
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'userId');
+    }
+
+    /**
      * Get the details for this inventory adjustment
      */
     public function details()

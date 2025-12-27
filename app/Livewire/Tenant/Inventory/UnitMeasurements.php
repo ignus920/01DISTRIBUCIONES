@@ -11,7 +11,7 @@ use Carbon\Carbon;
 
 class UnitMeasurements extends Component
 {
-    use WithPagination;
+    use WithPagination, \App\Traits\Livewire\WithExport;
 
     public $unit_id, $description, $status, $quantity, $created_at;
 
@@ -180,5 +180,43 @@ class UnitMeasurements extends Component
         return view('livewire.tenant.inventory.unit-measurements',[
             'units' => $units
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection(); 
+        return UnitMeasurementsModel::query()
+            ->when($this->search, function($query){
+                $query->where('description', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Descripción', 'Cantidad', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($unit) {
+            return [
+                $unit->id,
+                $unit->description,
+                $unit->quantity,
+                $unit->status ? 'Activo' : 'Inactivo',
+                $unit->created_at ? Carbon::parse($unit->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'unidades_medida_' . now()->format('Y-m-d_His');
     }
 }

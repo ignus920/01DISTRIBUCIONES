@@ -1124,9 +1124,16 @@ public function validateQuantity($index)
                 $quote = $this->migrateRestockToQuotes($orderNumber, $companyId);
 
                 if ($quote) {
+                    // Crear remisión automáticamente
+                    $remission = $this->createRemissionFromRestock($orderNumber, $companyId, $quote);
+
                     $message = $this->isEditingRestock ?
                         "Solicitud #{$orderNumber} actualizada y migrada a cotización #{$quote->consecutive}" :
                         "Solicitud #{$orderNumber} confirmada y migrada a cotización #{$quote->consecutive}";
+
+                    if ($remission) {
+                        $message .= " y remisión #{$remission->consecutive} creada";
+                    }
                 } else {
                     $message = "Solicitud #{$orderNumber} confirmada, pero no se pudo migrar a cotizaciones";
                 }
@@ -1493,6 +1500,85 @@ public function validateQuantity($index)
             Log::error('Error migrando restock a quotes: ' . $e->getMessage(), [
                 'order_number' => $orderNumber,
                 'company_id' => $companyId
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Crear una remisión automáticamente a partir de un pedido de reabastecimiento TAT
+     * Reutiliza los items vinculados al pedido que ya fue migrado a cotización
+     */
+    protected function createRemissionFromRestock($orderNumber, $companyId, $quote)
+    {
+        if (!$quote) return null;
+
+        try {
+            Log::info("Iniciando creación de remisión desde Restock", [
+                'order_number' => $orderNumber,
+                'quote_id' => $quote->id,
+                'quote_consecutive' => $quote->consecutive
+            ]);
+
+            // IMPORTANTE: Tras migrateRestockToQuotes, el order_number en DB es quote->id
+            // Pero el $orderNumber que recibimos puede ser el original.
+            // Buscamos los items usando el ID de la cotización que es el nuevo order_number
+            $items = TatRestockList::where('order_number', $quote->id)
+                                   ->where('company_id', $companyId)
+                                   ->where('status', 'Confirmado')
+                                   ->get();
+
+            if ($items->isEmpty()) {
+                Log::warning("No se encontraron items para crear remisión", [
+                    'quote_id' => $quote->id,
+                    'company_id' => $companyId
+                ]);
+                return null;
+            }
+
+            // 1. Generar consecutivo
+            $consecutive = $this->generateRemissionConsecutive();
+
+            // 2. Crear cabecera de Remisión (inv_remissions)
+            $remission = InvRemissions::create([
+                'consecutive'    => $consecutive,
+                'status'         => 'REGISTRADO',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+                'quoteId'        => $quote->id,
+                'userId'         => auth()->id(),
+                'warehouseId'    => $quote->warehouseId ?? session('warehouse_id', 1),
+            ]);
+
+            // 3. Crear detalles (inv_detail_remissions)
+            $detailsCount = 0;
+            foreach ($items as $item) {
+                // Obtener datos de precio/impuesto del item TAT
+                $productData = $this->getProductData($item->itemId);
+
+                InvDetailRemissions::create([
+                    'remissionId' => $remission->id,
+                    'itemId'      => $item->itemId,
+                    'quantity'    => $item->quantity_request,
+                    'value'       => $productData['price'] ?? 0,
+                    'tax'         => 0, // Ajustar si se manejan impuestos en remisiones
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+                $detailsCount++;
+            }
+
+            Log::info("Remisión #{$consecutive} creada exitosamente para Quote #{$quote->consecutive}", [
+                'remission_id' => $remission->id,
+                'details_count' => $detailsCount
+            ]);
+
+            return $remission;
+
+        } catch (\Exception $e) {
+            Log::error('Error creando remisión desde Restock: ' . $e->getMessage(), [
+                'quote_id' => $quote->id,
+                'order_number' => $orderNumber
             ]);
             return null;
         }

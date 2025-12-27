@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 
 class Routes extends Component
 {
+    use \App\Traits\Livewire\WithExport;
+
     public $routeId, $name, $zone_id, $salesman_id, $sale_day, $delivery_day, $created_at, $updated_at;
 
     //Propiedades para la tabla
@@ -158,5 +160,43 @@ class Routes extends Component
             'zones' => $zones,
             'days' => $this->days,
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        return TatRoutes::query()
+            ->with(['zones'])
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Zona', 'Día Venta', 'Día Entrega'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($route) {
+            return [
+                $route->id,
+                $route->name,
+                $route->zones->name ?? 'Sin zona',
+                $this->days[$route->sale_day] ?? $route->sale_day,
+                $this->days[$route->delivery_day] ?? $route->delivery_day,
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'rutas_' . now()->format('Y-m-d_His');
     }
 }
