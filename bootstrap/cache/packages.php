@@ -36,13 +36,6 @@
       0 => 'Jenssegers\\Agent\\AgentServiceProvider',
     ),
   ),
-  'kitloong/laravel-migrations-generator' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'KitLoong\\MigrationsGenerator\\MigrationsGeneratorServiceProvider',
-    ),
-  ),
   'laravel-shift/blueprint' => 
   array (
     'providers' => 
@@ -69,6 +62,13 @@
     'providers' => 
     array (
       0 => 'Laravel\\Sail\\SailServiceProvider',
+    ),
+  ),
+  'laravel/telescope' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Laravel\\Telescope\\TelescopeServiceProvider',
     ),
   ),
   'laravel/tinker' => 
