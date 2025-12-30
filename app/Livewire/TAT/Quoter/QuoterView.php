@@ -133,8 +133,16 @@ class QuoterView extends Component
      */
     public function updatedQuantities($value, $productId)
     {
+        // Permitir que el usuario borre el input (valor vacío) sin forzar a 1 inmediatamente
+        if ($value === '' || $value === null) {
+            return;
+        }
+
         $quantity = (int)$value;
-        $quantity = max(1, $quantity); // Mínimo 1
+        
+        // Si el valor es 0 o negativo, ahí sí forzamos a 1 (pero solo si no está vacío, que ya validamos arriba)
+        // Opcional: Podríamos permitir 0 si quisieran eliminar, pero la lógica actual es min 1
+        $quantity = max(1, $quantity);
 
         // Buscar el producto en el carrito
         $itemIndex = collect($this->cartItems)->search(function ($item) use ($productId) {
@@ -1092,6 +1100,24 @@ class QuoterView extends Component
         if (empty($this->cartItems)) {
             session()->flash('error', 'No hay productos en el carrito para vender.');
             return;
+        }
+
+        // Validar cantidades y precios cero
+        foreach ($this->cartItems as $item) {
+            if ($item['quantity'] <= 0) {
+                $this->dispatch('swal:warning', [
+                    'title' => 'Cantidad Inválida',
+                    'text' => "El producto {$item['name']} tiene cantidad 0 o inválida.",
+                ]);
+                return;
+            }
+            if ($item['price'] <= 0) {
+                $this->dispatch('swal:warning', [
+                    'title' => 'Precio Inválido',
+                    'text' => "El producto {$item['name']} tiene precio 0 o inválido.",
+                ]);
+                return;
+            }
         }
 
         if (!$this->selectedCustomer) {

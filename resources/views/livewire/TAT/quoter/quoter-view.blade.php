@@ -696,7 +696,7 @@
                             </div>
 
                             <button wire:click="removeFromCart({{ $item['id'] }})"
-                                    class="bg-red-500 text-white rounded-lg p-2.5 shadow-sm active:scale-95 transition-transform">
+                                    class="bg-red-500 text-white rounded-xl p-2.5 shadow-sm active:scale-95 transition-transform">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
@@ -719,10 +719,13 @@
                                 @endif
                             </div>
 
-                            <div class="col-span-2">
+                            <div class="col-span-2"
+                                 x-data="{ qty: {{ $item['quantity'] }} }"
+                                 x-effect="qty = {{ $item['quantity'] }}">
                                 <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 text-center">Cant.</div>
                                 <input type="number"
-                                       wire:model.live.debounce.500ms="quantities.{{ $item['id'] }}"
+                                       x-model="qty"
+                                       @change="$wire.updateQuantity({{ $item['id'] }}, qty)"
                                        class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500">
                             </div>
 

@@ -252,37 +252,46 @@ $header = 'Seleccionar productos';
 
                 <!-- Header del modal -->
                 <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-white dark:bg-gray-800">
-                    <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $this->quoterCount }} Productos seleccionados</h2>
-                    <div class="flex items-center gap-2">
+                    
+                    <!-- Izquierda: Botón Seguir Comprando (Regresar) -->
+                    <button wire:click="toggleCartModal" class="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200
+                        flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                        <span>Seguir Comprando</span>
+                    </button>
+
+                    <!-- Derecha: Cantidad y Limpiar -->
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ $this->quoterCount }} Productos</h2>
+                        
                         <!-- Botón limpiar carrito -->
                         @if(!empty($quoterItems))
-                        <button
-                            onclick="confirmClearCart()"
-                            title="Limpiar carrito"
-                            class="text-red-500 hover:text-red-700 p-2 mr-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                            </svg>
-                        </button>
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-[10px] text-red-500 font-bold uppercase leading-none mb-0.5">Limpiar</span>
+                            <button
+                                onclick="confirmClearCart()"
+                                title="Limpiar carrito"
+                                class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
                         @endif
-
-                        <!-- Botón Seguir Comprando (Cerrar) -->
-                         <button wire:click="toggleCartModal" class="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                            Seguir Comprando
-                        </button>
                     </div>
                 </div>
 
                 <!-- Búsqueda de clientes -->
-                <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
+                <div class="px-4 py-1 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
                     @if($selectedCustomer)
                     <!-- Cliente seleccionado -->
                     <div wire:key="customer-selected-box"
                         x-data="{ show: true }"
                         x-show="show"
                         x-transition.opacity
-                        class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 mb-4">
+                        class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-2 mb-2 mt-2">
                         <div class="flex items-start justify-between">
                             <div class="flex-1">
                                 <h4 class="font-semibold text-green-800 dark:text-green-200 text-sm">
@@ -404,13 +413,12 @@ $header = 'Seleccionar productos';
                             </div>
                         </div>
                         @endif
-
                     </div>
                     @endif
 
                     {{-- Información para usuarios de tienda (profile_id 17) cuando no hay cliente seleccionado --}}
                     @if(!$selectedCustomer && auth()->user()->profile_id == 17)
-                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-4">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-2 mb-4">
                         <div class="flex items-center">
                             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -441,67 +449,97 @@ $header = 'Seleccionar productos';
                     <div class="space-y-4">
                         @foreach($quoterItems as $index => $item)
 
-                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                        <div x-data="{
+                                startX: 0,
+                                currentX: 0,
+                                itemRemoved: false,
+                                handleStart(e) {
+                                    this.startX = e.touches[0].clientX;
+                                },
+                                handleMove(e) {
+                                    const touchX = e.touches[0].clientX;
+                                    this.currentX = touchX - this.startX;
+                                },
+                                handleEnd() {
+                                    if (Math.abs(this.currentX) > 100) {
+                                        // Umbral de eliminación alcanzado (bidireccional)
+                                        this.currentX = this.currentX > 0 ? 100 : -100; 
+                                        this.itemRemoved = true;
+                                        
+                                        // Esperar a la animación antes de llamar a Livewire
+                                        setTimeout(() => {
+                                             $wire.removeFromQuoter({{ $index }});
+                                        }, 300);
+                                    } else {
+                                        // Resetear posición
+                                        this.currentX = 0;
+                                    }
+                                }
+                             }"
+                             @touchstart="handleStart($event)"
+                             @touchmove="handleMove($event)"
+                             @touchend="handleEnd()"
+                             class="relative overflow-hidden rounded-lg mb-3 touch-pan-y"
+                             x-show="!itemRemoved"
+                             x-transition:leave="transition ease-in duration-300"
+                             x-transition:leave-start="opacity-100 scale-100"
+                             x-transition:leave-end="opacity-0 scale-95">
 
-                            <div class="flex items-center justify-between mb-2">
-                                <div class="flex-1">
-                                    <h4 class="font-medium text-gray-900 dark:text-white text-sm">{{ $item['name'] }}</h4>
-                                    @if(isset($item['price_label']))
-                                    <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Precio: {{ $item['price_label'] }}</p>
-                                    @endif
-
-                                </div>
-
-                                <button wire:click="removeFromQuoter({{ $index }})" class="text-red-500 hover:text-red-700">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
+                            <!-- Fondo de eliminación (Swipe Bidireccional) -->
+                            <div class="absolute inset-0 bg-red-500 flex items-center justify-between px-6 text-white"
+                                 x-show="Math.abs(currentX) > 0">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
                             </div>
 
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-2">
-                                    <label for="quantity-{{ $index }}" class="text-xs font-medium text-gray-500 dark:text-gray-400">Cant:</label>
-                                    <input
-                                        id="quantity-{{ $index }}"
-                                        type="number"
-                                        wire:model.lazy="quoterItems.{{ $index }}.quantity"
-                                        wire:change="validateQuantity({{ $index }})"
-                                        min="1"
-                                        max="9999"
-                                        step="1"
-                                        inputmode="numeric"
-                                        pattern="[0-9]*"
-                                        class="w-16 px-2 py-1 text-center text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        value="{{ $item['quantity'] }}"
-                                        onwheel="this.blur()"
-                                        autocomplete="off">
+                            <div class="relative bg-gray-50 dark:bg-gray-700 p-3 transition-transform duration-100 ease-out"
+                                 :style="`transform: translateX(${currentX}px)`">
+
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex-1">
+                                        <h4 class="font-medium text-gray-900 dark:text-white text-sm">{{ $item['name'] }}</h4>
+                                        @if(isset($item['price_label']))
+                                        <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Precio: {{ $item['price_label'] }}</p>
+                                        @endif
+                                    </div>
+                                    
+                                    <!-- Botón eliminar visible (fallback) -->
+                                     <button wire:click="removeFromQuoter({{ $index }})" class="text-red-500 hover:text-red-700 p-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
                                 </div>
 
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <label for="quantity-{{ $index }}" class="text-xs font-medium text-gray-500 dark:text-gray-400">Cant:</label>
+                                        <input
+                                            id="quantity-{{ $index }}"
+                                            type="number"
+                                            wire:model.lazy="quoterItems.{{ $index }}.quantity"
+                                            wire:change="validateQuantity({{ $index }})"
+                                            min="1"
+                                            max="9999"
+                                            step="1"
+                                            inputmode="numeric"
+                                            pattern="[0-9]*"
+                                            class="w-16 px-2 py-1 text-center text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            value="{{ $item['quantity'] }}"
+                                            onwheel="this.blur()"
+                                            autocomplete="off">
+                                    </div>
 
-                                <!-- <div class="flex items-center space-x-2">
-                                    <label for="quantity-{{ $index }}" class="text-xs font-medium text-gray-500 dark:text-gray-400">Desc:</label>
-                                    <input
-                                        id="quantity-{{ $index }}"
-                                        type="number"
-                                        wire:model.lazy="quoterItems.{{ $index }}.quantity"
-                                        wire:change="validateQuantity({{ $index }})"
-                                        min="1"
-                                        max="9999"
-                                        step="1"
-                                        inputmode="numeric"
-                                        pattern="[0-9]*"
-                                        class="w-16 px-2 py-1 text-center text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        value="{{ $item['quantity'] }}"
-                                        onwheel="this.blur()"
-                                        autocomplete="off">
-                                </div> -->
-
-                                <div class="text-sm font-bold text-gray-900 dark:text-white">
-                                    ${{ number_format($item['price'] * $item['quantity']) }}
+                                    <div class="text-sm font-bold text-gray-900 dark:text-white">
+                                        ${{ number_format($item['price'] * $item['quantity']) }}
+                                    </div>
                                 </div>
+
                             </div>
-
                         </div>
 
                         @endforeach
@@ -653,45 +691,48 @@ $header = 'Seleccionar productos';
 
                         @if(auth()->user()->profile_id == 17)
                         <!-- Botones TAT específicos -->
-                        <div class="space-y-2">
+                        <!-- Botones TAT específicos -->
+                        <div class="flex gap-2">
                             @if(!$isEditingRestock)
-                            <!-- Botón Agregar a Lista Preliminar - Solo cuando NO se está editando -->
+                            <!-- Botón Agregar a Lista Preliminar -->
                             <button wire:click="saveRestockRequest(false)"
                                 wire:loading.attr="disabled"
                                 wire:target="saveRestockRequest"
-                                class="w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                title="Agregar a Favoritos"
+                                class="flex-1 bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-2 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm">
 
-                                <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
 
-                                <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
 
-                                <span wire:loading.remove wire:target="saveRestockRequest">Agregar a Lista de Favoritos</span>
-                                <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
+                                <span wire:loading.remove wire:target="saveRestockRequest">Favoritos</span>
+                                <span wire:loading wire:target="saveRestockRequest">...</span>
                             </button>
                             @endif
 
-                            <!-- Botón Confirmar y Migrar Directamente - Siempre disponible -->
+                            <!-- Botón Confirmar y Migrar Directamente -->
                             <button wire:click="saveRestockRequest(true)"
                                 wire:loading.attr="disabled"
                                 wire:target="saveRestockRequest"
-                                class="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                title="Confirmar Directamente"
+                                class="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-2 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm">
 
-                                <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
 
-                                <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
 
-                                <span wire:loading.remove wire:target="saveRestockRequest">Confirmar Directamente</span>
-                                <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
+                                <span wire:loading.remove wire:target="saveRestockRequest">Confirmar</span>
+                                <span wire:loading wire:target="saveRestockRequest">...</span>
                             </button>
                         </div>
                         @endif
