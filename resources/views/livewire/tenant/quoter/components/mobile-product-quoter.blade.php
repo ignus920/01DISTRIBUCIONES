@@ -159,6 +159,7 @@ $header = 'Seleccionar productos';
                                    value="{{ $quantity }}"
                                    wire:change="updateQuantityById({{ $product->id }}, $event.target.value)"
                                    onfocus="this.select()"
+                                   oncontextmenu="return false;"
                                    class="w-12 text-center bg-transparent border-none text-gray-900 dark:text-white font-black text-sm p-0 focus:ring-0"
                                    inputmode="numeric">
 
@@ -234,7 +235,7 @@ $header = 'Seleccionar productos';
     <!-- Paginación -->
     @if($products->hasPages())
     <div class="px-4 py-4">
-        {{ $products->links() }}
+        {{ $products->links('livewire.tenant.quoter.components.simple-pagination') }}
     </div>
     @endif
 </div>
@@ -258,18 +259,17 @@ $header = 'Seleccionar productos';
                         <button
                             onclick="confirmClearCart()"
                             title="Limpiar carrito"
-                            class="text-red-500 hover:text-red-700 p-2">
+                            class="text-red-500 hover:text-red-700 p-2 mr-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
                         </button>
                         @endif
 
-                        <!-- Botón cerrar -->
-                        <button wire:click="toggleCartModal" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
+                        <!-- Botón Seguir Comprando (Cerrar) -->
+                         <button wire:click="toggleCartModal" class="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium text-sm bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            Seguir Comprando
                         </button>
                     </div>
                 </div>
@@ -670,7 +670,7 @@ $header = 'Seleccionar productos';
                                     <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
 
-                                <span wire:loading.remove wire:target="saveRestockRequest">Agregar a Lista Preliminar</span>
+                                <span wire:loading.remove wire:target="saveRestockRequest">Agregar a Lista de Favoritos</span>
                                 <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
                             </button>
                             @endif
@@ -690,7 +690,7 @@ $header = 'Seleccionar productos';
                                     <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
 
-                                <span wire:loading.remove wire:target="saveRestockRequest">Confirmar y Migrar Directamente</span>
+                                <span wire:loading.remove wire:target="saveRestockRequest">Confirmar Directamente</span>
                                 <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
                             </button>
                         </div>
@@ -744,6 +744,7 @@ $header = 'Seleccionar productos';
     </div>
     @endif
 </div>
+
 
 @push('scripts')
 <script>

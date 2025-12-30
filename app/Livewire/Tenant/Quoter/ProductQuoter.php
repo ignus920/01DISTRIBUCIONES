@@ -216,7 +216,6 @@ class ProductQuoter extends Component
         $confirmedItem = $this->checkConfirmedProductStatus($productId);
         
         if ($confirmedItem) {
-            // Si existe en una orden confirmada, ofrecer cargar esa orden
             $this->dispatch('confirm-load-order', [
                 'orderNumber' => $confirmedItem->order_number,
                 'message' => "Este producto ya se encuentra en la orden confirmada #{$confirmedItem->order_number}. ¿Desea cargar esa orden para editarla?"
@@ -243,14 +242,15 @@ class ProductQuoter extends Component
         }
     }
 
-    private function performAddToQuoter($productId, $selectedPrice, $priceLabel)
+
+    private function performAddToQuoter($productId, $selectedPrice, $priceLabel, $quantity = 1)
     {
         // Verificar si el producto ya está en el cotizador (sin consulta DB)
         $existingIndex = $this->findProductInQuoter($productId);
 
         if ($existingIndex !== false) {
-            // Si ya existe, incrementar la cantidad
-            $this->quoterItems[$existingIndex]['quantity']++;
+            // Si ya existe, sumar la cantidad nueva
+            $this->quoterItems[$existingIndex]['quantity'] += $quantity;
         } else {
             // Obtener el producto solo cuando es necesario
             $this->ensureTenantConnection();
@@ -271,7 +271,7 @@ class ProductQuoter extends Component
                 'sku' => $product->sku,
                 'price' => $selectedPrice,
                 'price_label' => $priceLabel,
-                'quantity' => 1,
+                'quantity' => $quantity,
                 'description' => $product->description,
             ];
         }
@@ -477,8 +477,8 @@ public function validateQuantity($index)
     // Actualizar sesión
     session(['quoter_items' => $this->quoterItems]);
 
-    // Recalcular total si existe el método
-    $this->calculateTotal ?? false ? $this->calculateTotal() : null;
+    // Recalcular total
+    $this->calculateTotal();
 
     // Notificación opcional
     $this->dispatch('show-toast', [
@@ -795,6 +795,12 @@ public function validateQuantity($index)
     public function getQuoterCountProperty()
     {
         return collect($this->quoterItems)->sum('quantity');
+    }
+
+    public function updatedQuoterItems()
+    {
+        session(['quoter_items' => $this->quoterItems]);
+        $this->calculateTotal();
     }
 
     public function getProductQuantity($productId)

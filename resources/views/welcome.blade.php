@@ -55,42 +55,66 @@
                 @endif
             </nav>
 
-            <!-- Mobile menu -->
-            <div id="mobile-menu" class="lg:hidden hidden">
-                <div class="fixed inset-0 z-50"></div>
-                <div class="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-white dark:bg-gray-900 px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 dark:sm:ring-gray-100/10">
-                    <div class="flex items-center justify-between">
-                        <a href="#inicio" class="-m-1.5 p-1.5">
-                            <span class="sr-only">Tienda</span>
-                            <h1 class="text-xl font-bold text-gray-900 dark:text-white">Tienda</h1>
+        </header>
+
+        <!-- Sidebar Móvil de Pantalla Completa (Estilo AdminLTE) -->
+        <div id="mobile-menu" class="hidden fixed inset-0 z-[100] h-screen overflow-hidden">
+            <!-- Backdrop Oscuro -->
+            <div id="mobile-menu-backdrop" class="fixed inset-0 bg-gray-900/60 transition-opacity duration-500 opacity-0"></div>
+            
+            <!-- Contenedor del Sidebar (Izquierda) -->
+            <div id="mobile-menu-content" class="fixed inset-y-0 left-0 w-[280px] h-full bg-[#343a40] text-white shadow-2xl transform -translate-x-full transition-all duration-500 ease-in-out flex flex-col z-10">
+                
+                <!-- Header del Sidebar (Fijo arriba) -->
+                <div class="flex-none px-6 py-4 flex items-center justify-between border-b border-gray-700 bg-[#2b3035]">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded bg-blue-500 flex items-center justify-center font-bold text-white shadow-lg">T</div>
+                        <span class="text-xl font-bold tracking-tight">Tienda</span>
+                    </div>
+                    <button type="button" id="mobile-menu-close" class="p-2 -mr-2 text-gray-400 hover:text-white transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                
+
+                <!-- Menú de Navegación -->
+                <div class="flex-1 overflow-y-auto no-scrollbar py-4">
+                    <nav class="px-2 space-y-1">
+                        <a href="#inicio" class="flex items-center gap-3 px-4 py-3 rounded text-gray-300 hover:bg-white/10 hover:text-white transition-all">
+                            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                            <span>Inicio</span>
                         </a>
-                        <button type="button" id="mobile-menu-close" class="-m-2.5 rounded-md p-2.5 text-gray-700 dark:text-gray-400">
-                            <span class="sr-only">Cerrar menú</span>
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="mt-6 flow-root">
-                        <div class="-my-6 divide-y divide-gray-500/10 dark:divide-gray-400/10">
-                            <div class="space-y-2 py-6">
-                                <a href="#inicio" class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800">Inicio</a>
-                                <a href="#productos" class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800">Productos</a>
-                                <a href="#servicios" class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800">Servicios</a>
-                                <a href="#contacto" class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800">Contacto</a>
-                            </div>
-                            @if (Route::has('login'))
-                                <div class="py-6">
-                                    <div class="-mx-3 px-3">
-                                        <livewire:welcome.navigation />
-                                    </div>
-                                </div>
-                            @endif
+                        <a href="#productos" class="flex items-center gap-3 px-4 py-3 rounded text-gray-300 hover:bg-white/10 hover:text-white transition-all">
+                            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            <span>Productos</span>
+                        </a>
+                        <a href="#servicios" class="flex items-center gap-3 px-4 py-3 rounded text-gray-300 hover:bg-white/10 hover:text-white transition-all">
+                            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            <span>Servicios</span>
+                        </a>
+                        <a href="#contacto" class="flex items-center gap-3 px-4 py-3 rounded text-gray-300 hover:bg-white/10 hover:text-white transition-all pb-4 border-b border-gray-700">
+                            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            <span>Contacto</span>
+                        </a>
+                        
+                        <!-- Acceso al Programa (Integrado) -->
+                        <div class="pt-2">
+                             <livewire:welcome.navigation />
                         </div>
-                    </div>
+                    </nav>
                 </div>
             </div>
-        </header>
+            </div>
+
+            <!-- Estilo para ocultar scrollbar del sidebar -->
+            <style>
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            </style>
+        </div>
 
         <div class="bg-gray-50 text-black/50 dark:bg-black dark:text-white/50">
             <div class="relative min-h-screen pt-24">
@@ -200,10 +224,36 @@
                 const mobileMenuClose = document.getElementById('mobile-menu-close');
                 let lastScrollY = window.scrollY;
 
-                // Función para alternar el menú móvil
+                // Función para alternar el menú móvil con animaciones corregidas y robustas
                 function toggleMobileMenu() {
-                    mobileMenu.classList.toggle('hidden');
-                    document.body.classList.toggle('overflow-hidden');
+                    const isHidden = mobileMenu.classList.contains('hidden');
+                    const backdrop = document.getElementById('mobile-menu-backdrop');
+                    const content = document.getElementById('mobile-menu-content');
+
+                    if (isHidden) {
+                        mobileMenu.classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                        
+                        // Estado inicial para animar desde la izquierda (AdminLTE style)
+                        backdrop.style.opacity = '0';
+                        content.style.transform = 'translateX(-100%)';
+                        
+                        setTimeout(() => {
+                            backdrop.classList.replace('opacity-0', 'opacity-100');
+                            content.classList.replace('-translate-x-full', 'translate-x-0');
+                            backdrop.style.opacity = '';
+                            content.style.transform = '';
+                        }, 50);
+                    } else {
+                        // Salida hacia la izquierda
+                        backdrop.classList.replace('opacity-100', 'opacity-0');
+                        content.classList.replace('translate-x-0', '-translate-x-full');
+                        
+                        setTimeout(() => {
+                            mobileMenu.classList.add('hidden');
+                            document.body.style.overflow = '';
+                        }, 500);
+                    }
                 }
 
                 // Event listeners para el menú móvil
@@ -215,12 +265,8 @@
                     mobileMenuClose.addEventListener('click', toggleMobileMenu);
                 }
 
-                // Cerrar menú móvil al hacer click fuera
-                mobileMenu.addEventListener('click', function(e) {
-                    if (e.target === mobileMenu) {
-                        toggleMobileMenu();
-                    }
-                });
+                // Cerrar menú móvil al hacer click fuera (en el backdrop)
+                document.getElementById('mobile-menu-backdrop').addEventListener('click', toggleMobileMenu);
 
                 // Función para actualizar el navbar en scroll
                 function updateNavbar() {

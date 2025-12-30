@@ -173,37 +173,48 @@
             }" 
             x-init="$watch('showMobileSearch', value => manageFocus())"
             @keydown.escape="showMobileSearch = false">
-                <!-- Input principal con indicador de carga -->
-                <div class="relative">
-                    <input type="text"
-                           wire:model.live.debounce.250ms="currentSearch"
-                           placeholder="Buscar Producto (mín. 2 caracteres)"
-                           class="w-full px-3 py-3 sm:px-4 sm:py-3 text-sm sm:text-base bg-white dark:bg-gray-700 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-sm transition-all duration-200 touch-manipulation"
-                           autocomplete="off"
-                           id="product-search-input"
-                           onkeydown="handleProductSearchKeydown(event)"
-                           wire:loading.class="border-blue-400"
-                           wire:target="updatedCurrentSearch"
-                           inputmode="search"
-                           enterkeyhint="search"
-                           @focus="if (window.innerWidth < 1024) { showMobileSearch = true; }"
-                           x-ref="searchInput"
-                           wire:key="main-search-input">
+                <!-- Input principal con indicador de carga y botón genérico -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="relative flex-1">
+                        <input type="text"
+                               wire:model.live.debounce.250ms="currentSearch"
+                               placeholder="Buscar Producto (mín. 2 caracteres)"
+                               class="w-full px-3 py-3 sm:px-4 sm:py-3 text-sm sm:text-base bg-white dark:bg-gray-700 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-sm transition-all duration-200 touch-manipulation"
+                               autocomplete="off"
+                               id="product-search-input"
+                               onkeydown="handleProductSearchKeydown(event)"
+                               wire:loading.class="border-blue-400"
+                               wire:target="updatedCurrentSearch"
+                               inputmode="search"
+                               enterkeyhint="search"
+                               @focus="if (window.innerWidth < 1024) { showMobileSearch = true; }"
+                               x-ref="searchInput"
+                               wire:key="main-search-input">
 
-                    <!-- Spinner de carga -->
-                    <div wire:loading wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <svg class="animate-spin h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                        <!-- Spinner de carga -->
+                        <div wire:loading wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <svg class="animate-spin h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+
+                        <!-- Icono de búsqueda cuando no está cargando -->
+                        <div wire:loading.remove wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
                     </div>
 
-                    <!-- Icono de búsqueda cuando no está cargando -->
-                    <div wire:loading.remove wire:target="updatedCurrentSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    <!-- Botón Producto Genérico -->
+                    <button wire:click="openGenericProductModal"
+                            class="flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                            title="Agregar producto genérico">
+                        <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                    </div>
+                    </button>
                 </div>
 
                 <!-- Interfaz de búsqueda fullscreen para móvil -->
@@ -518,9 +529,9 @@
         </div>
 
         <!-- Contenedor de productos con scroll (móvil) / normal (desktop) -->
-        <div class="flex-1 overflow-y-auto lg:overflow-visible p-3 lg:p-0 products-container">
+        <div class="flex-1 overflow-y-auto lg:overflow-visible lg:p-0 products-container">
             <!-- Productos en el carrito -->
-            <div class="space-y-2 mb-3 lg:mb-0">
+            <div class="space-y-1 lg:space-y-2 mb-3 lg:mb-0">
             @foreach($cartItems as $index => $item)
                 <!-- Vista Desktop -->
                 <div wire:key="cart-item-desktop-{{ $item['id'] }}" class="hidden lg:grid lg:grid-cols-7 gap-2 items-center text-sm lg:text-base bg-gray-50 dark:bg-gray-800 p-3 lg:p-4 rounded border border-gray-200 dark:border-gray-700">
@@ -608,91 +619,116 @@
                     </div>
                 </div>
                 
-                <!-- Vista Móvil - Nombre completo arriba, controles abajo -->
-                <div wire:key="cart-item-mobile-{{ $item['id'] }}" class="lg:hidden">
-                    <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 space-y-3">
-                        <!-- Fila 1: Imagen/Avatar + Información del producto + Botón Eliminar -->
-                        <div class="flex items-center gap-2 w-full">
-                            <!-- Imagen del producto o avatar con iniciales -->
+                
+                <!-- Vista Móvil - ANCHO COMPLETO + ESTRUCTURA ORIGINAL + SWIPE -->
+                <div wire:key="cart-item-mobile-{{ $item['id'] }}" 
+                     class="lg:hidden relative overflow-hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+                     x-data="{ 
+                        startX: 0, 
+                        currentX: 0, 
+                        isDragging: false, 
+                        threshold: 120,
+                        itemRemoved: false,
+                        reset() { 
+                            this.currentX = 0; 
+                            this.isDragging = false; 
+                        },
+                        handleStart(e) {
+                            this.startX = e.touches[0].clientX;
+                            this.isDragging = true;
+                        },
+                        handleMove(e) {
+                            if (!this.isDragging) return;
+                            this.currentX = e.touches[0].clientX - this.startX;
+                        },
+                        handleEnd() {
+                            if (Math.abs(this.currentX) > this.threshold) {
+                                this.itemRemoved = true;
+                                $wire.removeFromCart({{ $item['id'] }});
+                            }
+                            this.reset();
+                        }
+                     }"
+                     @touchstart="handleStart($event)"
+                     @touchmove="handleMove($event)"
+                     @touchend="handleEnd()"
+                     x-show="!itemRemoved"
+                     x-transition:leave="transition ease-in duration-300"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95">
+                    
+                    <!-- Fondo de eliminación (Swipe) -->
+                    <div class="absolute inset-0 bg-red-500 flex items-center justify-between px-8 text-white"
+                         x-show="Math.abs(currentX) > 20"
+                         style="display: none;">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </div>
+
+                    <!-- Contenido de la tarjeta (Estructura Original) -->
+                    <div class="relative bg-white dark:bg-gray-800 p-4 transition-transform duration-150 ease-out z-10 space-y-4"
+                         :style="`transform: translateX(${currentX}px)`">
+                        
+                        <!-- Fila 1: Imagen/Avatar + Información + Eliminar -->
+                        <div class="flex items-center gap-3 w-full">
                             <div class="flex-shrink-0">
                                 @if(isset($item['img_path']) && $item['img_path'] && file_exists(storage_path('app/public/' . $item['img_path'])))
-                                    <!-- Imagen del producto -->
                                     <img src="{{ asset('storage/' . $item['img_path']) }}"
                                          alt="{{ $item['name'] }}"
-                                         class="w-12 h-12 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-600 shadow-md">
+                                         class="w-14 h-14 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-600 shadow-sm">
                                 @else
-                                    <!-- Avatar con iniciales -->
-                                    <div class="w-12 h-12 rounded-lg {{ $item['avatar_color'] ?? 'bg-gradient-to-br from-blue-500 to-indigo-600' }} flex items-center justify-center text-white font-bold text-sm border-2 border-gray-200 dark:border-gray-600 shadow-md">
+                                    <div class="w-14 h-14 rounded-lg {{ $item['avatar_color'] ?? 'bg-blue-600' }} flex items-center justify-center text-white font-bold text-lg border-2 border-gray-200 dark:border-gray-600 shadow-sm">
                                         {{ $item['initials'] ?? substr($item['name'], 0, 2) }}
                                     </div>
                                 @endif
                             </div>
 
-                            <!-- Información del producto -->
                             <div class="flex-1 min-w-0">
-                                <div class="font-medium text-gray-800 dark:text-gray-200 text-sm truncate">
+                                <div class="font-bold text-gray-900 dark:text-gray-100 text-base truncate">
                                     {{ $item['name'] }}
                                 </div>
-                                <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                                     SKU: {{ $item['sku'] ?? 'N/A' }}
                                     @if(isset($item['stock']))
-                                        <span class="ml-2">| Stock: {{ number_format($item['stock'], 0) }}</span>
+                                        <span class="ml-2 font-semibold text-blue-600 dark:text-blue-400">| Stock: {{ number_format($item['stock'], 0) }}</span>
                                     @endif
-                                    <span class="ml-2 font-semibold text-blue-600 dark:text-blue-400">| IVA: {{ $item['tax_name'] ?? 'N/A' }}</span>
                                 </div>
                             </div>
 
-                            <!-- Botón Eliminar -->
-                            <div class="flex-shrink-0">
-                                <button wire:click="removeFromCart({{ $item['id'] }})"
-                                        class="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg p-2 transition-colors duration-150 flex items-center justify-center"
-                                        title="Eliminar producto">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
-                            </div>
+                            <button wire:click="removeFromCart({{ $item['id'] }})"
+                                    class="bg-red-500 text-white rounded-lg p-2.5 shadow-sm active:scale-95 transition-transform">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
                         </div>
 
-                        <!-- Fila 2: Controles con más espacio para los inputs -->
+                        <!-- Fila 2: Controles (Grid Original) -->
                         <div class="grid grid-cols-10 gap-2 w-full">
-                            <!-- Precio (40% del espacio) -->
                             <div class="col-span-4">
-                                <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Precio</div>
+                                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 text-center">Precio</div>
                                 @if($companyConfig && $companyConfig->allowsPriceChange())
-                                    <!-- Precio editable -->
                                     <input type="number"
                                            value="{{ number_format($item['price'], 0, '.', '') }}"
                                            wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
-                                           class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-semibold"
-                                           min="0"
-                                           step="1"
-                                           title="Precio editable">
+                                           class="w-full text-center bg-gray-50 dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500">
                                 @else
-                                    <!-- Precio solo lectura -->
-                                    <div class="w-full text-center bg-gray-100 dark:bg-gray-600 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-semibold"
-                                         title="Precio fijo - No editable">
+                                    <div class="w-full text-center bg-gray-100 dark:bg-gray-700 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5 text-sm font-bold">
                                         ${{ number_format($item['price'], 0, '.', '.') }}
                                     </div>
                                 @endif
                             </div>
 
-                            <!-- Cantidad (20% del espacio) -->
                             <div class="col-span-2">
-                                <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Cant.</div>
+                                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 text-center">Cant.</div>
                                 <input type="number"
                                        wire:model.live.debounce.500ms="quantities.{{ $item['id'] }}"
-                                       wire:key="quantity-mobile-{{ $item['id'] }}"
-                                       class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-semibold"
-                                       min="1"
-                                       step="1"
-                                       pattern="\d*">
+                                       class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500">
                             </div>
 
-                            <!-- Subtotal (40% del espacio) -->
                             <div class="col-span-4">
-                                <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Subtotal</div>
-                                <div class="text-center font-bold text-gray-800 dark:text-gray-200 text-xs bg-gray-100 dark:bg-gray-700 rounded px-2 py-2">
+                                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 text-center">Subtotal</div>
+                                <div class="text-center font-bold text-green-600 dark:text-green-400 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5">
                                     ${{ number_format($item['subtotal'], 0, '.', '.') }}
                                 </div>
                             </div>
@@ -711,17 +747,24 @@
             border-t border-gray-200 dark:border-gray-700 lg:border-t-0
             p-3 lg:p-0 z-10">
 
-    <!-- Total centrado en móviles -->
-    <div class="text-center mb-3 lg:hidden">
-        <div class="text-2xl font-bold text-gray-800 dark:text-gray-200">
-                    ${{ number_format($total, 0, '.', '.') }}
-                </div>
-                <div class="text-xs text-gray-600 dark:text-gray-400">
-                    {{ count($cartItems) }} producto(s)
-                    @if($selectedCustomer)
-                    | {{ $selectedCustomer['display_name'] }}
-                    @endif
-                </div>
+    <!-- Información del Carrito (Una sola línea en móviles) -->
+    <div class="flex justify-between items-center mb-2 px-1 lg:hidden">
+        <!-- Izquierda: Total -->
+        <div class="flex items-center gap-1">
+            <span class="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold">Total:</span>
+            <span class="text-xl font-black text-gray-900 dark:text-gray-100 ml-2">
+                ${{ number_format($total, 0, '.', '.') }}
+            </span>
+        </div>
+        <!-- Derecha: Info resumida -->
+        <div class="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400 font-medium">
+            <span>{{ count($cartItems) }} prod.</span>
+            @if($selectedCustomer)
+                <span class="border-l border-gray-300 dark:border-gray-600 pl-2 text-blue-600 dark:text-blue-400 truncate max-w-[100px]">
+                    {{ $selectedCustomer['display_name'] }}
+                </span>
+            @endif
+        </div>
     </div>
 
     <!-- Botones horizontales - MODIFICADO PARA ESCRITORIO -->
@@ -793,6 +836,67 @@
     </div>
     <!-- Contenedor para Toasts Personalizados -->
     <div id="custom-toast-container" class="fixed top-5 right-5 z-[100] flex flex-col gap-3 pointer-events-none min-w-[300px] max-w-[90vw]"></div>
+
+    <!-- Modal Producto Genérico (TAT) -->
+    @if($showGenericProductModal)
+    <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" wire:click="$set('showGenericProductModal', false)"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200 border border-gray-100 dark:border-gray-700">
+            <!-- Header -->
+            <div class="px-5 py-4 border-b dark:border-gray-700 flex items-center justify-between bg-blue-600 dark:bg-blue-700 uppercase">
+                <h3 class="text-xs font-black text-white tracking-widest">Ingrese producto genérico</h3>
+                <button wire:click="$set('showGenericProductModal', false)" class="text-white/80 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-5 space-y-4 text-left">
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Nombre Producto:</label>
+                    <textarea wire:model="genericProductName" 
+                        class="w-full px-3 py-2 text-sm border-2 border-gray-100 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-0 transition-all outline-none resize-none"
+                        rows="4" placeholder="Ej: producto generico..."></textarea>
+                    @error('genericProductName') <span class="text-[10px] text-red-500 font-bold uppercase mt-1">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Precio:</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                            <input type="number" wire:model="genericProductPrice" 
+                                class="w-full pl-7 pr-3 py-2 text-sm border-2 border-gray-100 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-bold focus:border-blue-500 outline-none"
+                                placeholder="0">
+                        </div>
+                        @error('genericProductPrice') <span class="text-[10px] text-red-500 font-bold uppercase mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cantidad:</label>
+                        <input type="number" wire:model="genericProductQuantity" 
+                            class="w-full px-3 py-2 text-sm border-2 border-gray-100 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-bold focus:border-blue-500 outline-none text-center"
+                            placeholder="1">
+                        @error('genericProductQuantity') <span class="text-[10px] text-red-500 font-bold uppercase mt-1">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-5 py-4 bg-gray-50 dark:bg-gray-900/50 flex gap-3">
+                <button wire:click="addGenericProduct"
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-black py-3 rounded-xl shadow-lg shadow-green-500/20 transition-all active:scale-95 uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    Guardar
+                </button>
+                <button wire:click="$set('showGenericProductModal', false)"
+                    class="px-4 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-black py-3 rounded-xl transition-all active:scale-95 uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 @push('scripts')

@@ -42,6 +42,12 @@ class QuoterView extends Component
     public $showMobileSearch = false; // Controlar modo búsqueda en móviles
     public $modalClosing = false;
 
+    // Propiedades para Producto Genérico
+    public $showGenericProductModal = false;
+    public $genericProductName = '';
+    public $genericProductPrice = '';
+    public $genericProductQuantity = 1;
+
     // Propiedades para manejo de venta
     public $currentQuoteId = null; // ID de la venta actual (para edición)
     public $editingQuoteId = null; // ID de la cotización que se está editando
@@ -251,6 +257,62 @@ class QuoterView extends Component
             ->where('stock', '>', 0)
             ->take(4)
             ->get();
+    }
+
+    public function openGenericProductModal()
+    {
+        $this->genericProductName = '';
+        $this->genericProductPrice = '';
+        $this->genericProductQuantity = 1;
+        $this->showGenericProductModal = true;
+    }
+
+    public function addGenericProduct()
+    {
+        $this->validate([
+            'genericProductName' => 'required|min:3',
+            'genericProductPrice' => 'required|numeric|min:0',
+            'genericProductQuantity' => 'required|integer|min:1',
+        ], [
+            'genericProductName.required' => 'La descripción es obligatoria',
+            'genericProductPrice.required' => 'El precio es obligatorio',
+            'genericProductPrice.numeric' => 'El precio debe ser un número',
+            'genericProductQuantity.required' => 'La cantidad es obligatoria',
+        ]);
+
+        $price = floatval($this->genericProductPrice);
+        $quantity = intval($this->genericProductQuantity);
+        
+        $newItem = [
+            'id' => 'gen_' . time(),
+            'name' => $this->genericProductName,
+            'sku' => 'GENERICO',
+            'price' => $price,
+            'quantity' => $quantity,
+            'subtotal' => $price * $quantity,
+            'stock' => 99999, 
+            'tax_name' => 'N/A',
+            'tax_percentage' => 0,
+            'img_path' => null,
+            'initials' => 'GN',
+            'avatar_color' => 'bg-gradient-to-br from-gray-500 to-slate-600'
+        ];
+
+        // Inicializar cantidad en el array separado
+        $this->quantities[$newItem['id']] = $quantity;
+
+        // Agregar al principio
+        array_unshift($this->cartItems, $newItem);
+
+        $this->calculateTotal();
+        $this->saveCartToSession();
+        $this->showGenericProductModal = false;
+
+        $this->dispatch('swal:toast', [
+            'type' => 'success',
+            'message' => 'Producto genérico agregado',
+            'mobile' => true
+        ]);
     }
 
     /**

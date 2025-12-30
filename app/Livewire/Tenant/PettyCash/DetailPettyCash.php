@@ -118,8 +118,15 @@ class DetailPettyCash extends Component
 
     public function canDoMovement(): bool
     {
+        // DEBUG: Agregar logging detallado
+        Log::info('🔍 canDoMovement() iniciado', [
+            'user_id' => auth()->user()->id ?? 'NO_USER',
+            'profile_id' => auth()->user()->profile_id ?? 'NO_PROFILE'
+        ]);
+
         // Si es usuario TAT, permitir
         if (auth()->user()->profile_id == 17) {
+            Log::info('✅ canDoMovement() - Usuario TAT detectado, permitiendo');
             return true;
         }
 
@@ -134,6 +141,8 @@ class DetailPettyCash extends Component
             'configService_exists' => $this->configService ? 'YES' : 'NO',
             'method_called' => 'isOptionEnabled(18) y getOptionValue(18)'
         ]);
+
+        Log::info($result ? '✅ canDoMovement() - Retornando TRUE' : '❌ canDoMovement() - Retornando FALSE');
         return $result;
     }
 
@@ -195,8 +204,8 @@ class DetailPettyCash extends Component
 
     public function createMovement()
     {
+        $this->resetForm();
         $this->showModalMovement = true;
-        //dd($this->canDoIncome());
     }
 
     public function getReasonsProperty()
@@ -274,12 +283,32 @@ class DetailPettyCash extends Component
 
     public function render()
     {
-        $this->ensureTenantConnection();
-        $values = $this->getValuesDetail();
-        return view('livewire.tenant.petty-cash.detail-petty-cash', [
-            'detailPettyCash' => $values,
-            'typeMovements' => $this->typeMovements
-        ]);
+        try {
+            Log::info('Render start', ['showModalMovement' => $this->showModalMovement]);
+            $this->ensureTenantConnection();
+
+            // Explicitly fetch data to debug potential DB errors
+            $methodPayments = $this->MethodPayment;
+            Log::info('MethodPayments fetched', ['count' => $methodPayments->count()]);
+            
+            // Calculate details
+            $values = $this->getValuesDetail();
+            Log::info('Render calculated values');
+            
+            return view('livewire.tenant.petty-cash.detail-petty-cash', [
+                'detailPettyCash' => $values,
+                'typeMovements' => $this->typeMovements,
+                'methodPaymentsList' => $methodPayments
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Render failed: ' . $e->getMessage());
+            // Intenta renderizar sin el modal si falla, para que al menos se vea la tabla
+            return view('livewire.tenant.petty-cash.detail-petty-cash', [
+                'detailPettyCash' => isset($values) ? $values : $this->getValuesDetail(),
+                'typeMovements' => $this->typeMovements,
+                'methodPaymentsList' => collect()
+            ]);
+        }
     }
 
     public function loadDetailsData()
