@@ -23,6 +23,7 @@ class QuoterView extends Component
     public $searchResults = [];
     public $additionalSuggestions = [];
     public $cartItems = [];
+    public $quantities = []; // Array asociativo para las cantidades por product_id
     public $total = 0;
     public $companyId;
     public $selectedIndex = -1;
@@ -122,44 +123,55 @@ class QuoterView extends Component
     }
 
     /**
-     * Hook para detectar actualizaciones en cartItems (wire:model)
+     * Hook para detectar actualizaciones en quantities (wire:model)
      */
-    public function updatedCartItems($value, $key)
+    public function updatedQuantities($value, $productId)
     {
-        // El key viene en formato "0.quantity" o "0.price"
-        $parts = explode('.', $key);
-        
-        if (count($parts) === 2 && $parts[1] === 'quantity') {
-            $index = $parts[0];
-            $quantity = $value;
-            
-            // 1. Forzar entero
-            $quantity = (int)$quantity;
-            $quantity = max(1, $quantity); // Mínimo 1
+        $quantity = (int)$value;
+        $quantity = max(1, $quantity); // Mínimo 1
 
-            // 2. Validar Stock (solo si no se permite vender sin saldo)
-            $item = $this->cartItems[$index];
-            $stock = $item['stock'];
+        // Buscar el producto en el carrito
+        $itemIndex = collect($this->cartItems)->search(function ($item) use ($productId) {
+            return $item['id'] == $productId;
+        });
 
-            if (!$this->companyConfig->canSellWithoutStock() && $quantity > $stock) {
-                $quantity = $stock;
-
-                // Emitir alerta
-                $this->dispatch('swal:warning', [
-                    'title' => 'Stock Insuficiente',
-                    'text' => "No puedes agregar más de {$stock} unidades (lo sentimos).",
-                ]);
-            }
-
-            // 3. Aplicar valor corregido
-            $this->cartItems[$index]['quantity'] = $quantity;
-            $baseSubtotal = $quantity * $this->cartItems[$index]['price'];
-            $taxAmount = $baseSubtotal * ($this->cartItems[$index]['tax_percentage'] / 100);
-            $this->cartItems[$index]['subtotal'] = $baseSubtotal + $taxAmount;
-            
-            $this->calculateTotal();
-            $this->saveCartToSession();
+        if ($itemIndex === false) {
+            return;
         }
+
+        $item = $this->cartItems[$itemIndex];
+        $stock = $item['stock'];
+
+        // Validar Stock (solo si no se permite vender sin saldo)
+        if (!$this->companyConfig->canSellWithoutStock() && $quantity > $stock) {
+            $quantity = $stock;
+
+            // Emitir alerta
+            $this->dispatch('swal:warning', [
+                'title' => 'Stock Insuficiente',
+                'text' => "No puedes agregar más de {$stock} unidades (lo sentimos).",
+            ]);
+        }
+
+        // Actualizar la cantidad en el array quantities y en cartItems
+        $this->quantities[$productId] = $quantity;
+        $this->cartItems[$itemIndex]['quantity'] = $quantity;
+
+        // Recalcular subtotal
+        $baseSubtotal = $quantity * $this->cartItems[$itemIndex]['price'];
+        $taxAmount = $baseSubtotal * (($this->cartItems[$itemIndex]['tax_percentage'] ?? 0) / 100);
+        $this->cartItems[$itemIndex]['subtotal'] = $baseSubtotal + $taxAmount;
+
+        $this->calculateTotal();
+        $this->saveCartToSession();
+
+        // Log para debugging
+        Log::info('Cantidad actualizada', [
+            'product_id' => $productId,
+            'product_name' => $this->cartItems[$itemIndex]['name'],
+            'new_quantity' => $quantity,
+            'cart_items_count' => count($this->cartItems)
+        ]);
     }
 
     /**
@@ -637,6 +649,9 @@ class QuoterView extends Component
             $taxAmount = $baseSubtotal * ($item['tax_percentage'] / 100);
             $item['subtotal'] = $baseSubtotal + $taxAmount;
 
+            // Actualizar cantidad en el array separado
+            $this->quantities[$productId] = $newQuantity;
+
             // Mover al principio (prepend)
             array_unshift($this->cartItems, $item);
             
@@ -663,6 +678,9 @@ class QuoterView extends Component
                 'initials' => $this->getProductInitials($product->name),
                 'avatar_color' => $this->getAvatarColorClass($product->name)
             ];
+
+            // Inicializar cantidad en el array separado
+            $this->quantities[$product->id] = 1;
 
             // Usar array_unshift para agregar al principio
             array_unshift($this->cartItems, $newItem);
@@ -780,6 +798,9 @@ class QuoterView extends Component
                 return $item['id'] == $productId;
             })->values()->toArray();
 
+        // Limpiar cantidad del array separado
+        unset($this->quantities[$productId]);
+
         $this->calculateTotal();
         $this->saveCartToSession();
 
@@ -797,6 +818,7 @@ class QuoterView extends Component
     {
         $itemCount = count($this->cartItems);
         $this->cartItems = [];
+        $this->quantities = [];
         $this->total = 0;
         $this->saveCartToSession();
 
@@ -829,6 +851,12 @@ class QuoterView extends Component
     protected function loadCartFromSession()
     {
         $this->cartItems = session('quoter_cart', []);
+
+        // Inicializar quantities array
+        $this->quantities = [];
+        foreach ($this->cartItems as $item) {
+            $this->quantities[$item['id']] = $item['quantity'];
+        }
     }
 
     /**
@@ -911,6 +939,7 @@ class QuoterView extends Component
                 ->get();
 
             $this->cartItems = [];
+            $this->quantities = [];
             foreach ($quoteItems as $item) {
                 // Generar avatar color e iniciales
                 $avatarColor = $this->getAvatarColorClass($item->product_name);
@@ -929,6 +958,9 @@ class QuoterView extends Component
                     'initials' => $initials,
                     'tax_name' => '5%' // Valor por defecto temporal
                 ];
+
+                // Inicializar cantidad en el array separado
+                $this->quantities[$item->product_id] = $item->quantity;
             }
 
             // Establecer modo edición y ID de la cotización
@@ -1466,6 +1498,12 @@ class QuoterView extends Component
             $restoredCart = session('quoter_cart', []);
             if (!empty($restoredCart)) {
                 $this->cartItems = $restoredCart;
+
+                // Inicializar quantities array
+                $this->quantities = [];
+                foreach ($this->cartItems as $item) {
+                    $this->quantities[$item['id']] = $item['quantity'];
+                }
             }
 
             // Cargar cliente restaurado
@@ -1534,6 +1572,7 @@ class QuoterView extends Component
     {
         // Limpiar carrito
         $this->cartItems = [];
+        $this->quantities = [];
         $this->total = 0;
 
         // Limpiar cliente seleccionado

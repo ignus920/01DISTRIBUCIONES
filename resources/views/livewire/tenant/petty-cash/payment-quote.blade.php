@@ -120,10 +120,50 @@
             <div class="flex-1 bg-white dark:bg-slate-900 flex flex-col min-h-0">
                 
                 <div class="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
-                    <h2 class="text-xl font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-2">
-                        <span>Forma de Pago</span>
-                        <span class="text-sm font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">Seleccione o distribuya el valor</span>
-                    </h2>
+                    <div class="mb-6">
+                        <h2 class="text-xl font-bold text-gray-900 dark:text-white">Forma de Pago</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Seleccione o distribuya el valor</p>
+                    </div>
+
+                    <!-- Sección de Pago del Cliente -->
+                    <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-6 border border-blue-200 dark:border-blue-700">
+                        <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2">
+                            💰 Pago del Cliente
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Input: Con cuánto paga -->
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
+                                    Con cuánto paga el cliente:
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span class="text-gray-400 font-bold">$</span>
+                                    </div>
+                                    <input type="number"
+                                           wire:model.live="customerPayment"
+                                           class="pl-8 block w-full rounded-lg border-0 py-3 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-blue-300 dark:ring-blue-600 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 text-lg font-bold font-mono bg-white dark:bg-slate-800"
+                                           placeholder="0"
+                                           min="0">
+                                </div>
+                            </div>
+
+                            <!-- Mostrar: Vueltas -->
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
+                                    Vueltas para el cliente:
+                                </label>
+                                <div class="bg-white dark:bg-slate-800 rounded-lg px-4 py-3 border-2 border-blue-200 dark:border-blue-600">
+                                    <span class="text-lg font-bold font-mono {{ $customerChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                        ${{ number_format(abs($customerChange), 0, ',', '.') }}
+                                    </span>
+                                    @if($customerChange < 0)
+                                        <span class="text-xs text-red-500 block">Falta dinero</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
                         
@@ -317,11 +357,20 @@
         // Escuchar eventos de Livewire para alerts
         document.addEventListener('livewire:initialized', () => {
             Livewire.on('showAlert', (data) => {
-                const message = typeof data === 'object' ? data.message : data;
+                // Extraer el mensaje correctamente del array
+                let message;
+                if (Array.isArray(data)) {
+                    message = data[0]; // Tomar el primer elemento del array
+                } else if (typeof data === 'object' && data.message) {
+                    message = data.message;
+                } else {
+                    message = data;
+                }
+
                 Swal.fire({
-                    title: 'Validación de Pago',
-                    text: message,
-                    icon: 'warning',
+                    title: 'Ajuste Automático',
+                    text: message || 'No puede superar el valor total de la venta',
+                    icon: 'info',
                     confirmButtonColor: '#3085d6',
                     confirmButtonText: 'Entendido'
                 });

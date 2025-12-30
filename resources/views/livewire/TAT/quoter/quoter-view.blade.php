@@ -583,7 +583,8 @@
                     <!-- Cantidad -->
                     <div class="text-center">
                         <input type="number"
-                               wire:model.live.debounce.500ms="cartItems.{{ $index }}.quantity"
+                               wire:model.live.debounce.500ms="quantities.{{ $item['id'] }}"
+                               wire:key="quantity-desktop-{{ $item['id'] }}"
                                class="w-24 lg:w-28 text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm lg:text-base font-semibold focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600"
                                min="1"
                                step="1"
@@ -680,7 +681,8 @@
                             <div class="col-span-2">
                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 text-center">Cant.</div>
                                 <input type="number"
-                                       wire:model.live.debounce.500ms="cartItems.{{ $index }}.quantity"
+                                       wire:model.live.debounce.500ms="quantities.{{ $item['id'] }}"
+                                       wire:key="quantity-mobile-{{ $item['id'] }}"
                                        class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-2 py-2 text-xs font-semibold"
                                        min="1"
                                        step="1"

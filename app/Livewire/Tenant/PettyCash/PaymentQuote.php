@@ -58,39 +58,38 @@ class PaymentQuote extends Component
     public $canProceedToPayment = false;
     public $isProcessing = false;
 
+    // Pago del cliente y vueltas
+    public $customerPayment = 0;
+    public $customerChange = 0;
+
     public function updated($name)
     {
         // Al terminar de editar (blur), recalculamos y auto-distribuimos
         if (str_contains($name, 'paymentMethods.') && str_ends_with($name, '.value')) {
             $this->validateAndDistribute($name);
         }
+
+        // Calcular vueltas cuando cambia el pago del cliente
+        if ($name === 'customerPayment') {
+            $this->calculateChange();
+        }
     }
 
     private function validateAndDistribute($name)
     {
         $currentField = str_replace(['paymentMethods.', '.value'], '', $name);
-        $totalOtherMethods = 0;
+        $newValue = max(0, (float) ($this->paymentMethods[$currentField]['value'] ?? 0));
 
-        foreach ($this->paymentMethods as $key => $method) {
-            if ($key !== $currentField) {
-                $totalOtherMethods += (float) ($method['value'] ?? 0);
-            }
+        // Asegurar que el valor ingresado no sea mayor al total de la venta
+        if ($newValue > $this->quoteTotal) {
+            $newValue = $this->quoteTotal;
+            $this->paymentMethods[$currentField]['value'] = $newValue;
+
+            $this->dispatch('showAlert', 'El valor total supera el valor de la venta ($' . number_format($this->quoteTotal, 0, ',', '.') . '). Se ha ajustado automáticamente.');
         }
 
-        $newValue = (float) $this->paymentMethods[$currentField]['value'];
-        
-        // Validar exceso total
-        if (($newValue + $totalOtherMethods) > ($this->quoteTotal + 0.01)) {
-            // Ajustar al máximo permitido para este campo
-            $this->paymentMethods[$currentField]['value'] = max(0, $this->quoteTotal - $totalOtherMethods);
-            
-            $this->dispatch('showAlert', [
-                'message' => 'El valor ingresado supera el total de la venta. Se ha ajustado al máximo permitido.'
-            ]);
-        }
-
-        // Auto-distribuir: El efectivo siempre intenta absorber el faltante
-        $this->autoDistributePayments();
+        // Redistribuir automáticamente los otros métodos de pago
+        $this->redistributePaymentMethods($currentField, $newValue);
         $this->calculateBalances();
     }
 
@@ -146,6 +145,9 @@ class PaymentQuote extends Component
 
         // Calcular balances iniciales
         $this->calculateBalances();
+
+        // Inicializar cálculo de vueltas
+        $this->calculateChange();
     }
 
     private function setDefaultCashAmount()
@@ -321,6 +323,20 @@ class PaymentQuote extends Component
 
         // Determinar si puede proceder al pago
         $this->canProceedToPayment = $this->totalPaid > 0;
+
+        // Calcular vueltas cada vez que cambie el balance
+        $this->calculateChange();
+    }
+
+    /**
+     * Calcular las vueltas para el cliente
+     */
+    public function calculateChange()
+    {
+        $customerPayment = (float) ($this->customerPayment ?? 0);
+
+        // Las vueltas = Lo que paga el cliente - Total de la venta
+        $this->customerChange = $customerPayment - $this->quoteTotal;
     }
 
     public function updateMethodValue($method, $value)
@@ -331,6 +347,57 @@ class PaymentQuote extends Component
         // Auto-balance: distribuir el resto automáticamente
         $this->autoDistributePayments();
         $this->calculateBalances();
+    }
+
+    /**
+     * Redistribuir automáticamente los métodos de pago cuando se modifica uno
+     */
+    private function redistributePaymentMethods($changedField, $newValue)
+    {
+        // Calcular cuánto falta para completar el total después de este cambio
+        $remainingAmount = $this->quoteTotal - $newValue;
+
+        // Si no queda nada por pagar, poner todos los demás métodos en 0
+        if ($remainingAmount <= 0) {
+            foreach ($this->paymentMethods as $key => $method) {
+                if ($key !== $changedField) {
+                    $this->paymentMethods[$key]['value'] = 0;
+                }
+            }
+            return;
+        }
+
+        // Estrategia: El efectivo siempre absorbe el cambio
+        if ($changedField !== 'efectivo') {
+            // Si el cambio no fue en efectivo, ajustar el efectivo al restante
+            $this->paymentMethods['efectivo']['value'] = $remainingAmount;
+
+            // Poner los otros métodos (que no son efectivo ni el que cambió) en 0
+            foreach ($this->paymentMethods as $key => $method) {
+                if ($key !== $changedField && $key !== 'efectivo') {
+                    $this->paymentMethods[$key]['value'] = 0;
+                }
+            }
+        } else {
+            // Si el cambio fue en efectivo, mantener los otros métodos como están
+            // y distribuir el restante entre ellos si es necesario
+            $totalOtherMethods = 0;
+            foreach ($this->paymentMethods as $key => $method) {
+                if ($key !== 'efectivo') {
+                    $totalOtherMethods += (float) ($method['value'] ?? 0);
+                }
+            }
+
+            // Si los otros métodos suman más que lo disponible, redistribuirlos proporcionalmente
+            if ($totalOtherMethods > $remainingAmount && $totalOtherMethods > 0) {
+                $factor = $remainingAmount / $totalOtherMethods;
+                foreach ($this->paymentMethods as $key => $method) {
+                    if ($key !== 'efectivo') {
+                        $this->paymentMethods[$key]['value'] = round(($method['value'] ?? 0) * $factor, 0);
+                    }
+                }
+            }
+        }
     }
 
     public function autoDistributePayments()
