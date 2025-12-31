@@ -842,9 +842,9 @@
 
     <!-- Modal Producto Genérico (TAT) -->
     @if($showGenericProductModal)
-    <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div class="fixed inset-0 z-[110] flex items-end sm:items-center justify-center">
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" wire:click="$set('showGenericProductModal', false)"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200 border border-gray-100 dark:border-gray-700">
+        <div class="relative bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom sm:zoom-in duration-300 border border-gray-100 dark:border-gray-700">
             <!-- Header -->
             <div class="px-5 py-4 border-b dark:border-gray-700 flex items-center justify-between bg-blue-600 dark:bg-blue-700 uppercase">
                 <h3 class="text-xs font-black text-white tracking-widest">Ingrese producto genérico</h3>
@@ -1099,6 +1099,13 @@
     /* Dark mode para fullscreen */
     .dark .search-fullscreen {
         background: rgb(17 24 39) !important;
+    }
+    /* Ajustes para Bottom Sheet en móvil */
+    @media (max-width: 639px) {
+        .rounded-t-3xl {
+            border-top-left-radius: 1.5rem !important;
+            border-top-right-radius: 1.5rem !important;
+        }
     }
 </style>
 <script>
