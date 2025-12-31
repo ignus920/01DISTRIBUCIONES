@@ -178,7 +178,7 @@
                     <div class="relative flex-1">
                         <input type="text"
                                wire:model.live.debounce.250ms="currentSearch"
-                               placeholder="Buscar Producto (mín. 2 caracteres)"
+                               placeholder="Buscar Producto "
                                class="w-full px-3 py-3 sm:px-4 sm:py-3 text-sm sm:text-base bg-white dark:bg-gray-700 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:border-blue-500 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 shadow-sm transition-all duration-200 touch-manipulation"
                                autocomplete="off"
                                id="product-search-input"
