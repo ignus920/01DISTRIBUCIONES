@@ -577,7 +577,7 @@
                             <!-- Precio editable -->
                             <input type="number"
                                    value="{{ number_format($item['price'], 0, '.', '') }}"
-                                   wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
+                                    wire:change="updatePrice('{{ $item['id'] }}', $event.target.value)"
                                    class="w-32 lg:w-36 text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm lg:text-base font-semibold focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600"
                                    min="0"
                                    step="1"
@@ -609,7 +609,7 @@
 
                     <!-- Botón Eliminar -->
                     <div class="text-center">
-                        <button wire:click="removeFromCart({{ $item['id'] }})"
+                        <button wire:click="removeFromCart('{{ $item['id'] }}')"
                                 class="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded-lg p-2 lg:p-3 transition-colors duration-150 inline-flex items-center justify-center"
                                 title="Eliminar producto">
                                 <svg class="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -644,7 +644,7 @@
                         handleEnd() {
                             if (Math.abs(this.currentX) > this.threshold) {
                                 this.itemRemoved = true;
-                                $wire.removeFromCart({{ $item['id'] }});
+                                $wire.removeFromCart('{{ $item['id'] }}');
                             }
                             this.reset();
                         }
@@ -695,7 +695,7 @@
                                 </div>
                             </div>
 
-                            <button wire:click="removeFromCart({{ $item['id'] }})"
+                            <button wire:click="removeFromCart('{{ $item['id'] }}')"
                                     class="bg-red-500 text-white rounded-xl p-2.5 shadow-sm active:scale-95 transition-transform">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -710,7 +710,7 @@
                                 @if($companyConfig && $companyConfig->allowsPriceChange())
                                     <input type="number"
                                            value="{{ number_format($item['price'], 0, '.', '') }}"
-                                           wire:change="updatePrice({{ $item['id'] }}, $event.target.value)"
+                                           wire:change="updatePrice('{{ $item['id'] }}', $event.target.value)"
                                            class="w-full text-center bg-gray-50 dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500">
                                 @else
                                     <div class="w-full text-center bg-gray-100 dark:bg-gray-700 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-2.5 text-sm font-bold">
@@ -725,7 +725,7 @@
                                 <div class="text-[10px] text-gray-400 uppercase font-bold mb-1 text-center">Cant.</div>
                                 <input type="number"
                                        x-model="qty"
-                                       @change="$wire.updateQuantity({{ $item['id'] }}, qty)"
+                                       @change="$wire.updateQuantity('{{ $item['id'] }}', qty)"
                                        class="w-full text-center bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-2.5 text-sm font-bold focus:ring-2 focus:ring-blue-500">
                             </div>
 
@@ -842,9 +842,9 @@
 
     <!-- Modal Producto Genérico (TAT) -->
     @if($showGenericProductModal)
-    <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div class="fixed inset-0 z-[110] flex items-end sm:items-center justify-center">
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" wire:click="$set('showGenericProductModal', false)"></div>
-        <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200 border border-gray-100 dark:border-gray-700">
+        <div class="relative bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom sm:zoom-in duration-300 border border-gray-100 dark:border-gray-700">
             <!-- Header -->
             <div class="px-5 py-4 border-b dark:border-gray-700 flex items-center justify-between bg-blue-600 dark:bg-blue-700 uppercase">
                 <h3 class="text-xs font-black text-white tracking-widest">Ingrese producto genérico</h3>
@@ -1099,6 +1099,13 @@
     /* Dark mode para fullscreen */
     .dark .search-fullscreen {
         background: rgb(17 24 39) !important;
+    }
+    /* Ajustes para Bottom Sheet en móvil */
+    @media (max-width: 639px) {
+        .rounded-t-3xl {
+            border-top-left-radius: 1.5rem !important;
+            border-top-right-radius: 1.5rem !important;
+        }
     }
 </style>
 <script>
