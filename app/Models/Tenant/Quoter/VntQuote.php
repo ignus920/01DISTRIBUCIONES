@@ -55,6 +55,11 @@ class VntQuote extends Model
         return $this->belongsTo(VntWarehouse::class, 'branchId');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Auth\User::class, 'userId');
+    }
+
     // Métodos de utilidad
     public function getTotalAttribute()
     {

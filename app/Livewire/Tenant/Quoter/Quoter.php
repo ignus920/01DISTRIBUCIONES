@@ -9,12 +9,13 @@ use App\Traits\HasCompanyConfiguration;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\Livewire\WithExport;
 use Illuminate\Support\Facades\Auth;
 
 
 class Quoter extends Component
 {
-    use WithPagination, HasCompanyConfiguration;
+    use WithPagination, WithExport, HasCompanyConfiguration;
 
     public $search = '';
     public $viewType = 'desktop'; // 'desktop' o 'mobile'
@@ -545,8 +546,8 @@ class Quoter extends Component
         //dd(Auth::id());
         // Cargar cotizaciones con sus relaciones
         
-        $quotes = VntQuote::with(['customer', 'warehouse.contacts', 'branch', 'detalles'])
-            ->when(Auth::user()->profile_id !== 1, function ($query) {
+        $quotes = VntQuote::with(['customer', 'warehouse.contacts', 'branch', 'detalles', 'user'])
+            ->when(Auth::user()->profile_id != 2, function ($query) {
                 return $query->where('userId', Auth::id());
             })
             ->when($this->search, function ($query) {
@@ -809,5 +810,81 @@ class Quoter extends Component
     public function getQuoterCountProperty()
     {
         return collect($this->quoterItems)->sum('quantity');
+    }
+
+    /**
+     * Métodos para Exportación (WithExport Trait)
+     */
+
+    protected function getExportData()
+    {
+        $query = VntQuote::with(['customer', 'warehouse.contacts', 'branch', 'detalles', 'user'])
+            ->when(Auth::user()->profile_id != 2, function ($query) {
+                return $query->where('userId', Auth::id());
+            })
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('consecutive', 'like', '%' . $this->search . '%')
+                        ->orWhere('status', 'like', '%' . $this->search . '%')
+                        ->orWhere('typeQuote', 'like', '%' . $this->search . '%')
+                        ->orWhere('observations', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('customer', function ($q) {
+                            $q->where('firstName', 'like', '%' . $this->search . '%')
+                              ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                              ->orWhere('email', 'like', '%' . $this->search . '%');
+                        })
+                        ->orWhereHas('warehouse', function ($q) {
+                            $q->where('name', 'like', '%' . $this->search . '%')
+                              ->orWhere('address', 'like', '%' . $this->search . '%');
+                        });
+                });
+            });
+
+        if (in_array($this->sortBy, ['customer_name', 'warehouse_name'])) {
+            $data = $query->get();
+            
+            if ($this->sortBy === 'customer_name') {
+                $sorted = $data->sortBy(function ($item) {
+                    return $item->customer_name;
+                });
+            } else {
+                $sorted = $data->sortBy(function ($item) {
+                    return $item->warehouse_name;
+                });
+            }
+
+            if ($this->sortDirection === 'desc') {
+                $sorted = $sorted->reverse();
+            }
+            return $sorted;
+        }
+
+        return $query->orderBy($this->sortBy, $this->sortDirection)->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['CONSECUTIVO', 'CLIENTE', 'VENDEDOR', 'TIPO', 'ESTADO', 'SUCURSAL', 'TOTAL', 'FECHA'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function ($quote) {
+            return [
+                $quote->consecutive,
+                $quote->customer_name,
+                $quote->user->name ?? 'N/A',
+                $quote->typeQuote,
+                $quote->status,
+                $quote->warehouse->name ?? 'N/A',
+                $quote->total,
+                $quote->created_at->format('d/m/Y H:i')
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'cotizaciones_' . now()->format('Y-m-d_His');
     }
 }

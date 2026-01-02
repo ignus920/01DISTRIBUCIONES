@@ -126,7 +126,7 @@
                             </div>
 
                             @if($quote->warehouse)
-                                <div>
+                                <div class="mb-2">
                                     <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Sucursal</span>
                                     <p class="text-sm text-gray-600 dark:text-gray-400">
                                         🏢 {{ $quote->warehouse->name }}
@@ -136,6 +136,13 @@
                                     </p>
                                 </div>
                             @endif
+
+                            <div>
+                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Vendedor</span>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    👤 {{ $quote->user->name ?? 'N/A' }}
+                                </p>
+                            </div>
                         </div>
 
                         <!-- Observations if any -->

@@ -1137,6 +1137,11 @@ class QuoterView extends Component
 
         if (!$allowNoStock) {
             foreach ($this->cartItems as $item) {
+                // Saltar validación de stock para productos genéricos
+                if (str_starts_with($item['id'], 'gen_')) {
+                    continue;
+                }
+
                 $product = TatItems::find($item['id']);
                 if (!$product) {
                     $stockErrors[] = "Producto {$item['name']} no encontrado";
@@ -1245,9 +1250,11 @@ class QuoterView extends Component
             ]);
 
             foreach ($this->cartItems as $item) {
+                $isGeneric = str_starts_with($item['id'], 'gen_');
+
                 $newQuoteItem = QuoteItem::create([
                     'quoteId' => $quote->id,
-                    'itemId' => $item['id'],
+                    'itemId' => $isGeneric ? 0 : $item['id'],
                     'quantity' => $item['quantity'],
                     'tax_percentage' => $item['tax_percentage'] ?? 0,
                     'price' => $item['price'],
@@ -1258,20 +1265,23 @@ class QuoterView extends Component
                     'quote_item_id' => $newQuoteItem->id,
                     'quote_id' => $quote->id,
                     'product_id' => $item['id'],
-                    'quantity' => $item['quantity']
+                    'quantity' => $item['quantity'],
+                    'is_generic' => $isGeneric
                 ]);
 
-                // Reducir stock del inventario
-                $product = TatItems::find($item['id']);
-                if ($product) {
-                    $oldStock = $product->stock;
-                    $product->decrement('stock', $item['quantity']);
-                    Log::info('Stock reducido en venta', [
-                        'product_id' => $product->id,
-                        'old_stock' => $oldStock,
-                        'quantity_sold' => $item['quantity'],
-                        'new_stock' => $product->fresh()->stock
-                    ]);
+                // Reducir stock del inventario (solo para productos reales)
+                if (!$isGeneric) {
+                    $product = TatItems::find($item['id']);
+                    if ($product) {
+                        $oldStock = $product->stock;
+                        $product->decrement('stock', $item['quantity']);
+                        Log::info('Stock reducido en venta', [
+                            'product_id' => $product->id,
+                            'old_stock' => $oldStock,
+                            'quantity_sold' => $item['quantity'],
+                            'new_stock' => $product->fresh()->stock
+                        ]);
+                    }
                 }
             }
 

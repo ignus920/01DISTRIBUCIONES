@@ -160,6 +160,11 @@
                                 </svg>
                             </div>
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                            <div class="flex items-center space-x-1">
+                                <span>VENDEDOR</span>
+                            </div>
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-300 transition-colors" wire:click="setSortBy('warehouse_name')">
                             <div class="flex items-center space-x-1">
                                 <span>SUCURSAL</span>
@@ -232,6 +237,9 @@
                                     @else bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 @endif">
                                 {{ $quote->status }}
                             </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
+                            {{ $quote->user->name ?? 'N/A' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
                             @if($quote->warehouse)
