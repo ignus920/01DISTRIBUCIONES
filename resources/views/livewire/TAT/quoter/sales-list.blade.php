@@ -124,8 +124,17 @@
                                              x-transition:leave="transition ease-in duration-75"
                                              x-transition:leave-start="transform opacity-100 scale-100"
                                              x-transition:leave-end="transform opacity-0 scale-95"
-                                             class="fixed z-[9999] w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1"
-                                             x-bind:style="`right: 20px; top: ${$el.parentElement.getBoundingClientRect().bottom + 8}px;`"
+                                             class="fixed z-[100] w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1"
+                                             x-init="$watch('open', value => {
+                                                 if (value) {
+                                                     $nextTick(() => {
+                                                         let rect = $el.parentElement.getBoundingClientRect();
+                                                         $el.style.top = (rect.bottom + 8) + 'px';
+                                                         $el.style.left = (rect.right - 192) + 'px';
+                                                     });
+                                                 }
+                                             })"
+                                             @scroll.window="open = false"
                                              style="box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
 
                                             <!-- Opción Detalle -->

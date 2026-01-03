@@ -280,7 +280,11 @@ class PaymentQuote extends Component
     {
         try {
             $model = $this->getPettyCashModel();
-            $pettyCash = $model->where('status', 1)->first();
+            $warehouseId = $this->getWarehouseId();
+            
+            $pettyCash = $model->where('status', 1)
+                ->where('warehouseId', $warehouseId)
+                ->first();
 
             if (!$pettyCash) {
                 session()->flash('error', 'No hay una caja abierta. Debe abrir una caja antes de procesar pagos.');
@@ -295,6 +299,21 @@ class PaymentQuote extends Component
             session()->flash('error', 'Error al verificar la caja: ' . $e->getMessage());
             return false;
         }
+    }
+
+    public function getWarehouseId()
+    {
+        $this->ensureTenantConnection();
+
+        $centralDbName = config('database.connections.central.database');
+
+        $data = \Illuminate\Support\Facades\DB::table("{$centralDbName}.users", 'u')
+            ->join("{$centralDbName}.vnt_contacts as c", 'u.contact_id', '=', 'c.id')
+            ->join("{$centralDbName}.vnt_warehouses as w", 'c.warehouseId', '=', 'w.id')
+            ->where('u.id', auth()->id())
+            ->value('w.id');
+            
+        return $data;
     }
 
 
