@@ -347,9 +347,9 @@ class TatItemsManager extends Component
     {
         $this->ensureTenantConnection();
 
-        return TatItems::query()
-            ->with(['category', 'tax'])
+        return TatItems::with(['category', 'tax'])
             ->where('company_id', $this->company_id)
+            ->where('sku', '!=', 'GENERICO')
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%' . $this->search . '%')
@@ -402,9 +402,9 @@ class TatItemsManager extends Component
     protected function getExportData()
     {
         $this->ensureTenantConnection(); 
-        return TatItems::query()
-            ->with(['category', 'tax'])
+        return TatItems::with(['category', 'tax'])
             ->where('company_id', $this->company_id)
+            ->where('sku', '!=', 'GENERICO')
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('name', 'like', '%' . $this->search . '%')
