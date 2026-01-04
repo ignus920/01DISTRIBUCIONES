@@ -120,7 +120,7 @@ class CopyProductsToClientJob implements ShouldQueue
                         'status' => 1, // Activo
                         'created_at' => now(),
                         'updated_at' => now(),
-                        'deleted_at' => now(), // Campo requerido NOT NULL
+                        'deleted_at' => null, // Corregido: null para productos activos
                     ];
 
                     // Insertar el producto en tat_items
@@ -139,6 +139,10 @@ class CopyProductsToClientJob implements ShouldQueue
                     continue;
                 }
             }
+
+            // Asegurar que exista el producto genérico para esta empresa
+            $this->ensureGenericProductExists();
+
 
             Log::info('Copia de productos completada', [
                 'company_id' => $this->companyId,
@@ -161,7 +165,47 @@ class CopyProductsToClientJob implements ShouldQueue
     }
 
     /**
+     * Asegura que exista un producto genérico para la empresa.
+     */
+    private function ensureGenericProductExists(): void
+    {
+        try {
+            $exists = DB::table('tat_items')
+                ->where('company_id', $this->companyId)
+                ->where('sku', 'GENERICO')
+                ->exists();
+
+            if (!$exists) {
+                DB::table('tat_items')->insert([
+                    'item_father_id' => 0,
+                    'company_id' => $this->companyId,
+                    'sku' => 'GENERICO',
+                    'name' => 'PRODUCTO GENERICO',
+                    'taxId' => 2, // IVA 19% por defecto o según corresponda
+                    'categoryId' => 1, // Categoría por defecto
+                    'stock' => 999999,
+                    'img_path' => '',
+                    'cost' => 0,
+                    'price' => 0,
+                    'status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'deleted_at' => null,
+                ]);
+
+                Log::info('Producto genérico creado para la empresa', ['company_id' => $this->companyId]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al asegurar producto genérico', [
+                'company_id' => $this->companyId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Handle a job failure.
+
      */
     public function failed(\Throwable $exception): void
     {

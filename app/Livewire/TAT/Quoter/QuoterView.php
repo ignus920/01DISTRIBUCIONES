@@ -1249,12 +1249,20 @@ class QuoterView extends Component
                 'action_type' => $actionType ?? 'desconocido'
             ]);
 
+            // Obtener el ID del producto genérico oficial para esta empresa
+            $genericProduct = DB::table('tat_items')
+                ->where('company_id', $this->companyId)
+                ->where('sku', 'GENERICO')
+                ->first();
+
+            $genericId = $genericProduct ? $genericProduct->id : 0;
+
             foreach ($this->cartItems as $item) {
                 $isGeneric = str_starts_with($item['id'], 'gen_');
 
                 $newQuoteItem = QuoteItem::create([
                     'quoteId' => $quote->id,
-                    'itemId' => $isGeneric ? 0 : $item['id'],
+                    'itemId' => $isGeneric ? $genericId : $item['id'],
                     'quantity' => $item['quantity'],
                     'tax_percentage' => $item['tax_percentage'] ?? 0,
                     'price' => $item['price'],
@@ -1265,9 +1273,11 @@ class QuoterView extends Component
                     'quote_item_id' => $newQuoteItem->id,
                     'quote_id' => $quote->id,
                     'product_id' => $item['id'],
+                    'real_item_id' => $isGeneric ? $genericId : $item['id'],
                     'quantity' => $item['quantity'],
                     'is_generic' => $isGeneric
                 ]);
+
 
                 // Reducir stock del inventario (solo para productos reales)
                 if (!$isGeneric) {
