@@ -502,7 +502,7 @@
                         <!-- Precio -->
                         <div>
                             <label for="price" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Precio *
+                                Precio (sin iva) *
                             </label>
                             <input
                                 wire:model="price"
