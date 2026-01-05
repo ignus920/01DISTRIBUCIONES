@@ -1737,7 +1737,7 @@ public function validateQuantity($index)
 
 
     
-
+   //carga preliminar  de TAT
     public function loadPreliminaryRestockForEditing()
     {
         $this->ensureTenantConnection();
