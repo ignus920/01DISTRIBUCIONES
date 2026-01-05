@@ -27,9 +27,9 @@ class TatRestockList extends Model
     // El SQL dice created_at y updated_at existen, así que esto está bien.
     public $timestamps = true;
 
-    // Relación con el Item TAT (Producto específico de tienda TAT)
+    // Relación con el Item de Distribución (Catálogo Central)
     public function item()
     {
-        return $this->belongsTo(TatItems::class, 'itemId');
+        return $this->belongsTo(\App\Models\Tenant\Items\Items::class, 'itemId');
     }
 }

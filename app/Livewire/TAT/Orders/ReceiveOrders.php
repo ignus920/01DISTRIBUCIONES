@@ -169,7 +169,10 @@ class ReceiveOrders extends Component
         }
 
         $query = DB::table('tat_restock_list as r')
-            ->join('tat_items as i', 'r.itemId', '=', 'i.id')
+            ->join('tat_items as i', function($join) {
+                $join->on('r.itemId', '=', 'i.item_father_id')
+                     ->on('r.company_id', '=', 'i.company_id');
+            })
             ->leftJoin('inv_remissions as rem', 'rem.quoteId', '=', 'r.order_number')
             ->where('r.company_id', $this->companyId)
             ->whereIn('r.status', ['Confirmado', 'Recibido'])
