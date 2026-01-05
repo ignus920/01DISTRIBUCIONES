@@ -254,7 +254,7 @@
                                             <!-- Indicador de acción rápida -->
                                             @if($currentMethod === $key)
                                                 <div class="absolute inset-y-0 right-0 pr-3 items-center pointer-events-none hidden lg:flex">
-                                                    <span class="text-[10px] text-blue-500 uppercase font-bold tracking-tight bg-blue-50 dark:bg-blue-900/50 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800">TAB: Pagar Todo</span>
+                                                    <span class="text-[10px] text-blue-500 uppercase font-bold tracking-tight bg-blue-50 dark:bg-blue-900/50 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800"></span>
                                                 </div>
                                             @endif
                                         </div>

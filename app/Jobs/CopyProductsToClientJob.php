@@ -91,6 +91,13 @@ class CopyProductsToClientJob implements ShouldQueue
                         continue;
                     }
 
+                    // Obtener la imagen principal del producto
+                    $mainImage = DB::table('inv_image_gallery')
+                        ->where('itemId', $product->item_father_id)
+                        ->where('type', 'PRINCIPAL')
+                        ->whereNull('deleted_at')
+                        ->first();
+
                     // Obtener el precio más reciente del producto
                     $latestPrice = DB::table('inv_values')
                         ->where('itemId', $product->item_father_id)
@@ -115,6 +122,7 @@ class CopyProductsToClientJob implements ShouldQueue
                         'taxId' => $product->taxId,
                         'categoryId' => $product->categoryId,
                         'stock' => 0, // Stock inicial en 0 para el cliente
+                        'img_path' => $mainImage ? $mainImage->img_path : null,
                         'cost' => $latestCost ? (int) $latestCost->values : 0,
                         'price' => $latestPrice ? (int) ($latestPrice->values * 1.30) : 0,
                         'status' => 1, // Activo
