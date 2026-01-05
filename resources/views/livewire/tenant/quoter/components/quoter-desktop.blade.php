@@ -294,6 +294,7 @@
                                     x-anchor.bottom-end="$refs.button"
                                     style="display: none;">
                                     <div class="py-1" role="menu" aria-orientation="vertical">
+                                        @if($this->validateRemision($quote->id))
                                         <button wire:click="editarCotizacion({{ $quote->id }})"
                                             class="w-full text-left px-4 py-2 text-sm text-yellow-800 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors flex items-center">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,6 +302,7 @@
                                             </svg>
                                             Editar
                                         </button>
+                                        @endif
                                         <button wire:click="printQuote({{ $quote->id }})"
                                             class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

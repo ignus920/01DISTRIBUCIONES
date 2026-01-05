@@ -156,6 +156,7 @@
                         <!-- Actions - Botones de acción para cada cotización -->
                         <div class="flex items-center gap-2">
                             <!-- Botón Ir al Carrito -->
+                            @if($quote->status != 'REMISIÓN')
                             <button
                                 wire:click="irAlCarrito({{ $quote->id }})"
                                 wire:loading.attr="disabled"
@@ -179,7 +180,7 @@
                                     <span>Carrito</span>
                                 </div>
                             </button>
-
+                            @endif
                             <!-- Botón Imprimir -->
                             <button
                                 wire:click="printQuote({{ $quote->id }})"

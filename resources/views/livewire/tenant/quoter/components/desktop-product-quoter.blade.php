@@ -564,9 +564,13 @@ $header = 'Seleccionar productos';
                             </div>
                         @else
                             <button type="button" wire:click.prevent="confirmarPedido"
-                                class="w-full px-4 py-3 text-sm font-medium text-blue-800 dark:text-blue-300
-                                       border border-blue-200 dark:border-blue-700
-                                       hover:bg-blue-50 dark:hover:bg-blue-900/20
+                                @if($cartHasChanges) disabled @endif
+                                class="w-full px-4 py-3 text-sm font-medium 
+                                       @if($cartHasChanges)
+                                           bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed
+                                       @else
+                                           text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20
+                                       @endif
                                        rounded-lg transition-colors flex items-center justify-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -574,7 +578,11 @@ $header = 'Seleccionar productos';
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                                 </svg>
-                                Confirmar pedido
+                                @if($cartHasChanges)
+                                    Guarde los cambios primero
+                                @else
+                                    Confirmar pedido
+                                @endif
                             </button>
                         @endif
 

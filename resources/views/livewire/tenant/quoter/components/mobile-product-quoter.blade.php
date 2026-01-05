@@ -638,15 +638,24 @@ $header = 'Seleccionar productos';
                             </div>
                         @else
                             <button wire:click="confirmarPedido"
-                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg
-                                       transition-colors flex items-center justify-center text-sm">
+                                @if($cartHasChanges) disabled @endif
+                                class="w-full font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center text-sm
+                                       @if($cartHasChanges)
+                                           bg-gray-400 text-gray-200 cursor-not-allowed
+                                       @else
+                                           bg-blue-600 hover:bg-blue-700 text-white
+                                       @endif">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12l2 2 4-4" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                                 </svg>
-                                Confirmar pedido
+                                @if($cartHasChanges)
+                                    Guarde los cambios primero
+                                @else
+                                    Confirmar pedido
+                                @endif
                             </button>
                         @endif
                     </div>
