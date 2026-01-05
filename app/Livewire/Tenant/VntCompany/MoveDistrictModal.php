@@ -73,7 +73,7 @@ class MoveDistrictModal extends Component
         }
 
         $query = TatCompanyRoute::query()
-            ->with(['company.mainWarehouse'])
+            ->with(['company', 'company.mainWarehouse'])
             ->whereHas('company.mainWarehouse', function ($query) {
                 $query->where('district', $this->district);
             });
@@ -103,7 +103,7 @@ class MoveDistrictModal extends Component
 
             // Mostrar todos los clientes del barrio seleccionado
             $query = TatCompanyRoute::query()
-                ->with(['company.mainWarehouse', 'route.salesman'])
+                ->with(['company', 'company.mainWarehouse', 'route.salesman'])
                 ->whereHas('company.mainWarehouse', function ($query) {
                     $query->where('district', $this->district);
                 });
@@ -120,7 +120,6 @@ class MoveDistrictModal extends Component
                       ->orWhere('identification', 'like', '%' . $this->search . '%');
                 });
             });
-
             return $query->orderBy('route_id')->orderBy('sales_order')->paginate($this->perPage);
         } catch (\Exception $e) {
             Log::error('Error getting companies by district: ' . $e->getMessage());

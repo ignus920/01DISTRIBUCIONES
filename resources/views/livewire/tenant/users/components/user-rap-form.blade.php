@@ -116,7 +116,7 @@
                 </div>
             </div>
             <!-- Datatable -->
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto overflow-visible">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
@@ -250,8 +250,24 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                 <!-- Menú de tres puntos con Alpine.js -->
-                                <div x-data="{ open: false }" @click.outside="open = false" class="relative inline-block text-left">
-                                    <button @click="open = !open"
+                                <div x-data="{ 
+                                    open: false,
+                                    openUp: false,
+                                    toggleMenu() {
+                                        this.open = !this.open;
+                                        if (this.open) {
+                                            this.$nextTick(() => {
+                                                const button = this.$refs.button;
+                                                const menu = this.$refs.menu;
+                                                const buttonRect = button.getBoundingClientRect();
+                                                const spaceBelow = window.innerHeight - buttonRect.bottom;
+                                                const menuHeight = menu.offsetHeight || 150;
+                                                this.openUp = spaceBelow < (menuHeight + 50);
+                                            });
+                                        }
+                                    }
+                                }" @click.outside="open = false" class="relative inline-block text-left">
+                                    <button @click="toggleMenu()" x-ref="button"
                                         class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
                                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
@@ -260,6 +276,8 @@
 
                                     <!-- Menú desplegable -->
                                     <div x-show="open"
+                                        x-ref="menu"
+                                        x-cloak
                                         x-transition:enter="transition ease-out duration-100"
                                         x-transition:enter-start="transform opacity-0 scale-95"
                                         x-transition:enter-end="transform opacity-100 scale-100"
@@ -267,8 +285,8 @@
                                         x-transition:leave-start="transform opacity-100 scale-100"
                                         x-transition:leave-end="transform opacity-0 scale-95"
                                         @click="open = false"
-                                        class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
-                                        style="display: none;">
+                                        :class="openUp ? 'bottom-full mb-2 origin-bottom-right' : 'top-full mt-2 origin-top-right'"
+                                        class="absolute right-0 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50">
                                         <div class="py-1" role="menu" aria-orientation="vertical">
                                             <!-- Editar Usuario -->
                                             @if(\App\Helpers\PermissionHelper::userCan('Usuarios', 'edit'))
@@ -286,7 +304,7 @@
                                             <button wire:click="openChangePasswordModal({{ $user->id }})"
                                                 class="w-full text-left px-4 py-2 text-sm text-orange-800 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors flex items-center">
                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 112 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 112 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
                                                 </svg>
                                                 Cambiar Contraseña
                                             </button>
@@ -509,31 +527,59 @@
 
                         <!-- Password (only in create mode) -->
                         @if(!$editingId)
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Contraseña <span class="text-red-500">*</span>
-                            </label>
-                            <input wire:model.defer="password" type="password"
-                                autocomplete="new-password"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password') border-red-500 @enderror"
-                                placeholder="Mínimo 8 caracteres">
-                            @error('password') 
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
-                            @enderror
-                        </div>
+                        <div x-data="{ 
+                            password: @entangle('password').defer, 
+                            passwordConfirmation: @entangle('password_confirmation').defer,
+                            get passwordsMatch() {
+                                if (!this.password || !this.passwordConfirmation) return true;
+                                return this.password === this.passwordConfirmation;
+                            }
+                        }">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Contraseña <span class="text-red-500">*</span>
+                                </label>
+                                <input x-model="password" type="password"
+                                    autocomplete="new-password"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password') border-red-500 @enderror"
+                                    placeholder="Mínimo 8 caracteres">
+                                @error('password') 
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                                @enderror
+                            </div>
 
-                        <!-- Password Confirmation (only in create mode) -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Confirmar Contraseña <span class="text-red-500">*</span>
-                            </label>
-                            <input wire:model.defer="password_confirmation" type="password"
-                                autocomplete="new-password"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password_confirmation') border-red-500 @enderror"
-                                placeholder="Repite la contraseña">
-                            @error('password_confirmation') 
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
-                            @enderror
+                            <!-- Password Confirmation (only in create mode) -->
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Confirmar Contraseña <span class="text-red-500">*</span>
+                                </label>
+                                <input x-model="passwordConfirmation" type="password"
+                                    autocomplete="new-password"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password_confirmation') border-red-500 @enderror"
+                                    placeholder="Repite la contraseña">
+                                @error('password_confirmation') 
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                                @enderror
+                            </div>
+
+                            <!-- Password Match Alert -->
+                            <div x-show="!passwordsMatch && password && passwordConfirmation"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-95"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 transform scale-100"
+                                x-transition:leave-end="opacity-0 transform scale-95"
+                                class="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                <div class="flex items-start">
+                                    <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <p class="text-sm text-yellow-700 dark:text-yellow-300">
+                                        Las contraseñas deben ser iguales
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                         @endif
 
