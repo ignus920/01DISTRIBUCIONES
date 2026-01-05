@@ -420,10 +420,22 @@
                                         <span class="text-gray-500 dark:text-slate-400">Nombre:</span>
                                         <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer_name }}</span>
                                     </p>
-                                    @if($selectedQuote->customer->email)
+                                    @if($selectedQuote->customer->identification)
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Identificación:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->identification }}</span>
+                                    </p>
+                                    @endif
+                                     @if($selectedQuote->customer->typePerson)
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Tipo persona:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->typePerson === 'PERSON_ENTITY' ? 'Natural' : 'Jurídica' }}</span>
+                                    </p>
+                                    @endif
+                                    @if($selectedQuote->customer->billingEmail)
                                     <p class="flex justify-between">
                                         <span class="text-gray-500 dark:text-slate-400">Email:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->email }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->billingEmail }}</span>
                                     </p>
                                     @endif
                                     @if($selectedQuote->customer->business_phone)
@@ -432,6 +444,7 @@
                                         <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->business_phone }}</span>
                                     </p>
                                     @endif
+
                                 </div>
                             @else
                                 <p class="text-sm text-gray-500 italic">Cliente mostrador / No registrado</p>
