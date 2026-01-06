@@ -10,8 +10,8 @@ use App\Models\TAT\Categories\TatCategories;
 use App\Models\Central\CnfTaxes;
 use App\Models\Auth\Tenant;
 use App\Services\Tenant\TenantManager;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class TatItemsManager extends Component
 {
@@ -74,7 +74,9 @@ class TatItemsManager extends Component
             'sku.required' => 'El SKU es obligatorio',
             'sku.unique' => 'Este SKU ya existe',
             'name.required' => 'El nombre es obligatorio',
+            'taxId.exists' => 'El impuesto seleccionado no es válido',
             'categoryId.required' => 'La categoría es obligatoria',
+            'categoryId.exists' => 'La categoría seleccionada no es válida',
             'stock.required' => 'El stock es obligatorio',
             'stock.numeric' => 'El stock debe ser un número',
             'stock.min' => 'El stock no puede ser negativo',
@@ -157,7 +159,6 @@ class TatItemsManager extends Component
     public function edit($itemId)
     {
         $this->ensureTenantConnection();
-
         $item = TatItems::findOrFail($itemId);
 
         $this->item_id = $item->id;
@@ -183,14 +184,26 @@ class TatItemsManager extends Component
             $this->errorMessage = '';
             $this->successMessage = '';
 
-            $this->validate();
+            // Validar todos los campos excepto la imagen al crear/actualizar
+            $rules = $this->rules();
+            if (isset($rules['image'])) {
+                unset($rules['image']);
+            }
+            // Si no se ha seleccionado categoría, añadir error al campo para mostrarlo inline
+            if (empty($this->categoryId) && $this->categoryId !== 0) {
+                $this->resetErrorBag();
+                $this->addError('categoryId', 'La categoría es obligatoria');
+                return;
+            }
+
+            $this->validate($rules);
 
             // Manejar la carga de imagen
             $imagePath = $this->img_path ?: ''; // Asegurar que siempre tenga un valor
             if ($this->image) {
                 // Eliminar imagen anterior si existe
-                if ($this->editMode && $this->img_path && \Storage::disk('public')->exists($this->img_path)) {
-                    \Storage::disk('public')->delete($this->img_path);
+                if ($this->editMode && $this->img_path && Storage::disk('public')->exists($this->img_path)) {
+                    Storage::disk('public')->delete($this->img_path);
                 }
                 
                 // Guardar nueva imagen
@@ -248,8 +261,8 @@ class TatItemsManager extends Component
                 $item = TatItems::findOrFail($this->item_id);
                 
                 // Eliminar archivo físico
-                if ($item->img_path && \Storage::disk('public')->exists($item->img_path)) {
-                    \Storage::disk('public')->delete($item->img_path);
+                if ($item->img_path && Storage::disk('public')->exists($item->img_path)) {
+                    Storage::disk('public')->delete($item->img_path);
                 }
                 
                 // Actualizar base de datos
@@ -341,6 +354,53 @@ class TatItemsManager extends Component
         $this->image = null;
         $this->existingImage = null;
         $this->editMode = false;
+    }
+
+    public function updatedCategoryId()
+    {
+        // Si está vacío, añadir error; si tiene valor, limpiar el error
+        if (empty($this->categoryId) && $this->categoryId !== 0) {
+            $this->addError('categoryId', 'La categoría es obligatoria');
+        } else {
+            $this->resetErrorBag('categoryId');
+            $this->resetValidation('categoryId');
+        }
+    }
+
+    public function updatedTaxId()
+    {
+        // Validar el campo taxId cuando cambie
+        $this->validateOnly('taxId');
+    }
+
+    public function updatedSku()
+    {
+        // Validar el campo sku cuando cambie
+        $this->validateOnly('sku');
+    }
+
+    public function updatedName()
+    {
+        // Validar el campo name cuando cambie
+        $this->validateOnly('name');
+    }
+
+    public function updatedStock()
+    {
+        // Validar el campo stock cuando cambie
+        $this->validateOnly('stock');
+    }
+
+    public function updatedCost()
+    {
+        // Validar el campo cost cuando cambie
+        $this->validateOnly('cost');
+    }
+
+    public function updatedPrice()
+    {
+        // Validar el campo price cuando cambie
+        $this->validateOnly('price');
     }
 
     public function getItemsProperty()
@@ -446,6 +506,6 @@ class TatItemsManager extends Component
             'items' => $this->items,
             'categories' => $this->categories,
             'taxes' => $this->taxes,
-        ])->layout('layouts.app'); // 👈 aquí agregas el layout
+        ]);
     }
 }

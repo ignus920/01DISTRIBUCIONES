@@ -95,10 +95,39 @@ class ReceiveOrders extends Component
         DB::beginTransaction();
         try {
             foreach ($validSelection as $id) {
-                // Determine quantity to save
+
+                // Determine if item exist
+                $itemId = DB::table('tat_restock_list as tr')
+                    ->join('tat_items as it', 'it.id', '=', 'tr.itemId')
+                    ->where('tr.id', 96)
+                    ->value('tr.itemId');
+                     
+                $company = DB::table('tat_items')
+                    ->where('company_id', $this->companyId)
+                    ->first();
+
                 $item = $this->items->firstWhere('id', $id);
                 if (!$item) continue;
 
+                 if (!$itemId){
+                    // create a new item to tat_items
+                    DB::table('tat_items')->insertGetId([
+                        'item_father_id' => $item->itemId,
+                        'company_id' => $this->companyId,
+                        'sku' => $item->it_sku_dis,
+                        'name' => $item->it_name_dis,
+                        'taxId' => $item->taxId,
+                        'categoryId' => $company->categoryId,
+                        'stock' => 0,
+                        'cost' => (int) $item->price,
+                        'price' => (int) (ceil($item->price / 100) * 100),
+                        'status' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                 }
+
+                // Determine quantity to save
                 $qtyToReceive = intval($this->quantities[$id] ?? 0);
 
                 // 1. Update tat_restock_list status and quantity
@@ -168,28 +197,39 @@ class ReceiveOrders extends Component
             return;
         }
 
-        $query = DB::table('tat_restock_list as r')
-            ->join('tat_items as i', function($join) {
-                $join->on('r.itemId', '=', 'i.item_father_id')
-                     ->on('r.company_id', '=', 'i.company_id');
-            })
-            ->leftJoin('inv_remissions as rem', 'rem.quoteId', '=', 'r.order_number')
-            ->where('r.company_id', $this->companyId)
-            ->whereIn('r.status', ['Confirmado', 'Recibido'])
-            ->select(
-                'r.id',
-                'r.itemId',
-                'r.quantity_request',
-                'r.quantity_recive',
-                'r.status', // Add status to select
-                'r.created_at',
-                'r.order_number',
-                'i.name as item_name',
-                'i.sku',
-                'i.stock',
-                'rem.consecutive as remise_number'
-            );
-        
+      $query = DB::table('tat_restock_list as r')
+    ->leftJoin('inv_items as ivi', 'ivi.id', '=', 'r.itemId')
+    ->leftJoin('inv_values as inv', function ($join) {
+        $join->on('inv.itemId', '=', 'ivi.id')
+             ->where('inv.label', 'Precio Regular');
+    })
+    ->leftJoin('tat_items as i', function ($join) {
+        $join->on('r.itemId', '=', 'i.item_father_id')
+             ->on('r.company_id', '=', 'i.company_id');
+    })
+    ->leftJoin('inv_remissions as rem', 'rem.quoteId', '=', 'r.order_number')
+    ->where('r.company_id', $this->companyId)
+    ->whereIn('r.status', ['Confirmado', 'Recibido'])
+    ->select(
+        'r.id',
+        'r.itemId',
+        'r.quantity_request',
+        'r.quantity_recive',
+        'r.status',
+        'r.created_at',
+        'r.order_number',
+        'i.name as item_name',        
+        'i.sku',
+        'i.stock',
+        'rem.consecutive as remise_number',
+        'ivi.name as it_name_dis',
+        'ivi.sku as it_sku_dis',
+        'ivi.taxId',
+        'inv.values as price',
+        'inv.label'
+    );
+
+            // dd($query->get());
         // Filter by specific order if provided in URL
         if ($this->order_number) {
             $query->where('r.order_number', $this->order_number);
