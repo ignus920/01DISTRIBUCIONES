@@ -294,6 +294,7 @@
                                     x-anchor.bottom-end="$refs.button"
                                     style="display: none;">
                                     <div class="py-1" role="menu" aria-orientation="vertical">
+                                        @if($this->validateRemision($quote->id))
                                         <button wire:click="editarCotizacion({{ $quote->id }})"
                                             class="w-full text-left px-4 py-2 text-sm text-yellow-800 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors flex items-center">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,6 +302,7 @@
                                             </svg>
                                             Editar
                                         </button>
+                                        @endif
                                         <button wire:click="printQuote({{ $quote->id }})"
                                             class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
                                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -418,10 +420,22 @@
                                         <span class="text-gray-500 dark:text-slate-400">Nombre:</span>
                                         <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer_name }}</span>
                                     </p>
-                                    @if($selectedQuote->customer->email)
+                                    @if($selectedQuote->customer->identification)
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Identificación:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->identification }}</span>
+                                    </p>
+                                    @endif
+                                     @if($selectedQuote->customer->typePerson)
+                                    <p class="flex justify-between">
+                                        <span class="text-gray-500 dark:text-slate-400">Tipo persona:</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->typePerson === 'PERSON_ENTITY' ? 'Natural' : 'Jurídica' }}</span>
+                                    </p>
+                                    @endif
+                                    @if($selectedQuote->customer->billingEmail)
                                     <p class="flex justify-between">
                                         <span class="text-gray-500 dark:text-slate-400">Email:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->email }}</span>
+                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->billingEmail }}</span>
                                     </p>
                                     @endif
                                     @if($selectedQuote->customer->business_phone)
@@ -430,6 +444,7 @@
                                         <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->business_phone }}</span>
                                     </p>
                                     @endif
+
                                 </div>
                             @else
                                 <p class="text-sm text-gray-500 italic">Cliente mostrador / No registrado</p>

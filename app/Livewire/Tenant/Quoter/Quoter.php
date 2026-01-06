@@ -11,7 +11,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Traits\Livewire\WithExport;
 use Illuminate\Support\Facades\Auth;
-
+use App\Models\Tenant\Remissions\InvRemissions;
 
 class Quoter extends Component
 {
@@ -76,6 +76,7 @@ class Quoter extends Component
         $this->initializeCompanyConfiguration();
     }
 
+    
     public function updatingSearch()
     {
         $this->resetPage();
@@ -219,6 +220,7 @@ class Quoter extends Component
      */
     public function editarCotizacion($id)
     {
+
         // Determinar la ruta correcta según el tipo de vista (móvil o escritorio)
         $routeName = $this->viewType === 'mobile'
             ? 'tenant.quoter.products.mobile.edit'    // Ruta para vista móvil
@@ -605,6 +607,25 @@ class Quoter extends Component
         return view($viewName, [
             'quotes' => $quotes
         ]);
+    }
+     /**
+     * Abrir modal de confirmación de pedido
+     * 
+     * @param int|null $quoteId ID de la cotización a confirmar (opcional)
+     */
+    
+     public function validateRemision($quoteId)
+    {
+        $hasRemission = InvRemissions::where('quoteId', $quoteId)->exists();
+       if($hasRemission){
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'La cotización tiene una remisión asignada'
+            ]);
+            return false;
+        }else{
+            return true;
+        }
     }
     
     /**

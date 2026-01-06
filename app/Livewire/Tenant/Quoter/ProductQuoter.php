@@ -59,6 +59,7 @@ class ProductQuoter extends Component
     public $confirmationLoading = false;
 
     public $quoteHasRemission = false;
+    public $cartHasChanges = false; // Nueva propiedad para rastrear cambios en el carrito
     protected $listeners = [
         'customer-created' => 'onCustomerCreated',
         'vnt-company-saved' => 'onCustomerCreated',
@@ -102,6 +103,9 @@ class ProductQuoter extends Component
         // Obtener viewType de la ruta o usar desktop por defecto
         $this->viewType = request()->route('viewType', 'desktop');
         $this->ensureTenantConnection();
+
+        // Inicializar quoteHasRemission como false por defecto
+        $this->quoteHasRemission = false;
 
         // 📝 LOG DEBUG: Inicio del Mount
         Log::info('ProductQuoter Mount', [
@@ -245,6 +249,13 @@ class ProductQuoter extends Component
 
     private function performAddToQuoter($productId, $selectedPrice, $priceLabel, $quantity = 1)
     {
+        Log::info('🛒 performAddToQuoter iniciado', [
+            'productId' => $productId,
+            'isEditing' => $this->isEditing,
+            'editingQuoteId' => $this->editingQuoteId,
+            'quoteHasRemission_antes' => $this->quoteHasRemission
+        ]);
+
         // Verificar si el producto ya está en el cotizador (sin consulta DB)
         $existingIndex = $this->findProductInQuoter($productId);
 
@@ -276,11 +287,25 @@ class ProductQuoter extends Component
             ];
         }
 
+        // Marcar que el carrito tiene cambios
+        $this->cartHasChanges = true;
+
         // Optimización: Solo guardar en sesión si realmente cambió
         session(['quoter_items' => $this->quoterItems]);
 
         // Calcular total de forma más eficiente
         $this->calculateTotal();
+
+        // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+        $this->checkAndDisableIfHasRemission();
+
+        Log::info('🛒 performAddToQuoter finalizado', [
+            'productId' => $productId,
+            'isEditing' => $this->isEditing,
+            'editingQuoteId' => $this->editingQuoteId,
+            'quoteHasRemission_despues' => $this->quoteHasRemission,
+            'cartHasChanges' => $this->cartHasChanges
+        ]);
 
         // Toast más rápido sin información innecesaria
         $this->dispatch('show-toast', [
@@ -297,16 +322,30 @@ class ProductQuoter extends Component
         }
 
         $this->quoterItems[$index]['quantity'] = $quantity;
+        
+        // Marcar que el carrito tiene cambios
+        $this->cartHasChanges = true;
+        
         session(['quoter_items' => $this->quoterItems]);
         $this->calculateTotal();
+        
+        // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+        $this->checkAndDisableIfHasRemission();
     }
 
     public function removeFromQuoter($index)
     {
         unset($this->quoterItems[$index]);
         $this->quoterItems = array_values($this->quoterItems); // Reindexar array
+        
+        // Marcar que el carrito tiene cambios
+        $this->cartHasChanges = true;
+        
         session(['quoter_items' => $this->quoterItems]);
         $this->calculateTotal();
+
+        // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+        $this->checkAndDisableIfHasRemission();
 
         $this->dispatch('show-toast', [
             'type' => 'info',
@@ -326,6 +365,9 @@ class ProductQuoter extends Component
         $this->showCreateCustomerForm = false;
         $this->showCreateCustomerButton = false;
         $this->quoterItems = [];
+        $this->quoteHasRemission = false; // Resetear el estado de remisión
+        $this->editingQuoteId = null; // Limpiar ID de cotización en edición
+        $this->isEditing = false; // Limpiar estado de edición
         session()->forget('quoter_items');
         $this->calculateTotal();
         $this->showCartModal = false;
@@ -430,6 +472,10 @@ class ProductQuoter extends Component
             $this->customerSearch = '';                  // Limpiar campo de búsqueda de cliente
             $this->showCreateCustomerForm = false;      // Ocultar formulario de creación
             $this->showCreateCustomerButton = false;    // Ocultar botón de creación
+            $this->quoteHasRemission = false;           // Resetear estado de remisión
+            $this->editingQuoteId = null;               // Limpiar ID de cotización en edición
+            $this->isEditing = false;                   // Limpiar estado de edición
+            $this->cartHasChanges = false;              // Resetear bandera de cambios
             session()->forget('quoter_items');
             $this->calculateTotal();
             $this->showCartModal = false;
@@ -474,11 +520,17 @@ public function validateQuantity($index)
         $this->quoterItems[$index]['quantity'] = intval($quantity);
     }
 
+    // Marcar que el carrito tiene cambios
+    $this->cartHasChanges = true;
+
     // Actualizar sesión
     session(['quoter_items' => $this->quoterItems]);
 
     // Recalcular total
     $this->calculateTotal();
+
+    // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+    $this->checkAndDisableIfHasRemission();
 
     // Notificación opcional
     $this->dispatch('show-toast', [
@@ -792,6 +844,45 @@ public function validateQuantity($index)
         });
     }
 
+    /**
+     * Verifica si la cotización en edición tiene remisión y deshabilita el botón si es necesario
+     */
+    private function checkAndDisableIfHasRemission()
+    {
+        if ($this->isEditing && $this->editingQuoteId) {
+            $this->ensureTenantConnection();
+            $hasRemission = InvRemissions::where('quoteId', $this->editingQuoteId)->exists();
+            
+            // Actualizar el estado
+            $this->quoteHasRemission = $hasRemission;
+            
+            Log::info('🔍 Verificación de remisión', [
+                'isEditing' => $this->isEditing,
+                'editingQuoteId' => $this->editingQuoteId,
+                'quoteHasRemission' => $this->quoteHasRemission,
+                'hasRemission_query' => $hasRemission
+            ]);
+            
+            if ($this->quoteHasRemission) {
+                Log::warning('⚠️ Cotización tiene remisión - Botón deshabilitado', [
+                    'quote_id' => $this->editingQuoteId,
+                    'has_remission' => $this->quoteHasRemission
+                ]);
+                
+                // Dispatch para notificar al usuario
+                $this->dispatch('show-toast', [
+                    'type' => 'warning',
+                    'message' => 'Esta cotización ya tiene una remisión. No se puede confirmar nuevamente.'
+                ]);
+            }
+        } else {
+            Log::info('ℹ️ No se verifica remisión', [
+                'isEditing' => $this->isEditing,
+                'editingQuoteId' => $this->editingQuoteId
+            ]);
+        }
+    }
+
     public function getQuoterCountProperty()
     {
         return collect($this->quoterItems)->sum('quantity');
@@ -824,9 +915,15 @@ public function validateQuantity($index)
             // Si ya existe, incrementar la cantidad
             $this->quoterItems[$existingIndex]['quantity']++;
 
+            // Marcar que el carrito tiene cambios
+            $this->cartHasChanges = true;
+
             // Guardar en sesión
             session(['quoter_items' => $this->quoterItems]);
             $this->calculateTotal();
+
+            // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+            $this->checkAndDisableIfHasRemission();
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
@@ -847,8 +944,14 @@ public function validateQuantity($index)
             if ($this->quoterItems[$existingIndex]['quantity'] <= 0) {
                 $this->removeFromQuoter($existingIndex);
             } else {
+                // Marcar que el carrito tiene cambios
+                $this->cartHasChanges = true;
+                
                 session(['quoter_items' => $this->quoterItems]);
                 $this->calculateTotal();
+                
+                // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+                $this->checkAndDisableIfHasRemission();
                 
                 $this->dispatch('show-toast', [
                     'type' => 'info',
@@ -870,9 +973,16 @@ public function validateQuantity($index)
                 $this->removeFromQuoter($existingIndex);
             } else {
                 $this->quoterItems[$existingIndex]['quantity'] = $quantity;
+                
+                // Marcar que el carrito tiene cambios
+                $this->cartHasChanges = true;
+                
                 session(['quoter_items' => $this->quoterItems]);
                 $this->calculateTotal();
 
+                // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+                $this->checkAndDisableIfHasRemission();
+                
                 $this->dispatch('show-toast', [
                     'type' => 'info',
                     'message' => 'Cantidad actualizada'
@@ -890,6 +1000,9 @@ public function validateQuantity($index)
 
             $this->editingQuoteId = $quoteId;
             $this->isEditing = true;
+
+            // Verificar si la cotización tiene remisión
+            $this->quoteHasRemission = InvRemissions::where('quoteId', $quoteId)->exists();
 
             // Cargar observaciones de la cotización
             $this->observaciones = $quote->observations;
@@ -931,6 +1044,9 @@ public function validateQuantity($index)
 
             // Guardar en sesión
             session(['quoter_items' => $this->quoterItems]);
+
+            // Resetear bandera de cambios al cargar una cotización
+            $this->cartHasChanges = false;
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
@@ -1002,6 +1118,9 @@ public function validateQuantity($index)
                 'type' => 'success',
                 'message' => 'Cotización #' . $quote->consecutive . ' actualizada exitosamente'
             ]);
+
+            // Resetear bandera de cambios
+            $this->cartHasChanges = false;
 
             // Redirigir a la página de cotizaciones según el tipo de vista
             $routeName = $this->viewType === 'mobile'
@@ -1737,7 +1856,7 @@ public function validateQuantity($index)
 
 
     
-
+   //carga preliminar  de TAT
     public function loadPreliminaryRestockForEditing()
     {
         $this->ensureTenantConnection();
@@ -2024,12 +2143,22 @@ public function searchCustomersLive()
      * @param int|null $quoteId ID de la cotización a confirmar (opcional)
      */
  
-        public function confirmarPedido($quoteId = null)
+    public function confirmarPedido($quoteId = null)
     {
         $this->ensureTenantConnection();
         $this->confirmationLoading = true;
 
         try {
+            // Validar si hay cambios sin guardar en el carrito
+            if ($this->cartHasChanges) {
+                $this->confirmationLoading = false;
+                $this->dispatch('show-toast', [
+                    'type' => 'error',
+                    'message' => 'Debe guardar los cambios del carrito antes de confirmar el pedido'
+                ]);
+                return;
+            }
+
             // Fix: Usar editingQuoteId si no se pasa quoteId explícitamente y estamos editando
             $quoteIdToCheck = $quoteId ?? $this->editingQuoteId;
             
@@ -2127,10 +2256,25 @@ public function searchCustomersLive()
                 'items_count'  => $detailsCreated
             ]);
 
-            // 5. Limpiar y Redirigir
+            // 5. Actualizar status de la cotización a "REMISIÓN"
+            if ($quoteId) {
+                $quote = VntQuote::find($quoteId);
+                if ($quote) {
+                    $quote->status = 'REMISIÓN';
+                    $quote->save();
+                    
+                    Log::info('Status de cotización actualizado a REMISIÓN', [
+                        'quote_id' => $quoteId,
+                        'consecutive' => $quote->consecutive
+                    ]);
+                }
+            }
+
+            // 6. Limpiar y Redirigir
             $this->quoterItems = [];
             $this->selectedCustomer = null;
             $this->observaciones = null;
+            $this->cartHasChanges = false; // Resetear bandera de cambios
             session()->forget('quoter_items');
             $this->confirmationLoading = false;
 

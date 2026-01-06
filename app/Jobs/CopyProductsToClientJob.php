@@ -78,6 +78,16 @@ class CopyProductsToClientJob implements ShouldQueue
                 'total_products' => $totalProducts
             ]);
 
+            $tatCategories = [
+                    'company_id' => $this->companyId,
+                    'name' => 'TIENDA',
+                    'status' => 1,
+                    'created_at' => now(),
+                    'updated_at' => now()
+            ];
+            $categoryId = DB::table('tat_categories')->insertGetId($tatCategories);
+            
+
             foreach ($distributorProducts as $product) {
                 try {
                     // Verificar si ya existe el producto para este cliente
@@ -91,18 +101,18 @@ class CopyProductsToClientJob implements ShouldQueue
                         continue;
                     }
 
+                    // Obtener la imagen principal del producto
+                    $mainImage = DB::table('inv_image_gallery')
+                        ->where('itemId', $product->item_father_id)
+                        ->where('type', 'PRINCIPAL')
+                        ->whereNull('deleted_at')
+                        ->first();
+
                     // Obtener el precio más reciente del producto
                     $latestPrice = DB::table('inv_values')
                         ->where('itemId', $product->item_father_id)
                         ->where('type', 'precio')
-                        ->orderBy('created_at', 'desc')
-                        ->first();
-
-                    // Obtener el costo más reciente del producto
-                    $latestCost = DB::table('inv_values')
-                        ->where('itemId', $product->item_father_id)
-                        ->where('type', 'costo')
-                        ->whereIn('label', ['Costo Inicial', 'Costo'])
+                        ->whereIn('label', ['Precio Regular'])
                         ->orderBy('created_at', 'desc')
                         ->first();
 
@@ -113,10 +123,11 @@ class CopyProductsToClientJob implements ShouldQueue
                         'sku' => $product->sku,
                         'name' => $product->name,
                         'taxId' => $product->taxId,
-                        'categoryId' => $product->categoryId,
+                        'categoryId' => $categoryId,
                         'stock' => 0, // Stock inicial en 0 para el cliente
-                        'cost' => $latestCost ? (int) $latestCost->values : 0,
-                        'price' => $latestPrice ? (int) $latestPrice->values : 0,
+                        'img_path' => $mainImage ? $mainImage->img_path : null,
+                        'cost' => $latestPrice ? (int) $latestPrice->values : 0,
+                        'price' => $latestPrice ? (int) (ceil($latestPrice->values / 100) * 100) : 0,
                         'status' => 1, // Activo
                         'created_at' => now(),
                         'updated_at' => now(),

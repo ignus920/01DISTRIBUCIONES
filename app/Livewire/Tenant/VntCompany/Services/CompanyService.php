@@ -99,7 +99,7 @@ class CompanyService
     {
         $this->ensureTenantConnection();
         
-        $company = VntCompany::with(['warehouses.contacts'])->findOrFail($id);
+        $company = VntCompany::with(['warehouses.contacts', 'contacts'])->findOrFail($id);
         
         // Toggle company status
         $newStatus = $company->status ? 0 : 1;
@@ -115,11 +115,16 @@ class CompanyService
             }
         }
         
+        // Update all contacts directly from company (vnt_contacts)
+        foreach ($company->contacts as $contact) {
+            $contact->update(['status' => $newStatus]);
+        }
+        
         Log::info('Company status toggled', [
             'company_id' => $id,
             'new_status' => $newStatus,
             'warehouses_updated' => $company->warehouses->count(),
-            'contacts_updated' => $company->warehouses->sum(fn($w) => $w->contacts->count())
+            'contacts_updated' => $company->contacts->count()
         ]);
     }
 

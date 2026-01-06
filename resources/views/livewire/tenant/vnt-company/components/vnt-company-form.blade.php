@@ -212,7 +212,14 @@
                                     #{{ $item->id }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                    {{ $item->businessName ? $item->businessName :  trim($item->firstName . ' ' . $item->lastName)  }}
+                                    <div class="flex items-center gap-2">
+                                        <span>{{ $item->businessName ? $item->businessName :  trim($item->firstName . ' ' . $item->lastName)  }}</span>
+                                        @if($this->hasStoreUser($item))
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                Usuario Tienda
+                                            </span>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                     {{ $item->identification ?? 'Sin identificación' }}
@@ -248,10 +255,26 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium relative">
                                     <!-- Menú de tres puntos con Alpine.js -->
-                                    <div x-data="{ open: false }" @click.outside="open = false" class="relative inline-block text-left">
-                                        <button @click="open = !open"
+                                    <div x-data="{ 
+                                        open: false,
+                                        openUp: false,
+                                        toggleMenu() {
+                                            this.open = !this.open;
+                                            if (this.open) {
+                                                this.$nextTick(() => {
+                                                    const button = this.$refs.button;
+                                                    const menu = this.$refs.menu;
+                                                    const buttonRect = button.getBoundingClientRect();
+                                                    const spaceBelow = window.innerHeight - buttonRect.bottom;
+                                                    const menuHeight = menu.offsetHeight;
+                                                    this.openUp = spaceBelow < menuHeight + 20;
+                                                });
+                                            }
+                                        }
+                                    }" @click.outside="open = false" class="relative inline-block text-left">
+                                        <button @click="toggleMenu()" x-ref="button"
                                             class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
                                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
@@ -260,6 +283,8 @@
 
                                         <!-- Menú desplegable -->
                                         <div x-show="open"
+                                            x-ref="menu"
+                                            x-cloak
                                             x-transition:enter="transition ease-out duration-100"
                                             x-transition:enter-start="transform opacity-0 scale-95"
                                             x-transition:enter-end="transform opacity-100 scale-100"
@@ -267,8 +292,8 @@
                                             x-transition:leave-start="transform opacity-100 scale-100"
                                             x-transition:leave-end="transform opacity-0 scale-95"
                                             @click="open = false"
-                                            class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
-                                            style="display: none;">
+                                            :class="openUp ? 'origin-bottom-right bottom-full mb-2' : 'origin-top-right top-full mt-2'"
+                                            class="absolute right-0 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50">
                                             <div class="py-1" role="menu" aria-orientation="vertical">
                                                 <button wire:click="edit({{ $item->id }})"
                                                     class="w-full text-left px-4 py-2 text-sm text-yellow-800 dark:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors flex items-center">
@@ -732,7 +757,7 @@
 
                         <!-- Dirección de la Sucursal -->
                         <div class="md:col-span-2">
-                            <label for="warehouseAddress" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dirección de la Sucursal *</label>
+                            <label for="warehouseAddress" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Dirección *</label>
                             <input wire:model="warehouseAddress" type="text" id="warehouseAddress" name="warehouseAddress"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Ej: Calle 123 #45-67">

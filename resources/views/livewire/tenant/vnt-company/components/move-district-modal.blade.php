@@ -91,116 +91,8 @@
                 <!-- Table Section - Shows immediately when district is selected -->
                 @if(!empty($district))
 
-                <!-- Clientes del Barrio -->
-                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-4">
-                        Clientes en {{ $district }}
-                    </h4>
-                    <!-- Toolbar -->
-                    <div class="mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <!-- Search -->
-                        <div class="flex-1 max-w-md">
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
-                                </div>
-                                <input wire:model.live.debounce.300ms="search"
-                                    type="text"
-                                    placeholder="Buscar por cliente..."
-                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500">
-                            </div>
-                        </div>
 
-                        <!-- Per Page -->
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm text-gray-700 dark:text-gray-300">Mostrar:</label>
-                            <select wire:model.live="perPage"
-                                class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                                <option value="5">5</option>
-                                <option value="10">10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Table -->
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-900">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Cliente
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Ruta
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Día
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Vendedor
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                @forelse($items as $item)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                                        <div class="font-medium">
-                                            {{ $item->company->businessName ?? $item->company->firstName . ' ' . $item->company->lastName }}
-                                        </div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">
-                                            {{ $item->company->identification ?? 'N/A' }}
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $item->route->name ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $item->route->sale_day ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $item->route->salesman->name ?? 'N/A' }}
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                                        <div class="flex flex-col items-center">
-                                            <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                                            </svg>
-                                            <p class="text-lg font-medium">No se encontraron clientes</p>
-                                            <p class="text-sm">{{ empty($district) ? 'Seleccione un barrio para ver los clientes' : 'No hay clientes en este barrio' }}</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    @if($items->hasPages())
-                    <div class="mt-4">
-                        {{ $items->links() }}
-                    </div>
-                    @endif
-
-                    <!-- Selected Count -->
-                    @if(count($selectedCompanies) > 0)
-                    <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <p class="text-sm text-blue-700 dark:text-blue-300">
-                            <strong>{{ count($selectedCompanies) }}</strong> cliente(s) seleccionado(s)
-                        </p>
-                    </div>
-                    @endif
-                </div>
-
-                <!-- Routes Selection Section -->
+                   <!-- Routes Selection Section -->
                 <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                     <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-4">
                         Seleccionar Rutas
@@ -247,7 +139,7 @@
                     @if(!empty($sourceRouteId) && !empty($targetRouteId) && $sourceRouteId != $targetRouteId)
                     <div class="mt-4 flex justify-center">
                         <button @click="showSwapConfirm = true"
-                            class="px-8 py-3 bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white rounded-lg transition-colors font-medium shadow-lg">
+                           class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                             <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                             </svg>
@@ -266,6 +158,121 @@
                             </svg>
                             Mover {{ count($selectedCompanies) }} Cliente(s) a Nueva Ruta
                         </button>
+                    </div>
+                    @endif
+                </div>
+                <!-- Clientes del Barrio -->
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h4 class="text-md font-semibold text-gray-900 dark:text-white mb-4">
+                        Clientes en {{ $district }}
+                    </h4>
+                    <!-- Toolbar -->
+                    <div class="mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <!-- Search -->
+                        <div class="flex-1 max-w-md">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <input wire:model.live.debounce.300ms="search"
+                                    type="text"
+                                    placeholder="Buscar por cliente..."
+                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-slate-500">
+                            </div>
+                        </div>
+
+                        <!-- Per Page -->
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm text-gray-700 dark:text-gray-300">Mostrar:</label>
+                            <select wire:model.live="perPage"
+                                class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-900">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Cliente
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Identificación
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Ruta
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Día
+                                    </th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Vendedor
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @forelse($items as $item)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                                        <div class="font-medium">
+                                            @if($item->company)
+                                                {{ $item->company->businessName ? $item->company->businessName :  $item->company->firstName . ' ' . $item->company->lastName }}
+                                            @else
+                                                <span class="text-red-500">Sin empresa</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $item->company->identification ?? 'N/A' }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $item->route->name ?? 'N/A' }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $item->route->sale_day ?? 'N/A' }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $item->route->salesman->name ?? 'N/A' }}
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                        <div class="flex flex-col items-center">
+                                            <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                            </svg>
+                                            <p class="text-lg font-medium">No se encontraron clientes</p>
+                                            <p class="text-sm">{{ empty($district) ? 'Seleccione un barrio para ver los clientes' : 'No hay clientes en este barrio' }}</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    @if($items->hasPages())
+                    <div class="mt-4">
+                        {{ $items->links() }}
+                    </div>
+                    @endif
+
+                    <!-- Selected Count -->
+                    @if(count($selectedCompanies) > 0)
+                    <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p class="text-sm text-blue-700 dark:text-blue-300">
+                            <strong>{{ count($selectedCompanies) }}</strong> cliente(s) seleccionado(s)
+                        </p>
                     </div>
                     @endif
                 </div>

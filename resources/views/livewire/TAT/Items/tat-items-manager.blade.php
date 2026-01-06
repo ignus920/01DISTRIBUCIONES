@@ -326,7 +326,8 @@
                                 </svg>
                             </div>
                             <div class="flex-1">
-                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Imagen Principal</h4>
+                                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Imagen Principal</h4>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">(Opcional - Máximo 2MB)</p>
                                 
                                 <div class="flex items-start gap-4">
                                     <!-- Preview de la imagen -->
@@ -402,7 +403,7 @@
                                 SKU *
                             </label>
                             <input
-                                wire:model="sku"
+                                wire:model.live.debounce.500ms="sku"
                                 type="text"
                                 id="sku"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('sku') border-red-500 @enderror"
@@ -418,7 +419,7 @@
                                 Nombre *
                             </label>
                             <input
-                                wire:model="name"
+                                wire:model.live.debounce.500ms="name"
                                 type="text"
                                 id="name"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('name') border-red-500 @enderror"
@@ -434,7 +435,7 @@
                                 Categoría *
                             </label>
                             <select
-                                wire:model="categoryId"
+                                wire:model.live="categoryId"
                                 id="categoryId"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('categoryId') border-red-500 @enderror"
                             >
@@ -454,15 +455,18 @@
                                 Impuesto
                             </label>
                             <select
-                                wire:model="taxId"
+                                wire:model.live="taxId"
                                 id="taxId"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 @error('taxId') border-red-500 @enderror"
                             >
                                 <option value="">Sin impuesto</option>
                                 @foreach($taxes as $tax)
                                     <option value="{{ $tax->id }}">{{ $tax->name }}</option>
                                 @endforeach
                             </select>
+                            @error('taxId')
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <!-- Stock -->
@@ -471,7 +475,7 @@
                                 Stock *
                             </label>
                             <input
-                                wire:model="stock"
+                                wire:model.live.debounce.500ms="stock"
                                 type="number"
                                 step="0.01"
                                 id="stock"
@@ -488,7 +492,7 @@
                                 Costo *
                             </label>
                             <input
-                                wire:model="cost"
+                                wire:model.live.debounce.500ms="cost"
                                 type="number"
                                 step="0.01"
                                 id="cost"
@@ -502,10 +506,10 @@
                         <!-- Precio -->
                         <div>
                             <label for="price" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Precio *
+                                Precio (sin iva) *
                             </label>
                             <input
-                                wire:model="price"
+                                wire:model.live.debounce.500ms="price"
                                 type="number"
                                 step="0.01"
                                 id="price"

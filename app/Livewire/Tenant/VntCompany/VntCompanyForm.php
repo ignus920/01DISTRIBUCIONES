@@ -1574,6 +1574,32 @@ class VntCompanyForm extends Component
         ];
     }
 
+    /**
+     * Verificar si un cliente tiene un usuario tienda asociado (profile_id 17)
+     * 
+     * @param \App\Models\Tenant\Customer\VntCompany $company
+     * @return bool
+     */
+    public function hasStoreUser($company): bool
+    {
+        if (!$company || !$company->billingEmail) {
+            return false;
+        }
+
+        try {
+            return User::where('email', $company->billingEmail)
+                ->where('profile_id', 17)
+                ->exists();
+        } catch (\Exception $e) {
+            Log::error('Error verificando usuario tienda', [
+                'company_id' => $company->id ?? null,
+                'email' => $company->billingEmail ?? null,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
     private function ensureTenantConnection(): void
     {
         $tenantId = session('tenant_id');

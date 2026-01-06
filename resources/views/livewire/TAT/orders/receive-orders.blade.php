@@ -93,10 +93,10 @@
                                         <div class="flex items-center">
                                             <div class="ml-0">
                                                 <div class="text-sm font-bold text-gray-900 dark:text-white uppercase">
-                                                    {{ $item->item_name }}
+                                                   {{$item->it_name_dis}}
                                                 </div>
                                                 <div class="text-xs text-gray-500 dark:text-slate-400 font-mono">
-                                                    {{ $item->sku }}
+                                                    {{ $item->it_sku_dis }}
                                                 </div>
                                             </div>
                                         </div>

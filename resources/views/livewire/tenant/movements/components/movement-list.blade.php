@@ -37,7 +37,8 @@
     </div>
 
     <!-- Table -->
-    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
@@ -92,7 +93,7 @@
                     </th>
                 </tr>
             </thead>
-            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 @forelse($movements as $movement)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -177,13 +178,14 @@
                 @endforelse
             </tbody>
         </table>
-    </div>
-
-    <!-- Pagination -->
-    @if($movements->hasPages())
-        <div class="mt-4">
-            <x-responsive-pagination :paginator="$movements" />
         </div>
-    @endif
+
+        <!-- Pagination -->
+        @if($movements->hasPages())
+            <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <x-responsive-pagination :paginator="$movements" />
+            </div>
+        @endif
+    </div>
 
 </div>
