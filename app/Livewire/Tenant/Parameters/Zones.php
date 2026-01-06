@@ -3,11 +3,13 @@
 namespace App\Livewire\Tenant\Parameters;
 
 use Livewire\Component;
+use Livewire\WithPagination;
 use App\Models\TAT\Zones\TatZones;
 use Carbon\Carbon;
 
 class Zones extends Component
 {
+    use WithPagination;
     use \App\Traits\Livewire\WithExport;
 
     public $zoneId, $name, $created_at, $updated_at;
@@ -72,7 +74,7 @@ class Zones extends Component
     {
         //$this->ensureTenantConnection();
         $zone = TatZones::findOrFail($id);
-        
+
         $this->name = $zone->name;
         $this->zoneId = $zone->id;
         $this->showModal = true;
@@ -95,20 +97,21 @@ class Zones extends Component
      * Guardar un registro (crear o actualizar)
      * Valida los datos y los guarda en la base de datos
      */
-    public function save(){
+    public function save()
+    {
         $this->validate();
 
         $zoneData = [
             'name' => $this->name,
         ];
 
-        if($this->zoneId){
+        if ($this->zoneId) {
             //Actualizar zona existente
-            $zone=TatZones::findOrFail($this->zoneId);
+            $zone = TatZones::findOrFail($this->zoneId);
             $zoneData['updated_at'] = Carbon::now();
             $zone->update($zoneData);
             session()->flash('message', 'Zona actualizada correctamente.');
-        }else{
+        } else {
             // Crear nuevo registro
             $zoneData['created_at'] = Carbon::now();
             TatZones::create($zoneData);
@@ -161,7 +164,7 @@ class Zones extends Component
 
     protected function getExportMapping()
     {
-        return function($zone) {
+        return function ($zone) {
             return [
                 $zone->id,
                 $zone->name,

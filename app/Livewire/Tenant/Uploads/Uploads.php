@@ -239,7 +239,7 @@ class Uploads extends Component
             return;
         } else {
             try {
-                $infoDisDeliveriesList = DisDeliveriesList::query()->get();
+                $infoDisDeliveriesList = DisDeliveriesList::where('user_id', Auth::id())->get();
                 foreach ($infoDisDeliveriesList as $deliveryListItem) {
                     $dataDeliveries = [
                         'salesman_id' => $deliveryListItem->salesman_id,
@@ -306,9 +306,10 @@ class Uploads extends Component
 
     public function openMovementForm()
     {
-        $this->dispatch("openMovementForm");
-        $this->showModal = true;
-        $this->showScares = false;
+        //$this->dispatch("openMovementForm");
+        //$this->showModal = true;
+        //$this->showScares = false;
+
     }
 
     public function closeModal()
@@ -349,23 +350,22 @@ class Uploads extends Component
             $items = DB::table('dis_deliveries_list as dl')
                 ->join('inv_remissions as r', function ($join) {
                     $join->on('dl.salesman_id', '=', 'r.userId')
-                        ->whereRaw('DATE(r.deliveryDate) = dl.sale_date');
+                        ->whereRaw('DATE(r.created_at) = dl.sale_date');
                 })
                 ->join('inv_detail_remissions as dt', 'dt.remissionId', '=', 'r.id')
                 ->join('inv_items as i', 'i.id', '=', 'dt.itemId')
-                ->join('inv_items_store as its', 'i.id', '=', 'its.itemId')
+                ->leftJoin('inv_items_store as its', 'i.id', '=', 'its.itemId')
                 ->join('inv_categories as c', 'i.categoryId', '=', 'c.id')
-                ->join('inv_items_store as ist', 'i.id', '=', 'ist.itemId')
                 ->where('dl.deliveryman_id', $this->selectedDeliveryMan)
                 ->select(
-                    'i.id as code',
+                    'i.internal_code as code',
                     'c.name as category',
                     'i.name as name_item',
                     DB::raw('SUM(dt.quantity) as quantity'),
-                    'ist.stock_items_store as stockActual',
+                    'its.stock_items_store as stockActual',
                     DB::raw('SUM(dt.quantity) * dt.value as subtotal')
                 )
-                ->groupBy('c.id', 'c.name', 'i.id', 'i.name', 'dt.value', 'ist.stock_items_store')
+                ->groupBy('c.id', 'c.name', 'i.id', 'i.name', 'dt.value', 'its.stock_items_store')
                 ->orderBy('c.name')
                 ->orderBy('i.name')
                 ->get();
@@ -384,7 +384,7 @@ class Uploads extends Component
             $pdf = PDF::loadView('tenant.uploads.pre-charge-pdf', $data);
             return response()->streamDownload(function () use ($pdf) {
                 echo $pdf->stream();
-            }, 'pre-charge.pdf');
+            }, 'pre-cargue.pdf');
         } catch (\Exception $e) {
             Log::error($e);
             session()->flash('error', "Error al generar la impresión: " . $e->getMessage());
