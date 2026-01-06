@@ -1,188 +1,448 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pedidos Cargue #{{ $delivery->id }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script>
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark')
-        } else {
-            document.documentElement.classList.remove('dark')
-        }
-    </script>
+    <title>Pedidos Cargue #{{ $deliveryId }}</title>
     <style>
+        /* Estilos generales para coincidir con el PDF */
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 10px;
+            line-height: 1.2;
+            color: #000000;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            width: 40%; /* Tamaño carta landscape */
+            margin: 0 auto;
+            padding: 0.3cm;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5cm;
+        }
+        
+        /* Tarjeta de pedido individual */
+        .order-card {
+            border: 1px solid #000;
+            border-radius: 3px;
+            padding: 0.3cm;
+            background-color: #ffffff;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            min-height: 12.5cm;
+            position: relative;
+        }
+        
+        /* Encabezado MAS 10 */
+        .mas-header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        /* Información de la empresa */
+        .company-info {
+            text-align: center;
+            font-size: 9px;
+            margin-bottom: 8px;
+            line-height: 1.1;
+        }
+        
+        /* Número de página */
+        .page-info {
+            text-align: center;
+            font-size: 9px;
+            margin-bottom: 8px;
+        }
+        
+        /* Encabezado del pedido */
+        .order-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 8px;
+            font-size: 9px;
+        }
+        
+        .order-number {
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        /* Información del cliente */
+        .customer-info {
+            margin-bottom: 8px;
+            font-size: 9px;
+            line-height: 1.1;
+        }
+        
+        .customer-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        
+        .customer-label {
+            font-weight: bold;
+            min-width: 70px;
+        }
+        
+        /* Tabla de items */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+            font-size: 9px;
+        }
+        
+        .items-table th {
+            border-bottom: 1px solid #000;
+            padding: 3px;
+            text-align: left;
+            font-weight: bold;
+            background-color: #f0f0f0;
+        }
+        
+        .items-table td {
+            padding: 2px 3px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+        
+        .col-ref {
+            width: 40px;
+            text-align: left;
+        }
+        
+        .col-cant {
+            width: 30px;
+            text-align: center;
+        }
+        
+        .col-desc {
+            width: auto;
+            text-align: left;
+        }
+        
+        .col-price {
+            width: 40px;
+            text-align: right;
+        }
+        
+        .col-subtotal {
+            width: 50px;
+            text-align: right;
+        }
+        
+        /* Observaciones */
+        .observations {
+            margin-bottom: 8px;
+            font-size: 9px;
+            min-height: 20px;
+        }
+        
+        .obs-label {
+            font-weight: bold;
+        }
+        
+        /* Descripción legal */
+        .legal-description {
+            font-size: 8px;
+            text-align: justify;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+        
+        /* Valor en letras */
+        .amount-words {
+            font-size: 9px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Totales */
+        .totals {
+            font-size: 9px;
+            margin-bottom: 8px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        
+        .total-label {
+            font-weight: bold;
+        }
+        
+        .total-value {
+            font-weight: bold;
+            min-width: 60px;
+            text-align: right;
+        }
+        
+        .total-pagar {
+            border-top: 1px solid #000;
+            padding-top: 2px;
+            font-weight: bold;
+        }
+        
+        /* Pie de página */
+        .footer {
+            position: absolute;
+            bottom: 0.3cm;
+            left: 0.3cm;
+            right: 0.3cm;
+            text-align: center;
+            font-size: 8px;
+            color: #000;
+        }
+        
+        /* Contacto del vendedor */
+        .seller-contact {
+            font-size: 8px;
+            margin-top: 5px;
+        }
+        
+        .seller-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* Control de paginación - VERSIÓN CORREGIDA */
         @media print {
-            .no-print {
-                display: none !important;
+            body {
+                font-size: 9px;
             }
-
+            
             @page {
                 margin: 0.3cm;
                 size: letter landscape;
             }
-
-            body {
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-                margin: 0;
+            
+            .container {
                 padding: 0;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5cm;
+                width: 100%;
+                max-width: 100%;
+                /* page-break-inside: avoid; */
             }
-
+            
+            .order-card {
+                /* min-height: 12.5cm;
+                max-height: 12.5cm; Añadido para uniformidad */
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* SOLUCIÓN: Remover o corregir los saltos de página automáticos */
+            /* Esto estaba causando el problema */
+            /* .order-card:nth-child(4n+1) {
+                page-break-before: auto;
+            } */
+            
+            /* En lugar de eso, usar una clase específica para controlar páginas */
             .page-break {
                 page-break-after: always;
             }
-
-            .container {
-                max-width: 100% !important;
-                width: 100% !important;
-                padding: 0.3cm !important;
-                margin: 0 !important;
-            }
-
-            .orders-grid {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 0.5cm !important;
-                width: 100% !important;
-            }
-
-            .order-card {
-                break-inside: avoid;
+            
+            /* Asegurar que el contenedor se comporte bien en impresión */
+            /* .container {
                 page-break-inside: avoid;
+            } */
+        }
+        
+        /* Estilos específicos para la vista previa */
+        @media screen {
+            body {
+                background-color: #f0f0f0;
             }
-        }
-
-        .orders-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        .order-card {
-            break-inside: avoid;
-            page-break-inside: avoid;
+            
+            .container {
+                background-color: #fff;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
         }
     </style>
 </head>
-
-<body class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-    <!-- Botones de control -->
-    <div class="no-print fixed top-4 right-4 flex gap-2 z-50">
-        <button onclick="toggleDarkMode()"
-            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg shadow-lg transition font-medium">
-            <span class="dark:hidden">🌙 Modo Oscuro</span>
-            <span class="hidden dark:inline">☀️ Modo Claro</span>
-        </button>
-        <button onclick="window.print()"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg shadow-lg transition font-medium">
-            🖨️ Imprimir
-        </button>
-    </div>
-
-    <div class="container mx-auto p-4">
-        @if(count($customerOrders) > 0)
-        <!-- Grid de Pedidos en 2 Columnas -->
-        <div class="orders-grid">
-            @foreach($customerOrders as $order)
-            <div class="order-card border-2 border-gray-300 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
-                <!-- Header del Pedido -->
-                <div class="text-center mb-3 pb-2 border-b border-gray-300 dark:border-gray-700">
-                    <h2 class="text-sm font-bold mb-1">PEDIDO #{{ $loop->iteration }}</h2>
-                </div>
-
-                <!-- Customer Info -->
-                <div class="mb-3 bg-gray-50 dark:bg-gray-900 p-2 rounded text-xs">
-                    <div class="flex justify-between">
-                        <div class="flex-1">
-                            <p class="mb-1"><span class="font-semibold">Cliente:</span> {{ $order['customer']['name'] }}</p>
-                            <p class="mb-1"><span class="font-semibold">ID:</span> {{ $order['customer']['identification'] }}</p>
-                            <p class="mb-1"><span class="font-semibold">Dirección:</span> {{ $order['customer']['address'] }}</p>
-                            <p class="mb-1"><span class="font-semibold">Barrio:</span> {{ $order['customer']['district'] }}</p>
+<body>
+    @if(count($customerOrders) > 0)
+        @php
+            $orderChunks = collect($customerOrders)->chunk(2);
+            $totalPages = $orderChunks->count();
+        @endphp
+        @foreach($orderChunks as $chunk)
+            <div class="container">
+                @foreach($chunk as $order)
+                    @php
+                        $overall_index = ($loop->parent->index * 2) + $loop->index;
+                    @endphp
+                    <div class="order-card">
+                        <!-- Encabezado MAS 10 -->
+                        <div class="mas-header">MAS 10</div>
+                        
+                        <!-- Información de la empresa -->
+                        <div class="company-info">
+                            Mas distribuciones JM<br>
+                            Nit: 1017134785-1<br>
                         </div>
-                        <div class="flex-1 text-right">
-                            <p class="mb-1"><span class="font-semibold">Teléfono:</span> {{ $order['customer']['phone'] }}</p>
-                            <p class="mb-1"><span class="font-semibold">Vendedor:</span> {{ $order['customer']['salesPerson'] ?? 'N/A' }}</p>
-                            <p><span class="font-semibold">Día de Venta:</span> {{ $order['customer']['saleDay'] }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Items -->
-                <div class="mb-3">
-                    <h3 class="text-xs font-bold mb-2 text-gray-800 dark:text-gray-200">ITEMS</h3>
-                    <div class="space-y-1">
-                        @php
-                        $currentCategory = null;
-                        @endphp
-                        @foreach($order['items'] as $item)
-                        @if($currentCategory !== $item['category'])
-                        @php
-                        $currentCategory = $item['category'];
-                        @endphp
-                        <div class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">
-                            <p class="font-bold text-gray-900 dark:text-gray-100 text-xs">{{ $item['category'] }}</p>
+                        
+                        <!-- Número de página -->
+                        <div class="page-info">PÁGINA: {{ $loop->parent->iteration }} de {{ $totalPages }}</div>
+                        
+                        <!-- Contacto (opcional, aparece en algunos pedidos del PDF) -->
+                        @if(isset($order['customer']['contact_name']))
+                        <div class="customer-info">
+                            <div class="customer-row">
+                                <span class="customer-label">Contacto:</span>
+                                <span>{{ $order['customer']['contact_name'] }}</span>
+                            </div>
                         </div>
                         @endif
-                        <div class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-2 text-xs">
-                            <div class="flex justify-between mb-1">
-                                <span class="text-gray-600 dark:text-gray-400">{{ $item['code'] }}</span>
-                                <span class="font-bold">Cant: {{ number_format($item['quantity'], 0) }}</span>
+                        
+                        <!-- Encabezado del pedido -->
+                        <div class="order-header">
+                            <div>
+                                <div class="order-number">PEDIDO # {{ $overall_index + 101816 }}</div>
+                                <div>FECHA: {{ \Carbon\Carbon::parse($order['order_date'] ?? now())->format('Y-m-d') }}</div>
+                                <div>FECHA ENTRE: {{ \Carbon\Carbon::parse($order['delivery_date'] ?? now()->addDays(3))->format('Y-m-d') }}</div>
                             </div>
-                            <p class="font-medium text-gray-900 dark:text-gray-100 mb-1">{{ $item['name'] }}</p>
-                            <p class="text-right font-bold text-blue-600 dark:text-blue-400">$ {{ number_format($item['subtotal'], 2) }}</p>
+                            <div class="seller-contact">
+                                <div class="seller-row">
+                                    <span>Vendedor:</span>
+                                    <span>{{ $order['customer']['salesPerson'] ?? 'JULIO RIAÑO' }}</span>
+                                </div>
+                                <div class="seller-row">
+                                    <span>Día visita:</span>
+                                    <span>{{ $order['customer']['saleDay'] ?? '4' }}</span>
+                                </div>
+                                <div class="seller-row">
+                                    <span>Tel vendedor:</span>
+                                    <span>304 6800740</span>
+                                </div>
+                            </div>
                         </div>
-                        @endforeach
+                        
+                        <!-- Información del cliente -->
+                        <div class="customer-info">
+                            <div class="customer-row">
+                                <span class="customer-label">Cliente:</span>
+                                <span>{{ $order['customer']['name'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Identificación:</span>
+                                <span>{{ $order['customer']['identification'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Barrio:</span>
+                                <span>{{ $order['customer']['district'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Dirección:</span>
+                                <span>{{ $order['customer']['address'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Teléfono:</span>
+                                <span>{{ $order['customer']['phone'] }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Observaciones -->
+                        @if(isset($order['observations']) && $order['observations'])
+                        <div class="observations">
+                            <span class="obs-label">Observaciones:</span> {{ $order['observations'] }}
+                        </div>
+                        @else
+                        <div class="observations">
+                            <span class="obs-label">Observaciones:</span>
+                        </div>
+                        @endif
+                        
+                        <!-- Tabla de items -->
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-ref">Ref</th>
+                                    <th class="col-cant">Cant</th>
+                                    <th class="col-desc">Descripción</th>
+                                    <th class="col-price">Precio</th>
+                                    <th class="col-subtotal">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($order['items'] as $item)
+                                <tr>
+                                    <td class="col-ref">{{ $item['code'] }}</td>
+                                    <td class="col-cant">{{ number_format($item['quantity'], 0) }}</td>
+                                    <td class="col-desc">{{ $item['name'] }}</td>
+                                    <td class="col-price">{{ number_format($item['unit_price'] ?? ($item['subtotal'] / ($item['quantity'] ?: 1)), 2) }}</td>
+                                    <td class="col-subtotal">{{ number_format($item['subtotal'], 0) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        
+                        <!-- Descripción legal -->
+                        <div class="legal-description">
+                            Documento sustituívo de la factura, Decreto 1514 del 98 artículo 1, IVA Regimen simplificado
+                        </div>
+                        
+                        <!-- Valor en letras -->
+                        <div class="amount-words">
+                            VALOR EN LETRAS: {{ $order['totalInWords'] }}
+                        </div>
+                        
+                        <!-- Totales -->
+                        <div class="totals">
+                            <div class="total-row">
+                                <span class="total-label">TOTAL PÁGINA</span>
+                                <span class="total-value">$ {{ number_format($order['total'], 0) }}</span>
+                            </div>
+                            <div class="total-row">
+                                <span class="total-label">Subtotal Pedido</span>
+                                <span class="total-value">$ {{ number_format($order['subtotal'], 0) }}</span>
+                            </div>
+                            <div class="total-row">
+                                <span class="total-label">Iva</span>
+                                <span class="total-value">$ {{ number_format($order['iva'], 0) }}</span>
+                            </div>
+                            <div class="total-row total-pagar">
+                                <span class="total-label">TOTAL A PAGAR</span>
+                                <span class="total-value">$ {{ number_format($order['total'], 0) }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Pie de página -->
+                        <div class="footer">
+                            Teléfono: 6014774491 - Bogota - Colombia
+                        </div>
                     </div>
-                </div>
-
-                <!-- Totals -->
-                <div class="bg-gray-50 dark:bg-gray-900 p-2 rounded text-xs">
-                    <p class="mb-2 font-semibold text-gray-700 dark:text-gray-300">{{ $order['totalInWords'] }}</p>
-                    <div class="border-t border-gray-300 dark:border-gray-600 pt-2 space-y-1">
-                        <div class="flex justify-between">
-                            <span class="font-semibold">Subtotal:</span>
-                            <span class="font-bold">$ {{ number_format($order['subtotal'], 2) }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="font-semibold">IVA:</span>
-                            <span class="font-bold">$ {{ number_format($order['iva'], 2) }}</span>
-                        </div>
-                        <div class="flex justify-between border-t border-gray-300 dark:border-gray-600 pt-1">
-                            <span class="font-bold">TOTAL:</span>
-                            <span class="font-bold text-blue-600 dark:text-blue-400">$ {{ number_format($order['total'], 2) }}</span>
-                        </div>
-                    </div>
-                </div>
+                @endforeach
             </div>
+            <h2 class="text-sm font-bold mb-1">PEDIDO #{{ $loop->iteration }}</h2>
 
             @if($loop->iteration % 2 == 0 && !$loop->last)
-            <div class="page-break col-span-2"></div>
+            <div class="page-break"></div>
             @endif
-            @endforeach
+        @endforeach
+    @else
+        <div style="text-align: center; padding: 2cm; font-size: 12px;">
+            No se encontraron pedidos para esta entrega.
         </div>
-        @else
-        <div class="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 p-6 rounded">
-            <p class="text-center text-yellow-700 dark:text-yellow-400">
-                No se encontraron pedidos para esta entrega.
-            </p>
-        </div>
-        @endif
-    </div>
-
-    <script>
-        function toggleDarkMode() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-            }
-        }
-    </script>
+    @endif
 </body>
-
 </html>

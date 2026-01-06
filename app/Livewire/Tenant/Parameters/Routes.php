@@ -3,6 +3,7 @@
 namespace App\Livewire\Tenant\Parameters;
 
 use Livewire\Component;
+use Livewire\WithPagination;
 use App\Models\TAT\Routes\TatRoutes;
 use App\Models\TAT\Zones\TatZones;
 use Carbon\Carbon;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 class Routes extends Component
 {
+    use WithPagination;
     use \App\Traits\Livewire\WithExport;
 
     public $routeId, $name, $zone_id, $salesman_id, $sale_day, $delivery_day, $created_at, $updated_at;
@@ -21,7 +23,7 @@ class Routes extends Component
     public $showModal = false;        // Mostrar/ocultar modal
     public $perPage = 10;
 
-     protected $listeners = ['user-changed' => 'updateVendedor'];
+    protected $listeners = ['user-changed' => 'updateVendedor'];
 
     public $days = [
         'lunes' => 'Lunes',
@@ -79,7 +81,7 @@ class Routes extends Component
     {
         //$this->ensureTenantConnection();
         $route = TatRoutes::findOrFail($id);
-        
+
         $this->name = $route->name;
         $this->zone_id = $route->zone_id;
         $this->salesman_id = $route->salesman_id;
@@ -102,7 +104,8 @@ class Routes extends Component
         $this->showModal = false;
     }
 
-    public function save(){
+    public function save()
+    {
         $this->validate();
 
         $routeData = [
@@ -113,13 +116,13 @@ class Routes extends Component
             'delivery_day' => $this->delivery_day,
         ];
 
-        if($this->routeId){
+        if ($this->routeId) {
             //Actualizar ruta existente
-            $route=TatRoutes::findOrFail($this->routeId);
+            $route = TatRoutes::findOrFail($this->routeId);
             $routeData['updated_at'] = Carbon::now();
             $route->update($routeData);
             session()->flash('message', 'Ruta actualizada correctamente.');
-        }else{
+        } else {
             // Crear nuevo registro
             $routeData['created_at'] = Carbon::now();
             TatRoutes::create($routeData);
@@ -184,7 +187,7 @@ class Routes extends Component
 
     protected function getExportMapping()
     {
-        return function($route) {
+        return function ($route) {
             return [
                 $route->id,
                 $route->name,
