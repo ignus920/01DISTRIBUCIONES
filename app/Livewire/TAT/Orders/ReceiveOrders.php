@@ -190,72 +190,98 @@ class ReceiveOrders extends Component
         $this->loadItems();
     }
     
-    public function loadItems()
-    {
-        if (!$this->companyId) {
-            $this->items = collect([]);
-            return;
-        }
+  public function loadItems()
+{
+    if (!$this->companyId) {
+        $this->items = collect([]);
+        return;
+    }
 
-      $query = DB::table('tat_restock_list as r')
-    ->leftJoin('inv_items as ivi', 'ivi.id', '=', 'r.itemId')
-    ->leftJoin('inv_values as inv', function ($join) {
-        $join->on('inv.itemId', '=', 'ivi.id')
-             ->where('inv.label', 'Precio Regular');
-    })
-    ->leftJoin('tat_items as i', function ($join) {
-        $join->on('r.itemId', '=', 'i.item_father_id')
-             ->on('r.company_id', '=', 'i.company_id');
-    })
-    ->leftJoin('inv_remissions as rem', 'rem.quoteId', '=', 'r.order_number')
-    ->where('r.company_id', $this->companyId)
-    ->whereIn('r.status', ['Confirmado', 'Recibido'])
-    ->select(
-        'r.id',
-        'r.itemId',
-        'r.quantity_request',
-        'r.quantity_recive',
-        'r.status',
-        'r.created_at',
-        'r.order_number',
-        'i.name as item_name',        
-        'i.sku',
-        'i.stock',
-        'rem.consecutive as remise_number',
-        'ivi.name as it_name_dis',
-        'ivi.sku as it_sku_dis',
-        'ivi.taxId',
-        'inv.values as price',
-        'inv.label'
-    );
+    $query = DB::table('tat_restock_list as r')
+        ->leftJoin('tat_categories as tc', function ($join) {
+            $join->on('r.company_id', '=', 'tc.company_id');
+        })
+        ->leftJoin('inv_items as ivi', 'ivi.id', '=', 'r.itemId')
+        ->leftJoin('inv_values as inv', function ($join) {
+            $join->on('inv.itemId', '=', 'ivi.id')
+                 ->where('inv.label', 'Precio Regular');
+        })
+        ->leftJoin('tat_items as i', function ($join) {
+            $join->on('r.itemId', '=', 'i.item_father_id')
+                 ->on('r.company_id', '=', 'i.company_id');
+        })
+        ->leftJoin('inv_remissions as rem', 'rem.quoteId', '=', 'r.order_number')
+        ->where('r.company_id', $this->companyId)
+        ->where('tc.company_id', $this->companyId)
+        ->whereIn('r.status', ['Confirmado', 'Recibido'])
+        ->select(
+            'r.id',
+            'r.itemId',
+            'r.quantity_request',
+            'r.quantity_recive',
+            'r.status',
+            'r.created_at',
+            'r.order_number',
+            'i.name as item_name',
+            'i.sku',
+            'i.stock',
+            'rem.consecutive as remise_number',
+            'rem.status as rem_status',
+            'ivi.name as it_name_dis',
+            'ivi.sku as it_sku_dis',
+            'ivi.taxId',
+            DB::raw('MAX(inv.values) as price'), // 🔑 evita duplicados
+            'inv.label'
+        )
+        ->groupBy(
+            'r.id',
+            'r.itemId',
+            'r.quantity_request',
+            'r.quantity_recive',
+            'r.status',
+            'r.created_at',
+            'r.order_number',
+            'i.name',
+            'i.sku',
+            'i.stock',
+            'rem.consecutive',
+            'rem.status',
+            'ivi.name',
+            'ivi.sku',
+            'ivi.taxId',
+            'inv.label'
+        );
 
-            // dd($query->get());
-        // Filter by specific order if provided in URL
-        if ($this->order_number) {
-            $query->where('r.order_number', $this->order_number);
-        }
+    // 🔹 Filtro por orden
+    if ($this->order_number) {
+        $query->where('r.order_number', $this->order_number);
+    } else {
+        // 🔹 Si NO hay order_number específico, solo mostrar items con remisión EN RECORRIDO
+        $query->where('rem.status', 'EN RECORRIDO');
+    }
 
-        if ($this->search) {
-            $query->where(function($q) {
-                // If we are already filtering by order_number, searching by order_number again is redundant but harmless.
-                // Prioritize searching name/sku/remise
-                $q->where('rem.consecutive', 'like', '%' . $this->search . '%')
-                  ->orWhere('r.order_number', 'like', '%' . $this->search . '%')
-                  ->orWhere('i.name', 'like', '%' . $this->search . '%')
-                  ->orWhere('i.sku', 'like', '%' . $this->search . '%');
-            });
-        }
+    // 🔹 Búsqueda
+    if ($this->search) {
+        $query->where(function ($q) {
+            $q->where('rem.consecutive', 'like', '%' . $this->search . '%')
+              ->orWhere('r.order_number', 'like', '%' . $this->search . '%')
+              ->orWhere('i.name', 'like', '%' . $this->search . '%')
+              ->orWhere('i.sku', 'like', '%' . $this->search . '%');
+        });
+    }
 
-        $this->items = $query->orderBy('r.created_at', 'desc')->get();
+    // 🔹 Ejecutar consulta SOLO UNA VEZ
+    $this->items = $query
+        ->orderBy('r.created_at', 'desc')
+        ->get();
 
-        // Initialize quantities if not set
-        foreach ($this->items as $item) {
-            if (!isset($this->quantities[$item->id])) {
-                // Default to requested value as per user requirement "Copiar quantity_request en quantity_received"
-                $this->quantities[$item->id] = $item->quantity_request;
-            }
+    // 🔹 Inicializar cantidades
+    foreach ($this->items as $item) {
+        if (!isset($this->quantities[$item->id])) {
+            $this->quantities[$item->id] = $item->quantity_request;
         }
     }
+}
 
     // Called when a quantity input changes
     public function updateQuantity($id, $value)

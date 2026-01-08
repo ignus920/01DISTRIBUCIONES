@@ -1513,7 +1513,7 @@ public function validateQuantity($index)
             // Crear cotización (adaptando saveQuote() existente para TAT)
             $quote = VntQuote::create([
                 'consecutive' => $nextConsecutive,
-                'status' => 'REGISTRADO',
+                'status' => auth()->user()->profile_id == 17 ? 'REMISIÓN' : 'REGISTRADO',
                 'typeQuote' => 'POS', // Para TAT es institucional/POS
                 'customerId' => $companyId, // La tienda TAT como cliente
                 'warehouseId' => $warehouseId,

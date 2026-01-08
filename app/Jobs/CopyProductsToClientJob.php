@@ -127,7 +127,7 @@ class CopyProductsToClientJob implements ShouldQueue
                         'stock' => 0, // Stock inicial en 0 para el cliente
                         'img_path' => $mainImage ? $mainImage->img_path : null,
                         'cost' => $latestPrice ? (int) $latestPrice->values : 0,
-                        'price' => $latestPrice ? (int) (ceil($latestPrice->values / 100) * 100) : 0,
+                        'price' => $latestPrice ? (int) (round($latestPrice->values / 0.7 / 100) * 100) : 0,
                         'status' => 1, // Activo
                         'created_at' => now(),
                         'updated_at' => now(),
