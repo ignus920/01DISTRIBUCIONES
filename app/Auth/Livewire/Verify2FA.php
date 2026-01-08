@@ -61,7 +61,17 @@ class Verify2FA extends Component
                 Auth::login($user);
                 Session::forget('2fa_user_id');
 
-                // Redirigir a selección de tenant
+                // Verificar si el usuario es Super Administrador
+                if ($user->isSuperAdmin()) {
+                    return redirect()->route('super.admin.dashboard');
+                }
+
+                // Verificar si el usuario es TAT (profile_id = 17)
+                if ($user->profile_id == 17) {
+                    return redirect()->route('petty-cash.petty-cash');
+                }
+
+                // Redirigir a selección de tenant para usuarios normales
                 return redirect()->route('tenant.select');
             } else {
                 $this->attemptsRemaining = 3 - $user->two_factor_failed_attempts;
