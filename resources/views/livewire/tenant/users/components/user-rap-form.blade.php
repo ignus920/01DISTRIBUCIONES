@@ -195,7 +195,7 @@
                                 <div class="flex items-center">
                                     <div class="ml-4">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ $user->name }}
+                                            {{ $user->contact->firstName  ? $user->contact->firstName . ' ' . $user->contact->lastName : 'N/A' }}
                                         </div>
                                     </div>
                                 </div>

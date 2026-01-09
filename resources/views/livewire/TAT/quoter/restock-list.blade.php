@@ -90,7 +90,12 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                             <div class="flex items-center space-x-1">
-                                <span>ESTADO</span>
+                                <span>SOLICITUD</span>
+                            </div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                            <div class="flex items-center space-x-1">
+                                <span>PEDIDO</span>
                             </div>
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -126,6 +131,11 @@
                                        ($order->status === 'Recibido' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                                        'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200') }}">
                                     {{ $order->status }}
+                                </span>
+                            </td>
+                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                                    {{ $order->rem_status }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">

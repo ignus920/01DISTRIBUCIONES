@@ -108,8 +108,16 @@ class UserRapForm extends Component
      */
     private function loadProfiles(): void
     {
+        $centralDbName = config('database.connections.central.database');
+        
         $this->profiles = UsrProfile::where('status', 1)
            ->where('name', '!=', 'Tienda')
+           ->whereExists(function($query) use ($centralDbName) {
+               $query->select(DB::raw(1))
+                   ->from("{$centralDbName}.usr_profile_merchant as upm")
+                   ->whereColumn('upm.profile_id', 'usr_profiles.id')
+                   ->where('upm.merchant_type_id', 4);
+           })
            ->orderBy('name')
            ->get();
     }
@@ -579,7 +587,6 @@ class UserRapForm extends Component
         $sessionTenant = $this->getTenantId();
 
         return User::query()
-           
             ->with(['profile', 'contact.warehouse.company'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
