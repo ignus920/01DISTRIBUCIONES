@@ -43,7 +43,7 @@ class ProductQuoter extends Component
     public $editingQuoteId = null;
     public $isEditing = false;
     public $showObservations = false;
-     // Nueva propiedad para la categoría seleccionada
+    // Nueva propiedad para la categoría seleccionada
     public $selectedCategory = '';
     // Propiedad para filtrar por día de venta
     public $selectedSaleDay = '';
@@ -165,12 +165,12 @@ class ProductQuoter extends Component
             ->with('principalImage')
             ->when($this->search, function ($query) {
                 $query->where('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('internal_code', 'like', '%' . $this->search . '%')
-                      ->orWhere('sku', 'like', '%' . $this->search . '%')
-                      ->orWhere('description', 'like', '%' . $this->search . '%');
+                    ->orWhere('internal_code', 'like', '%' . $this->search . '%')
+                    ->orWhere('sku', 'like', '%' . $this->search . '%')
+                    ->orWhere('description', 'like', '%' . $this->search . '%');
             })
-             ->when($this->selectedCategory, function ($query) {
-             $query->where('categoryId', $this->selectedCategory);
+            ->when($this->selectedCategory, function ($query) {
+                $query->where('categoryId', $this->selectedCategory);
             })
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
@@ -184,7 +184,7 @@ class ProductQuoter extends Component
         ])->layout('layouts.app');
     }
 
-     // Método para obtener las categorías (con caché)
+    // Método para obtener las categorías (con caché)
     public function getCategories()
     {
         if ($this->cachedCategories === null) {
@@ -206,7 +206,7 @@ class ProductQuoter extends Component
                 ORDER BY tr.sale_day
             ", [auth()->id()]);
 
-            $this->cachedSaleDays = array_map(function($day) {
+            $this->cachedSaleDays = array_map(function ($day) {
                 return $day->sale_day;
             }, $days);
         }
@@ -218,7 +218,7 @@ class ProductQuoter extends Component
     {
         // Validar si el producto ya está confirmado (Perfil 17)
         $confirmedItem = $this->checkConfirmedProductStatus($productId);
-        
+
         if ($confirmedItem) {
             $this->dispatch('confirm-load-order', [
                 'orderNumber' => $confirmedItem->order_number,
@@ -322,13 +322,13 @@ class ProductQuoter extends Component
         }
 
         $this->quoterItems[$index]['quantity'] = $quantity;
-        
+
         // Marcar que el carrito tiene cambios
         $this->cartHasChanges = true;
-        
+
         session(['quoter_items' => $this->quoterItems]);
         $this->calculateTotal();
-        
+
         // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
         $this->checkAndDisableIfHasRemission();
     }
@@ -337,10 +337,10 @@ class ProductQuoter extends Component
     {
         unset($this->quoterItems[$index]);
         $this->quoterItems = array_values($this->quoterItems); // Reindexar array
-        
+
         // Marcar que el carrito tiene cambios
         $this->cartHasChanges = true;
-        
+
         session(['quoter_items' => $this->quoterItems]);
         $this->calculateTotal();
 
@@ -395,7 +395,7 @@ class ProductQuoter extends Component
 
 
 
-    
+
     /**
      * Guardar una cotización sin crear remisiones
      * 
@@ -458,7 +458,7 @@ class ProductQuoter extends Component
 
             // ⚠️ IMPORTANTE: NO crear remisiones aquí
             // Las remisiones se crean SOLO en confirmarPedido() cuando el usuario confirma la orden
-            
+
             // Log para confirmar que NO se crean remisiones
             Log::info('✅ Cotización guardada SIN crear remisiones', [
                 'quote_id' => $quote->id,
@@ -491,7 +491,6 @@ class ProductQuoter extends Component
                 : 'tenant.quoter.desktop';
 
             return redirect()->route($routeName);
-
         } catch (\Exception $e) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
@@ -501,43 +500,43 @@ class ProductQuoter extends Component
     }
 
 
-//funcion para validar la cantidad ingresada
-public function validateQuantity($index)
-{
-    // Verificar que el índice exista
-    if (!isset($this->quoterItems[$index])) {
-        return;
+    //funcion para validar la cantidad ingresada
+    public function validateQuantity($index)
+    {
+        // Verificar que el índice exista
+        if (!isset($this->quoterItems[$index])) {
+            return;
+        }
+
+        // Obtener la cantidad asegurando que nunca sea null ni vacío
+        $quantity = trim((string) ($this->quoterItems[$index]['quantity'] ?? ''));
+
+        // Si está vacío, no es numérico o es menor que 1, lo dejamos en 1
+        if ($quantity === '' || !ctype_digit($quantity) || intval($quantity) < 1) {
+            $this->quoterItems[$index]['quantity'] = 1;
+        } else {
+            // Convertimos a entero limpio
+            $this->quoterItems[$index]['quantity'] = intval($quantity);
+        }
+
+        // Marcar que el carrito tiene cambios
+        $this->cartHasChanges = true;
+
+        // Actualizar sesión
+        session(['quoter_items' => $this->quoterItems]);
+
+        // Recalcular total
+        $this->calculateTotal();
+
+        // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
+        $this->checkAndDisableIfHasRemission();
+
+        // Notificación opcional
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Cantidad actualizada'
+        ]);
     }
-
-    // Obtener la cantidad asegurando que nunca sea null ni vacío
-    $quantity = trim((string) ($this->quoterItems[$index]['quantity'] ?? ''));
-
-    // Si está vacío, no es numérico o es menor que 1, lo dejamos en 1
-    if ($quantity === '' || !ctype_digit($quantity) || intval($quantity) < 1) {
-        $this->quoterItems[$index]['quantity'] = 1;
-    } else {
-        // Convertimos a entero limpio
-        $this->quoterItems[$index]['quantity'] = intval($quantity);
-    }
-
-    // Marcar que el carrito tiene cambios
-    $this->cartHasChanges = true;
-
-    // Actualizar sesión
-    session(['quoter_items' => $this->quoterItems]);
-
-    // Recalcular total
-    $this->calculateTotal();
-
-    // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
-    $this->checkAndDisableIfHasRemission();
-
-    // Notificación opcional
-    $this->dispatch('show-toast', [
-        'type' => 'info',
-        'message' => 'Cantidad actualizada'
-    ]);
-}
 
 
 
@@ -553,23 +552,23 @@ public function validateQuantity($index)
 
     //funcion para buscar cliente
     public function searchCustomer()
-{
-    $this->searchingCustomer = true;
-    $this->ensureTenantConnection();
+    {
+        $this->searchingCustomer = true;
+        $this->ensureTenantConnection();
 
-    if (empty($this->customerSearch)) {
-        $this->searchingCustomer = false;
-        $this->dispatch('show-toast', [
-            'type' => 'warning',
-            'message' => 'Por favor ingrese un NIT o cédula'
-        ]);
-        return;
-    }
+        if (empty($this->customerSearch)) {
+            $this->searchingCustomer = false;
+            $this->dispatch('show-toast', [
+                'type' => 'warning',
+                'message' => 'Por favor ingrese un NIT o cédula'
+            ]);
+            return;
+        }
 
-    $search = '%' . $this->customerSearch . '%';
-    $params = [auth()->id(), $search, $search, $search, $search, $search];
+        $search = '%' . $this->customerSearch . '%';
+        $params = [auth()->id(), $search, $search, $search, $search, $search];
 
-    $customer = DB::select("
+        $customer = DB::select("
         SELECT DISTINCT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
         FROM tat_routes tr
         INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
@@ -584,36 +583,36 @@ public function validateQuantity($index)
         LIMIT 1
     ", $params);
 
-    if (!empty($customer)) {
-        $customer = (array) $customer[0];
-        $this->selectedCustomer = [
-            'id' => $customer['id'],
-            'businessName' => $customer['businessName'],
-            'firstName' => $customer['firstName'],
-            'lastName' => $customer['lastName'],
-            'identification' => $customer['identification'],
-            'billingEmail' => $customer['billingEmail'],
-            'sale_day' => $customer['sale_day'],
-        ];
+        if (!empty($customer)) {
+            $customer = (array) $customer[0];
+            $this->selectedCustomer = [
+                'id' => $customer['id'],
+                'businessName' => $customer['businessName'],
+                'firstName' => $customer['firstName'],
+                'lastName' => $customer['lastName'],
+                'identification' => $customer['identification'],
+                'billingEmail' => $customer['billingEmail'],
+                'sale_day' => $customer['sale_day'],
+            ];
 
-        $name = $customer['businessName'] ?: ($customer['firstName'] . ' ' . $customer['lastName']);
+            $name = $customer['businessName'] ?: ($customer['firstName'] . ' ' . $customer['lastName']);
 
-        $this->dispatch('show-toast', [
-            'type' => 'success',
-            'message' => 'Cliente encontrado: ' . $name
-        ]);
-    } else {
-        $this->selectedCustomer = null;
-        $this->showCreateCustomerButton = true;
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Cliente encontrado: ' . $name
+            ]);
+        } else {
+            $this->selectedCustomer = null;
+            $this->showCreateCustomerButton = true;
 
-        $this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Cliente no encontrado. Puedes crear uno nuevo'
-        ]);
+            $this->dispatch('show-toast', [
+                'type' => 'info',
+                'message' => 'Cliente no encontrado. Puedes crear uno nuevo'
+            ]);
+        }
+
+        $this->searchingCustomer = false;
     }
-
-    $this->searchingCustomer = false;
-}
 
 
 
@@ -852,23 +851,23 @@ public function validateQuantity($index)
         if ($this->isEditing && $this->editingQuoteId) {
             $this->ensureTenantConnection();
             $hasRemission = InvRemissions::where('quoteId', $this->editingQuoteId)->exists();
-            
+
             // Actualizar el estado
             $this->quoteHasRemission = $hasRemission;
-            
+
             Log::info('🔍 Verificación de remisión', [
                 'isEditing' => $this->isEditing,
                 'editingQuoteId' => $this->editingQuoteId,
                 'quoteHasRemission' => $this->quoteHasRemission,
                 'hasRemission_query' => $hasRemission
             ]);
-            
+
             if ($this->quoteHasRemission) {
                 Log::warning('⚠️ Cotización tiene remisión - Botón deshabilitado', [
                     'quote_id' => $this->editingQuoteId,
                     'has_remission' => $this->quoteHasRemission
                 ]);
-                
+
                 // Dispatch para notificar al usuario
                 $this->dispatch('show-toast', [
                     'type' => 'warning',
@@ -946,13 +945,13 @@ public function validateQuantity($index)
             } else {
                 // Marcar que el carrito tiene cambios
                 $this->cartHasChanges = true;
-                
+
                 session(['quoter_items' => $this->quoterItems]);
                 $this->calculateTotal();
-                
+
                 // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
                 $this->checkAndDisableIfHasRemission();
-                
+
                 $this->dispatch('show-toast', [
                     'type' => 'info',
                     'message' => 'Cantidad disminuida'
@@ -968,21 +967,21 @@ public function validateQuantity($index)
 
         if ($existingIndex !== false) {
             $quantity = intval($quantity);
-            
+
             if ($quantity <= 0) {
                 $this->removeFromQuoter($existingIndex);
             } else {
                 $this->quoterItems[$existingIndex]['quantity'] = $quantity;
-                
+
                 // Marcar que el carrito tiene cambios
                 $this->cartHasChanges = true;
-                
+
                 session(['quoter_items' => $this->quoterItems]);
                 $this->calculateTotal();
 
                 // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
                 $this->checkAndDisableIfHasRemission();
-                
+
                 $this->dispatch('show-toast', [
                     'type' => 'info',
                     'message' => 'Cantidad actualizada'
@@ -1052,7 +1051,6 @@ public function validateQuantity($index)
                 'type' => 'success',
                 'message' => 'Cotización #' . $quote->consecutive . ' cargada para edición'
             ]);
-
         } catch (\Exception $e) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
@@ -1128,7 +1126,6 @@ public function validateQuantity($index)
                 : 'tenant.quoter.desktop';
 
             return redirect()->route($routeName);
-
         } catch (\Exception $e) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
@@ -1143,7 +1140,7 @@ public function validateQuantity($index)
 
 
 
-    
+
     /**
      * Función unificada para guardar solicitudes de reabastecimiento TAT
      * Maneja tanto lista preliminar como confirmación directa
@@ -1218,10 +1215,10 @@ public function validateQuantity($index)
                 // Para lista preliminar, verificar si ya existe el producto
                 if (!$confirmDirectly && !$this->isEditingRestock) {
                     $existing = TatRestockList::where('itemId', $item['id'])
-                                              ->where('company_id', $companyId)
-                                              ->where('status', 'Registrado')
-                                              ->whereNull('order_number')
-                                              ->first();
+                        ->where('company_id', $companyId)
+                        ->where('status', 'Registrado')
+                        ->whereNull('order_number')
+                        ->first();
 
                     if ($existing) {
                         // Sumar cantidades al registro existente
@@ -1286,7 +1283,6 @@ public function validateQuantity($index)
                 'type' => 'success',
                 'message' => $message
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error saving restock request: ' . $e->getMessage());
             $this->dispatch('show-toast', [
@@ -1348,7 +1344,7 @@ public function validateQuantity($index)
         $user = Auth::user();
         $userId = $user ? $user->id : 'guest';
         $companyId = $this->getUserCompanyId($user);
-        
+
         // 📝 LOG DEBUG: Intentando cargar Restock
         Log::info('loadRestockForEditing', [
             'orderNumber' => $orderNumber,
@@ -1356,18 +1352,18 @@ public function validateQuantity($index)
             'companyId' => $companyId
         ]);
 
-        if(!$companyId) {
-             Log::error("No se pudo cargar la orden $orderNumber para edición: Company ID no encontrado para usuario $userId");
-             $this->dispatch('show-toast', [
+        if (!$companyId) {
+            Log::error("No se pudo cargar la orden $orderNumber para edición: Company ID no encontrado para usuario $userId");
+            $this->dispatch('show-toast', [
                 'type' => 'error',
                 'message' => 'Error: No se pudo verificar su empresa. Por favor contacte soporte.'
             ]);
-             return;
+            return;
         }
 
         $items = TatRestockList::where('order_number', $orderNumber)
             ->where('company_id', $companyId)
-            ->with(['item']) 
+            ->with(['item'])
             ->get();
 
         Log::info('Restock Items Search Result', [
@@ -1376,7 +1372,7 @@ public function validateQuantity($index)
         ]);
 
         if ($items->isEmpty()) {
-             $this->dispatch('show-toast', [
+            $this->dispatch('show-toast', [
                 'type' => 'warning',
                 'message' => 'No se encontraron productos para la orden #' . $orderNumber
             ]);
@@ -1385,7 +1381,7 @@ public function validateQuantity($index)
 
         $this->editingRestockOrder = $orderNumber;
         $this->isEditingRestock = true;
-        
+
         // Resetear items actuales
         $this->quoterItems = [];
 
@@ -1398,30 +1394,30 @@ public function validateQuantity($index)
                 // Agregar al array local
                 $this->quoterItems[] = [
                     'id' => $product->id,
-                    'name' => $product->display_name, 
+                    'name' => $product->display_name,
                     'sku' => $product->sku,
-                    'price' => $price, 
+                    'price' => $price,
                     'price_label' => 'Precio Lista',
                     'quantity' => $restockItem->quantity_request,
                     'description' => $product->description ?? '',
                 ];
             } else {
-                 Log::warning("Item no encontrado para restock ID: " . $restockItem->id);
+                Log::warning("Item no encontrado para restock ID: " . $restockItem->id);
             }
         }
-        
+
         // **IMPORTANTE**: Actualizar la sesión inmediatamente
         session(['quoter_items' => $this->quoterItems]);
-        
+
         Log::info('Session Updated with Restock Items', [
             'items_count' => count($this->quoterItems)
         ]);
-        
+
         $this->calculateTotal();
-        
+
         // Forzar renderizado
-        $this->showCartModal = false; 
-        
+        $this->showCartModal = false;
+
         $this->dispatch('show-toast', [
             'type' => 'info',
             'message' => 'Orden #' . $orderNumber . ' cargada. ' . count($this->quoterItems) . ' productos.'
@@ -1445,8 +1441,8 @@ public function validateQuantity($index)
 
             // Primero verificar QUE registros existen en tat_restock_list
             $allRestockItems = TatRestockList::where('order_number', $orderNumber)
-                                             ->where('company_id', $companyId)
-                                             ->get();
+                ->where('company_id', $companyId)
+                ->get();
 
             Log::info("Registros encontrados en tat_restock_list", [
                 'total_records' => $allRestockItems->count(),
@@ -1455,10 +1451,10 @@ public function validateQuantity($index)
 
             // Obtener items confirmados del pedido
             $restockItems = TatRestockList::where('order_number', $orderNumber)
-                                          ->where('company_id', $companyId)
-                                          ->where('status', 'Confirmado')
-                                          ->with(['item']) // Cargar relación con productos
-                                          ->get();
+                ->where('company_id', $companyId)
+                ->where('status', 'Confirmado')
+                ->with(['item']) // Cargar relación con productos
+                ->get();
 
             Log::info("Registros confirmados encontrados", [
                 'confirmed_records' => $restockItems->count(),
@@ -1487,13 +1483,13 @@ public function validateQuantity($index)
                 $contact = DB::table('vnt_contacts')
                     ->where('id', auth()->user()->contact_id)
                     ->first();
-                
+
                 if ($contact) {
                     if (isset($contact->warehouseId)) {
                         $warehouseId = $contact->warehouseId;
                         Log::info("Warehouse ID obtenido del contacto", ['userId' => $userId, 'warehouseId' => $warehouseId]);
                     }
-                    
+
                     // Construir nombre completo
                     $names = array_filter([
                         $contact->firstName,
@@ -1620,7 +1616,6 @@ public function validateQuantity($index)
             ]);
 
             return $quote;
-
         } catch (\Exception $e) {
             Log::error('Error migrando restock a quotes: ' . $e->getMessage(), [
                 'order_number' => $orderNumber,
@@ -1649,9 +1644,9 @@ public function validateQuantity($index)
             // Pero el $orderNumber que recibimos puede ser el original.
             // Buscamos los items usando el ID de la cotización que es el nuevo order_number
             $items = TatRestockList::where('order_number', $quote->id)
-                                   ->where('company_id', $companyId)
-                                   ->where('status', 'Confirmado')
-                                   ->get();
+                ->where('company_id', $companyId)
+                ->where('status', 'Confirmado')
+                ->get();
 
             if ($items->isEmpty()) {
                 Log::warning("No se encontraron items para crear remisión", [
@@ -1699,7 +1694,6 @@ public function validateQuantity($index)
             ]);
 
             return $remission;
-
         } catch (\Exception $e) {
             Log::error('Error creando remisión desde Restock: ' . $e->getMessage(), [
                 'quote_id' => $quote->id,
@@ -1741,7 +1735,6 @@ public function validateQuantity($index)
                 'tax' => $taxValue,
                 'sku' => $product->sku ?? ''
             ];
-
         } catch (\Exception $e) {
             Log::error('Error obteniendo datos del producto TAT: ' . $e->getMessage(), [
                 'item_id' => $itemId
@@ -1783,9 +1776,9 @@ public function validateQuantity($index)
 
         try {
             $existing = TatRestockList::where('itemId', $itemId)
-                                      ->where('company_id', $companyId)
-                                      ->where('status', '!=', 'Anulado')
-                                      ->first();
+                ->where('company_id', $companyId)
+                ->where('status', '!=', 'Anulado')
+                ->first();
 
             if (!$existing) {
                 $this->dispatch('show-toast', [
@@ -1844,7 +1837,6 @@ public function validateQuantity($index)
                     ]);
                 }
             }
-
         } catch (\Exception $e) {
             Log::error('Error updating restock request: ' . $e->getMessage());
             $this->dispatch('show-toast', [
@@ -1855,8 +1847,8 @@ public function validateQuantity($index)
     }
 
 
-    
-   //carga preliminar  de TAT
+
+    //carga preliminar  de TAT
     public function loadPreliminaryRestockForEditing()
     {
         $this->ensureTenantConnection();
@@ -1869,20 +1861,20 @@ public function validateQuantity($index)
             'companyId' => $companyId
         ]);
 
-        if(!$companyId) {
-             Log::error("No se pudo cargar la lista preliminar para edición: Company ID no encontrado para usuario $userId");
-             $this->dispatch('show-toast', [
+        if (!$companyId) {
+            Log::error("No se pudo cargar la lista preliminar para edición: Company ID no encontrado para usuario $userId");
+            $this->dispatch('show-toast', [
                 'type' => 'error',
                 'message' => 'Error: No se pudo verificar su empresa. Por favor contacte soporte.'
             ]);
-             return;
+            return;
         }
 
         // Obtener la query para debug
         $query = TatRestockList::where('company_id', $companyId)
             ->where('status', 'Registrado')
             ->whereNull('order_number');
-            
+
         Log::info('Preliminary Restock Query Debug', [
             'sql' => $query->toSql(),
             'bindings' => $query->getBindings(),
@@ -1896,7 +1888,7 @@ public function validateQuantity($index)
         ]);
 
         if ($items->isEmpty()) {
-             $this->dispatch('show-toast', [
+            $this->dispatch('show-toast', [
                 'type' => 'info',
                 'message' => 'No hay productos en lista preliminar para editar'
             ]);
@@ -1926,7 +1918,7 @@ public function validateQuantity($index)
                     'description' => $product->description ?? '',
                 ];
             } else {
-                 Log::warning("Item no encontrado para restock preliminar ID: " . $restockItem->id);
+                Log::warning("Item no encontrado para restock preliminar ID: " . $restockItem->id);
             }
         }
 
@@ -1948,7 +1940,7 @@ public function validateQuantity($index)
 
 
 
-    
+
 
     /**
      * Valida si un producto ya se encuentra en estado 'Confirmado' para el usuario actual (Perfil 17)
@@ -1994,22 +1986,22 @@ public function validateQuantity($index)
     /**
      * Buscar clientes en tiempo real
      */
-public function searchCustomersLive()
-{
-    $this->ensureTenantConnection();
+    public function searchCustomersLive()
+    {
+        $this->ensureTenantConnection();
 
-    if (strlen($this->customerSearch) < 1) {
-        $this->customerSearchResults = [];
-        return;
-    }
+        if (strlen($this->customerSearch) < 1) {
+            $this->customerSearchResults = [];
+            return;
+        }
 
-    $search = '%' . $this->customerSearch . '%';
+        $search = '%' . $this->customerSearch . '%';
 
-    // Si es vendedor (perfil 4), buscar solo en sus rutas asignadas
-    if (auth()->user()->profile_id == 4) {
-        $params = [auth()->id(), $search, $search, $search, $search, $search];
+        // Si es vendedor (perfil 4), buscar solo en sus rutas asignadas
+        if (auth()->user()->profile_id == 4) {
+            $params = [auth()->id(), $search, $search, $search, $search, $search];
 
-        $customers = DB::select("
+            $customers = DB::select("
             SELECT DISTINCT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
             FROM tat_routes tr
             INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
@@ -2021,12 +2013,13 @@ public function searchCustomersLive()
                 vc.lastName LIKE ? OR
                 tr.sale_day LIKE ?
             )
+            AND vc.type != 'PROVEEDOR'
         ", $params);
-    } else {
-        // Para administradores u otros perfiles, buscar en todos los clientes
-        $params = [$search, $search, $search, $search];
+        } else {
+            // Para administradores u otros perfiles, buscar en todos los clientes
+            $params = [$search, $search, $search, $search];
 
-        $customers = DB::select("
+            $customers = DB::select("
             SELECT DISTINCT
                 NULL as salesman_id,
                 NULL as sale_day,
@@ -2046,23 +2039,24 @@ public function searchCustomersLive()
             )
             AND vc.status = 1
             AND vc.deleted_at IS NULL
+            AND vc.type != 'PROVEEDOR'
         ", $params);
-    }
+        }
 
-    $this->customerSearchResults = array_map(function($customer) {
-        return [
-            'id' => $customer->id,
-            'identification' => $customer->identification,
-            'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
-            'sale_day' => $customer->sale_day
-        ];
-    }, $customers);
+        $this->customerSearchResults = array_map(function ($customer) {
+            return [
+                'id' => $customer->id,
+                'identification' => $customer->identification,
+                'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
+                'sale_day' => $customer->sale_day
+            ];
+        }, $customers);
 
-    // Auto-open modal if no results and sufficient length
-    if (empty($this->customerSearchResults) && strlen($this->customerSearch) >= 3) {
-        $this->openCustomerModal();
+        // Auto-open modal if no results and sufficient length
+        if (empty($this->customerSearchResults) && strlen($this->customerSearch) >= 3) {
+            $this->openCustomerModal();
+        }
     }
-}
 
     /**
      * Seleccionar un cliente de los resultados
@@ -2137,12 +2131,12 @@ public function searchCustomersLive()
         $this->customerSearchResults = [];
     }
 
-        /**
+    /**
      * Abrir modal de confirmación de pedido
      * 
      * @param int|null $quoteId ID de la cotización a confirmar (opcional)
      */
- 
+
     public function confirmarPedido($quoteId = null)
     {
         $this->ensureTenantConnection();
@@ -2161,14 +2155,14 @@ public function searchCustomersLive()
 
             // Fix: Usar editingQuoteId si no se pasa quoteId explícitamente y estamos editando
             $quoteIdToCheck = $quoteId ?? $this->editingQuoteId;
-            
+
             if ($quoteIdToCheck) {
                 $quoteId = $quoteIdToCheck;
                 // Verificar si YA existe una remisión para esta cotización
                 if (InvRemissions::where('quoteId', $quoteId)->exists()) {
-                     $this->quoteHasRemission = true; // Actualizar estado visual
-                     $this->confirmationLoading = false;
-                     $this->dispatch('show-toast', [
+                    $this->quoteHasRemission = true; // Actualizar estado visual
+                    $this->confirmationLoading = false;
+                    $this->dispatch('show-toast', [
                         'type' => 'error',
                         'message' => 'Esta cotización YA tiene una remisión generada.'
                     ]);
@@ -2176,7 +2170,7 @@ public function searchCustomersLive()
                 }
             }
 
-             // Si se proporciona un quoteId, cargar la cotización primero
+            // Si se proporciona un quoteId, cargar la cotización primero
             if ($quoteId) {
                 // Usamos la lógica existente para cargar los items en $this->quoterItems
                 $this->loadQuoteForEditing($quoteId);
@@ -2206,17 +2200,17 @@ public function searchCustomersLive()
             // Obtener datos del cliente de la cotización o del cliente seleccionado actualmente
             // Si se cargó la cotización, loadQuoteForEditing ya estableció selectedCustomer
             if (!$this->selectedCustomer && $quoteId) {
-                 $quote = VntQuote::find($quoteId);
-                 if($quote && $quote->customerId){
+                $quote = VntQuote::find($quoteId);
+                if ($quote && $quote->customerId) {
                     $customer = VntCompany::find($quote->customerId);
                     if ($customer) {
                         $this->selectedCustomer = [
                             'id' => $customer->id,
                             'businessName' => $customer->businessName,
-                             // ... otros campos si son necesarios para la remisión
+                            // ... otros campos si son necesarios para la remisión
                         ];
                     }
-                 }
+                }
             }
 
             // --- Lógica de creación de Remisión AUTOMÁTICA ---
@@ -2226,7 +2220,7 @@ public function searchCustomersLive()
 
             // 2. Obtener Razón por defecto (ID 1 o la primera encontrada)
             // Se asume que existe al menos una razón. Si no, esto podría fallar, validar si es necesario crear una por defecto.
-        
+
             // 3. Crear cabecera de Remisión
             // Nota: Se asume que 'reasonId' y otros campos fueron agregados al fillable como se planeó.
             $remission = InvRemissions::create([
@@ -2262,7 +2256,7 @@ public function searchCustomersLive()
                 if ($quote) {
                     $quote->status = 'REMISIÓN';
                     $quote->save();
-                    
+
                     Log::info('Status de cotización actualizado a REMISIÓN', [
                         'quote_id' => $quoteId,
                         'consecutive' => $quote->consecutive
@@ -2285,7 +2279,6 @@ public function searchCustomersLive()
 
             // Redirigir a la lista de cotizaciones (o remisiones si se prefiere)
             return redirect()->route('tenant.quoter');
-
         } catch (\Exception $e) {
             Log::error('Error en confirmarPedido (Automático): ' . $e->getMessage());
             $this->confirmationLoading = false;
@@ -2304,7 +2297,7 @@ public function searchCustomersLive()
     private function validateInventoryAvailability()
     {
         $errors = [];
-        
+
         try {
             foreach ($this->quoterItems as $item) {
                 // Aquí iría la lógica para verificar inventario disponible
@@ -2314,7 +2307,7 @@ public function searchCustomersLive()
         } catch (\Exception $e) {
             Log::warning('Error validando inventario: ' . $e->getMessage());
         }
-        
+
         return $errors;
     }
 
@@ -2337,5 +2330,4 @@ public function searchCustomersLive()
         $lastRemission = InvRemissions::orderBy('consecutive', 'desc')->first();
         return $lastRemission ? $lastRemission->consecutive + 1 : 1;
     }
-
 }

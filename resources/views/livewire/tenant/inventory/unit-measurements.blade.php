@@ -98,7 +98,7 @@
                                     @endif
                                 </div>
                             </th>
-                            <th wire:click="sortBy('name')"
+                            <th wire:click="sortBy('description')"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
                                 <div class="flex items-center gap-1">
                                     Descripción

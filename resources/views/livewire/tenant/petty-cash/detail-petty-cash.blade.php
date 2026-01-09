@@ -1,4 +1,4 @@
-<div>
+<div class="w-full">
     {{-- @if(!$reusable) --}}
     {{-- <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6"> --}}
         {{-- <div class="max-w-12xl mx-auto"> --}}
@@ -42,48 +42,48 @@
             @endif
 
             <!-- DataTable Card -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="w-full lg:max-h-96 lg:overflow-y-auto md:max-h-80">
                 <!--Resumen datos caja-->
-                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <!--Base-->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">BASE</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">BASE</label>
                             <input type="text" readonly
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 value="${{number_format($this->resumen['resumBase'],0)}}">
                         </div>
 
                         <!--Suma de ingresos-->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SUMA
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SUMA
                                 INGRESOS </label>
                             <input type="text" readonly
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 value="${{ number_format($this->resumen['ingresos'],0) }}">
                         </div>
 
                         <!--Suma de egresos-->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SUMA
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SUMA
                                 EGRESOS</label>
                             <input type="text" readonly
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 value="${{ number_format($this->resumen['egresos'],0) }}">
                         </div>
 
                         <!--Total-->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">TOTAL</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">TOTAL</label>
                             <input type="text" readonly
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                class="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 value="${{ number_format($this->resumen['total'],0) }}">
                         </div>
                     </div>
                 </div>
 
                 <!-- Pestañas -->
-                <div class="border-b border-gray-200 dark:border-gray-700">
+                {{-- <div class="border-b border-gray-200 dark:border-gray-700">
                     <div class="flex gap-0">
                         <button wire:click="switchTab('movements')"
                             class="px-6 py-3 text-sm font-medium {{ $activeTab === 'movements' ? 'text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300' }} transition-colors">
@@ -94,24 +94,20 @@
                             Reconciliaciones Pendientes
                         </button>
                     </div>
-                </div>
+                </div> --}}
 
                 <!-- Toolbar -->
-                <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="p-6 py-3 md:py-2 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <!-- Búsqueda -->
-                        <div class="flex-1 max-w-md">
+                        <div class="flex-1 max-w-sm">
                             <div class="relative">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none"
-                                        stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
+                                    <x-heroicon-o-eye class="h-4 w-4 text-gray-400 dark:text-gray-500" />
                                 </div>
                                 <input wire:model.live.debounce.300ms="search" type="text"
                                     placeholder="Buscar registros..."
-                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    class="block w-full pl-10 pr-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                             </div>
                         </div>
 
@@ -143,6 +139,7 @@
                         </div>
                         <!--Agregar movimiento (Si aplica)-->
                         @if($this->canDoMovement())
+                        @if($this->getStatusPettyCash()==1)
                         <div class="">
                             <button wire:click="createMovement" wire:loading.attr="disabled"
                                 class="inline-flex justify-center items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150 relative">
@@ -151,7 +148,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 4v16m8-8H4"></path>
                                     </svg>
-                                    Agregar Movimiento
+                                    Movimiento
                                 </span>
                                 <span wire:loading wire:target="createMovement" class="flex items-center">
                                     <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -162,6 +159,7 @@
                                 </span>
                             </button>
                         </div>
+                        @endif
                         @endif
                     </div>
                 </div>
@@ -227,19 +225,19 @@
                         </thead>
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             @forelse($detailPettyCash as $dt)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ">
                                 <td
-                                    class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                    class="px-6 py-2 md:py-1 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                     #{{ $dt->invoiceId ?? '999' }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                <td class="px-6 py-2 md:py-1 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                     @if ($dt->reasonsPettyCash->type=="i")
                                     ${{ number_format($dt->value, 0) }}
                                     @else
                                     $0
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                <td class="px-6 py-2 md:py-1 text-sm text-gray-500 dark:text-gray-400">
                                     @if($dt->reasonsPettyCash->type=="e")
                                     ${{ number_format($dt->value, 0) }}
                                     @else
@@ -247,10 +245,10 @@
                                     @endif
                                 </td>
                                 <td
-                                    class="px-6 py-4 justify-between whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    class="px-6 py-2 md:py-1 justify-between whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     {{ $dt->methodPayments->name }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center  text-sm font-medium">
+                                <td class="px-6 py-2 md:py-1 whitespace-nowrap text-center  text-sm font-medium">
                                     <div class="content-center">
                                         @if($this->getStatusPettyCash()==1)
                                         <button wire:click="deleteMovement({{ $dt->id }})"
@@ -288,7 +286,7 @@
                 <!-- Paginación -->
                 @if($detailPettyCash->hasPages())
                 <div
-                    class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+                    class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg overflow-x-auto">
                     <div class="flex items-center justify-between">
                         <div class="text-sm text-gray-700 dark:text-gray-300">
                             Mostrando {{ $detailPettyCash->firstItem() }} a {{ $detailPettyCash->lastItem() }} de {{

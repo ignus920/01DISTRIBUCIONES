@@ -6,8 +6,8 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Parámetros clientes</h1>
-                        <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de registros</p>
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Parámetros contactos</h1>
+                        <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de contactos</p>
                     </div>
                     <div class="flex flex-col sm:flex-row items-start sm:items-start justify-start sm:justify-between gap-4">
                         <button wire:click="create"
@@ -132,6 +132,20 @@
                                     placeholder="Buscar registros..."
                                     class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                             </div>
+                            
+                        </div>
+
+                        <div class="flex-1">
+                            <div class="relative">
+                                <label class="text-sm text-gray-700 dark:text-gray-300">Tipos de contacto:</label>
+                                <select wire:model.live="searchType"
+                                    class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="TODOS">TODOS</option>
+                                    <option value="USUARIO">USUARIO</option>
+                                    <option value="CLIENTE">CLIENTE</option>
+                                    <option value="PROVEEDOR">PROVEEDOR</option>
+                                </select>
+                            </div>
                         </div>
 
                         <!-- Controles -->
@@ -200,6 +214,9 @@
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sucursal</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dirección</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Teléfono</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ruta</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendedor</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Día</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Registro</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
                                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
@@ -235,6 +252,15 @@
                                     <br>
                                     {{ $item->mainWarehouse?->contacts->first()?->personal_phone ?? 'N/A' }}
 
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ $item->routes->first()->route->name ?? 'Sin ruta'}}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ $item->routes?->first()?->route?->salesman?->name ?? 'N/A' }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ $item->routes?->first()?->route?->sale_day ?? 'N/A' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     {{ $item->created_at->format('d/m/Y H:i') }}
@@ -764,29 +790,44 @@
                             @error('warehouseAddress') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
+                        <!-- Tipo de Contacto -->
+                        <div class="md:col-span-2">
+                            <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Contacto *</label>
+                            <select wire:model.live="type" id="type" name="type"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="">Seleccione un tipo de contacto</option>
+                                <option value="USUARIO">USUARIO</option>
+                                <option value="CLIENTE">CLIENTE</option>
+                                <option value="PROVEEDOR">PROVEEDOR</option>
+                            </select>
+                            @error('type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div> 
+
                         <!-- Crear Usuario Checkbox -->
                         <div class="md:col-span-2">
                             <div class="flex items-center gap-3 p-4 rounded-lg
-                                {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
+                                {{ empty($billingEmail) || $emailExists || $hasExistingUser || $validatingType ? 'bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' }}">
                                 <input
                                     wire:model="createUser"
                                     type="checkbox"
                                     id="createUser"
-                                    {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'disabled' : '' }}
-                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'opacity-50 cursor-not-allowed' : '' }}">
-                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
+                                    {{ empty($billingEmail) || $emailExists || $hasExistingUser || $validatingType ? 'disabled' : '' }}
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser || $validatingType ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                <label for="createUser" class="text-sm font-medium flex-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser || $validatingType ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300' }}">
                                     <span class="font-semibold">{{ $editingId ? 'Crear Usuario para este Cliente' : 'Convertir en Usuario' }}</span>
-                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
+                                    <p class="text-xs mt-1 {{ empty($billingEmail) || $emailExists || $hasExistingUser || $validatingType ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400' }}">
                                         @if(empty($billingEmail))
                                         Ingrese un email de facturación válido para habilitar esta opción
                                         @elseif($emailExists)
                                         No disponible: el email ya está registrado
+                                        @elseif($validatingType)
+                                        No disponible para proveedores
                                         @else
                                         Crear automáticamente un usuario para acceder al sistema con perfil de Tienda
                                         @endif
                                     </p>
                                 </label>
-                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
+                                <div class="text-xs px-2 py-1 rounded {{ empty($billingEmail) || $emailExists || $hasExistingUser || $validatingType ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300' }}">
                                     Perfil: Tienda
                                 </div>
                             </div>
@@ -1283,6 +1324,7 @@
                                 placeholder="Ej: Calle 123 #45-67">
                             @error('warehouseAddress') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
+
 
                         <!-- Crear Usuario Checkbox -->
                         <div class="md:col-span-2">

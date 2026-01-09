@@ -158,6 +158,14 @@
                                                     Editar Venta
                                                 </button>
                                             @endif
+                                            
+                                            <!-- Opción Detalle -->
+                                            <button wire:click="printQuote({{ $quote->id }})"
+                                                    @click="openDropdown = null"
+                                                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150">
+                                                <x-heroicon-o-printer class="w-5 h-5 shrink-0 mr-3" />
+                                                Imprimir
+                                            </button>
 
                                             <!-- Separador -->
                                             <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
