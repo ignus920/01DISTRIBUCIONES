@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\PettyCash;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\On;
 //Modelos
 use App\Models\Auth\Tenant;
 use App\Models\Tenant\PettyCash\PettyCash as PettyCashModel;
@@ -227,7 +228,7 @@ class PettyCash extends Component
     {
         $this->pettyCash_id = $pettyCash_id;
         $this->showDetail = true;
-        $this->showReconciliations = false;
+        $this->showReconciliations = true;
     }
 
     public function viewReconciliations($pettyCash_id)
@@ -237,6 +238,7 @@ class PettyCash extends Component
         $this->showDetail = false;
     }
 
+    #[On('openSalesFinishModal')]
     public function openSalesFinishModal($pettyCash_id)
     {
         $this->showModalSalesFinish = true;
@@ -286,9 +288,9 @@ class PettyCash extends Component
 
             $this->showModalSalesFinish = false;
             $this->resetForm();
-
-            return $this->ticketPettyCash($close->id, $this->pettyCash_id);
+            $this->dispatch('refreshReconciliations');
             $this->dispatch('refreshPettyCash');
+            return $this->ticketPettyCash($close->id, $this->pettyCash_id);
         } catch (\Exception $e) {
             Log::error($e);
             session()->flash('error', 'Error no se realizó correctamente' . $e->getMessage());
@@ -313,8 +315,9 @@ class PettyCash extends Component
 
             $this->showModalSalesFinish = false;
             $this->resetForm();
-            return $this->ticketPettyCash($arqueo->id, $this->pettyCash_id);
+            $this->dispatch('refreshReconciliations');
             $this->dispatch('refreshPettyCash');
+            return $this->ticketPettyCash($arqueo->id, $this->pettyCash_id);
         } catch (\Exception $e) {
             Log::error($e);
             session()->flash('error', 'Error no se realizó correctamente' . $e->getMessage());
@@ -371,6 +374,7 @@ class PettyCash extends Component
         }
     }
 
+    #[On('ticketPettyCash')]
     public function ticketPettyCash($close_id, $pettyCash_id)
     {
         try {

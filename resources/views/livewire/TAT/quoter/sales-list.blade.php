@@ -61,6 +61,7 @@
                             <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-64">CLIENTE</th>
                             <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-16">TIPO</th>
                             <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-24">ESTADO</th>
+                            <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-24">TOTAL</th>
                             <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-32">SUCURSAL</th>
                             <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-28">TELÉFONO</th>
                             <th class="px-3 py-3.5 text-left text-xs font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wider w-32">FECHA</th>
@@ -94,6 +95,9 @@
                                             : 'bg-red-500/10 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/20 dark:border-red-500/30' }}">
                                         {{ strtoupper($quote->status) }}
                                     </span>
+                                </td>
+                                <td class="px-3 py-4 whitespace-nowrap">
+                                    <span class="text-sm font-medium text-gray-900 dark:text-white">${{ number_format($quote->total ?? 0, 0, '.', '.') }}</span>
                                 </td>
                                 <td class="px-3 py-4">
                                     <div class="text-sm font-medium text-gray-900 dark:text-white">Soacha</div>
@@ -158,6 +162,14 @@
                                                     Editar Venta
                                                 </button>
                                             @endif
+                                            
+                                            <!-- Opción Detalle -->
+                                            <button wire:click="printQuote({{ $quote->id }})"
+                                                    @click="openDropdown = null"
+                                                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150">
+                                                <x-heroicon-o-printer class="w-5 h-5 shrink-0 mr-3" />
+                                                Imprimir
+                                            </button>
 
                                             <!-- Separador -->
                                             <div class="border-t border-gray-100 dark:border-slate-700 my-1"></div>
@@ -317,3 +329,73 @@
     @endif
 
 </div>
+<script>
+    // Prevenir múltiples configuraciones de listeners
+    if (typeof window.quoterPrintListenerConfigured === 'undefined') {
+        window.quoterPrintListenerConfigured = true;
+
+        // Función de impresión inline para producción
+        function openPrintWindow(eventData) {
+            console.log('🖨️ openPrintWindow ejecutada (inline):', eventData);
+
+            const data = Array.isArray(eventData) ? eventData[0] : eventData;
+            const url = data.url;
+            const format = data.format;
+
+            console.log('🔗 URL a imprimir:', url, '📄 Formato:', format);
+
+            // Tamaño de ventana según formato
+            const features = format === 'pos' ?
+                'width=400,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no' :
+                'width=800,height=900,scrollbars=yes,resizable=yes,menubar=no,toolbar=no';
+
+            // Abrir ventana
+            const win = window.open(url, 'printWindow_' + Date.now(), features);
+
+            if (!win) {
+                alert('⚠️ No se pudo abrir la ventana. Verifica que las ventanas emergentes estén permitidas.');
+                return;
+            }
+
+            console.log('✅ Ventana abierta correctamente');
+            win.focus();
+
+            // Auto impresión cuando la página cargue
+            win.onload = function() {
+                setTimeout(() => {
+                    console.log('🖨️ Iniciando impresión automática...');
+                    win.print();
+                }, 800);
+            };
+        }
+
+        // Función para configurar listener una sola vez
+        function configurePrintListener() {
+            if (window.Livewire && !window.quoterPrintListenerRegistered) {
+                window.quoterPrintListenerRegistered = true;
+                Livewire.on('open-print-window', openPrintWindow);
+                console.log('✅ Listener Livewire configurado una sola vez');
+            }
+        }
+
+        // Configurar listeners cuando el documento esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 Configurando listeners de impresión inline...');
+            configurePrintListener();
+        });
+
+        // También configurar cuando Livewire se inicialice
+        document.addEventListener('livewire:initialized', function() {
+            console.log('🔧 Livewire inicializado, verificando configuración...');
+            configurePrintListener();
+        });
+
+        // Para Livewire 3 también
+        document.addEventListener('livewire:navigated', function() {
+            console.log('🔧 Livewire navegado, verificando configuración...');
+            configurePrintListener();
+        });
+
+        console.log('🛡️ Sistema de impresión protegido contra duplicados');
+    }
+</script>

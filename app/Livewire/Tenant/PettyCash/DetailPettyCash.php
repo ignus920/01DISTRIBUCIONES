@@ -38,7 +38,7 @@ class DetailPettyCash extends Component
     public $search = '';
     public $sortField = 'invoiceId';
     public $sortDirection = 'desc';
-    public $perPage = 6;
+    public $perPage = 5;
 
     public function boot()
     {
@@ -50,9 +50,16 @@ class DetailPettyCash extends Component
         'typeMovement' => 'required',
         'reasonMovement' => 'required|integer',
         'methodPayMovement' => 'required|integer',
-        'valueDetail' => 'required',
-        'observations' => 'required'
+        'valueDetail' => 'required|integer'
         //'warehouseId' => 'required|integer', // Added validation for warehouseId
+    ];
+
+    protected $messages = [
+        'typeMovement.required' => 'El tipo de movimiento es obligatorio.',
+        'reasonMovement.required' => 'La razón del movimiento es obligatoria.',
+        'methodPayMovement.required' => 'El método de pago es obligatorio.',
+        'valueDetail.required' => 'El valor del detalle es obligatorio.',
+        'valueDetail.integer' => 'El valor del detalle debe ser un número entero.'
     ];
 
     protected $listeners = ['refreshDetail' => '$refresh'];
@@ -124,10 +131,10 @@ class DetailPettyCash extends Component
             'profile_id' => auth()->user()->profile_id ?? 'NO_PROFILE'
         ]);
 
-        // Si es usuario TAT, permitir
+        // Si es usuario TAT, no permitir
         if (auth()->user()->profile_id == 17) {
             Log::info('✅ canDoMovement() - Usuario TAT detectado, permitiendo');
-            return true;
+            return false;
         }
 
         $result = $this->isOptionEnabled(18);
@@ -290,11 +297,11 @@ class DetailPettyCash extends Component
             // Explicitly fetch data to debug potential DB errors
             $methodPayments = $this->MethodPayment;
             Log::info('MethodPayments fetched', ['count' => $methodPayments->count()]);
-            
+
             // Calculate details
             $values = $this->getValuesDetail();
             Log::info('Render calculated values');
-            
+
             return view('livewire.tenant.petty-cash.detail-petty-cash', [
                 'detailPettyCash' => $values,
                 'typeMovements' => $this->typeMovements,

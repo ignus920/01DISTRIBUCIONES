@@ -236,7 +236,7 @@ new class extends Component
                         d="M5 19V5v4.475V9zm3-6h3.525q.425 0 .713-.288t.287-.712t-.288-.712t-.712-.288H8q-.425 0-.712.288T7 12t.288.713T8 13m0 4h3.525q.425 0 .713-.288t.287-.712t-.288-.712t-.712-.288H8q-.425 0-.712.288T7 16t.288.713T8 17m0-8h8q.425 0 .713-.288T17 8t-.288-.712T16 7H8q-.425 0-.712.288T7 8t.288.713T8 9M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v4.45q0 .425-.288.713T20 10.45t-.712-.287T19 9.45V5H5v14h4q.425 0 .713.288T10 20t-.288.713T9 21zm12-5q-1.05 0-1.775-.725T14.5 13.5t.725-1.775T17 11t1.775.725t.725 1.775t-.725 1.775T17 16m0 1q.975 0 1.938.188t1.862.562q.575.225.888.738T22 19.6v.4q0 .425-.288.713T21 21h-8q-.425 0-.712-.288T12 20v-.4q0-.6.313-1.112t.887-.738q.9-.375 1.863-.562T17 17" />
                 </svg>
                 <span x-show="!sidebarCollapsed" class="ml-3 flex-1" x-transition>
-                    Gestión de personas
+                    Gestión de contactos
                 </span>
                 <!-- Icono desplegable -->
                 <svg x-show="!sidebarCollapsed" :class="open ? 'rotate-90' : ''"
@@ -247,7 +247,7 @@ new class extends Component
                 <!-- Tooltip (solo cuando está colapsado) -->
                 <div x-show="tooltip" x-transition
                     class="absolute left-full ml-2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-50 whitespace-nowrap">
-                    Gestión de personas
+                    Gestión de contactos
                 </div>
             </div>
             <!-- Submenú -->
@@ -255,7 +255,7 @@ new class extends Component
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <a href="{{ route('customers.customers') }}" wire:navigate
                     class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('customers.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                    Gestión Clientes
+                    Gestión Contactos
                 </a>
                
                 <a href="{{ route('users.users') }}" wire:navigate

@@ -365,7 +365,7 @@ class Uploads extends Component
                     'its.stock_items_store as stockActual',
                     DB::raw('SUM(dt.quantity) * dt.value as subtotal')
                 )
-                ->groupBy('c.id', 'c.name', 'i.id', 'i.name', 'dt.value', 'its.stock_items_store')
+                ->groupBy('c.id', 'c.name', 'i.id', 'i.name', 'dt.value', 'its.stock_items_store', 'i.internal_code')
                 ->orderBy('c.name')
                 ->orderBy('i.name')
                 ->get();

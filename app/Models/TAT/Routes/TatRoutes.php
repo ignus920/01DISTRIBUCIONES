@@ -27,15 +27,47 @@ class TatRoutes extends Model
         'updated_at' => 'datetime'
     ];
 
-    public function zones(){
+    protected $appends = ['salesman_name', 'salesman_email'];
+
+    public function zones()
+    {
         return $this->belongsTo(\App\Models\TAT\Zones\TatZones::class, 'zone_id');
     }
 
-    public function salesman(){
+    public function salesman()
+    {
         return $this->belongsTo(\App\Models\Auth\User::class, 'salesman_id');
     }
 
-    public function companies(){
+    public function companies()
+    {
         return $this->hasMany(\App\Models\Tenant\Customer\TatCompanyRoute::class, 'route_id');
+    }
+
+    /**
+     * Obtener el nombre del vendedor
+     */
+    public function getSalesmanNameAttribute()
+    {
+        return $this->salesman?->name ?? 'Sin vendedor';
+    }
+
+    /**
+     * Obtener el email del vendedor
+     */
+    public function getSalesmanEmailAttribute()
+    {
+        return $this->salesman?->email ?? 'N/A';
+    }
+
+    /**
+     * Obtener el nombre completo del vendedor con email
+     */
+    public function getSalesmanFullInfoAttribute()
+    {
+        $name = $this->salesman?->name ?? 'Sin vendedor';
+        $email = $this->salesman?->email;
+
+        return $email ? "{$name} ({$email})" : $name;
     }
 }

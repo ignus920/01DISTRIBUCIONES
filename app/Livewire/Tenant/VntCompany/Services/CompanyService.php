@@ -24,24 +24,24 @@ class CompanyService
     public function create(array $data, array $warehouses = []): VntCompany
     {
         $this->ensureTenantConnection();
-        
+
         // dd($data, $warehouses);
         $companyData = $this->prepareCompanyData($data);
         $company = VntCompany::create($companyData);
-        
+
         // Crear almacenes
         $this->warehouseService->createWarehouses($company, $warehouses);
-        
+
         // Preparar datos adicionales para el contacto (teléfonos y posición)
         $contactAdditionalData = [
             'business_phone' => $data['business_phone'] ?? null,
             'personal_phone' => $data['personal_phone'] ?? null,
             //'positionId' => $data['positionId'] ?? 1,
         ];
-        
+
         // Crear contacto básico automáticamente usando los datos de la empresa
         $this->contactService->createContactsForCompany($company, $contactAdditionalData);
-        
+
         return $company;
     }
 
@@ -51,33 +51,33 @@ class CompanyService
     public function update(int $id, array $data, array $warehouses = [], ?int $contactId = null): VntCompany
     {
         $this->ensureTenantConnection();
-        
+
         Log::info('CompanyService::update - Start', [
             'company_id' => $id,
             'typeIdentificationId' => $data['typeIdentificationId'],
             'typePerson' => $data['typePerson']
         ]);
-        
+
         $company = VntCompany::findOrFail($id);
         $companyData = $this->prepareCompanyData($data);
-        
+
         $company->update($companyData);
-        
+
         // Actualizar almacenes
         if (!empty($warehouses)) {
             $this->warehouseService->updateWarehouses($company, $warehouses);
         }
-        
+
         // Preparar datos adicionales para el contacto (teléfonos y posición)
         $contactAdditionalData = [
             'business_phone' => $data['business_phone'] ?? null,
             'personal_phone' => $data['personal_phone'] ?? null,
             'positionId' => $data['positionId'] ?? 1,
         ];
-        
+
         // Actualizar contacto básico con los nuevos datos de la empresa
         $this->contactService->updateContactForCompany($company, $contactAdditionalData, $contactId);
-        
+
         return $company;
     }
 
@@ -87,7 +87,7 @@ class CompanyService
     public function delete(int $id): bool
     {
         $this->ensureTenantConnection();
-        
+
         $company = VntCompany::findOrFail($id);
         return $company->delete();
     }
@@ -98,28 +98,28 @@ class CompanyService
     public function toggleCompanyStatus(int $id): void
     {
         $this->ensureTenantConnection();
-        
+
         $company = VntCompany::with(['warehouses.contacts', 'contacts'])->findOrFail($id);
-        
+
         // Toggle company status
         $newStatus = $company->status ? 0 : 1;
         $company->update(['status' => $newStatus]);
-        
+
         // Update all warehouses status
         foreach ($company->warehouses as $warehouse) {
             $warehouse->update(['status' => $newStatus]);
-            
+
             // Update all contacts for this warehouse
             foreach ($warehouse->contacts as $contact) {
                 $contact->update(['status' => $newStatus]);
             }
         }
-        
+
         // Update all contacts directly from company (vnt_contacts)
         foreach ($company->contacts as $contact) {
             $contact->update(['status' => $newStatus]);
         }
-        
+
         Log::info('Company status toggled', [
             'company_id' => $id,
             'new_status' => $newStatus,
@@ -134,7 +134,7 @@ class CompanyService
     public function getCompanyWithWarehouses(int $id): VntCompany
     {
         $this->ensureTenantConnection();
-        
+
         return VntCompany::with('warehouses')->findOrFail($id);
     }
 
@@ -144,7 +144,7 @@ class CompanyService
     public function getCompanyForEdit(int $id): VntCompany
     {
         $this->ensureTenantConnection();
-        
+
         return VntCompany::with([
             'mainWarehouse.contacts',
             'warehouses'
@@ -157,7 +157,7 @@ class CompanyService
     public function getCompanyWithAllRelations(int $id): VntCompany
     {
         $this->ensureTenantConnection();
-        
+
         return VntCompany::with([
             'warehouses',
             'contacts.warehouse',
@@ -171,7 +171,7 @@ class CompanyService
     public function getCompanyContacts(int $companyId): \Illuminate\Database\Eloquent\Collection
     {
         $this->ensureTenantConnection();
-        
+
         $company = VntCompany::findOrFail($companyId);
         return $this->contactService->getCompanyContacts($company);
     }
@@ -195,6 +195,7 @@ class CompanyService
             'business_phone' => $data['business_phone'] ?? null,
             'personal_phone' => $data['business_phone'] ?? null,
             'status' => $data['status'] ?? 1,
+            'type' => $data['type'] ?? null,
             // 'vntUserId' => $data['vntUserId'] ?? null, // Campo no existe en la tabla
             'routeId' => $data['routeId'] ?? null,
         ];

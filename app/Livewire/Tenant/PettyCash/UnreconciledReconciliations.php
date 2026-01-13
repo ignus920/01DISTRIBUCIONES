@@ -12,6 +12,7 @@ use App\Traits\HasCompanyConfiguration;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Models\Tenant\PettyCash\PettyCash as PettyCashModel;
 
 class UnreconciledReconciliations extends Component
 {
@@ -23,7 +24,7 @@ class UnreconciledReconciliations extends Component
     public $search = '';
     public $sortField = 'created_at';
     public $sortDirection = 'desc';
-    public $perPage = 10;
+    public $perPage = 4;
 
     protected $listeners = ['refreshReconciliations' => '$refresh'];
 
@@ -111,6 +112,36 @@ class UnreconciledReconciliations extends Component
         return VntDetailReconciliations::where('reconciliationId', $reconciliationId)
             ->with('methodPayments')
             ->get();
+    }
+
+    public function openSalesFinishModal($pettyCash_id)
+    {
+        $this->dispatch('openSalesFinishModal', $pettyCash_id);
+    }
+
+    public function ticketPettyCash($reconciliation_id, $pettyCash_id)
+    {
+
+        $this->dispatch('ticketPettyCash', $reconciliation_id, $pettyCash_id);
+    }
+
+    public function getPettyCashModel()
+    {
+        // Si el usuario es perfil TAT (17)
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatPettyCash();
+        }
+
+        // Si no (Distribuidora), usar modelo estandar (vnt_)
+        return new PettyCashModel();
+    }
+
+    public function getStatusPettyCash()
+    {
+        $this->ensureTenantConnection();
+        $model = $this->getPettyCashModel();
+        $status = $model->where('id', $this->pettyCash_id)->value('status');
+        return $status;
     }
 
     private function ensureTenantConnection(): void

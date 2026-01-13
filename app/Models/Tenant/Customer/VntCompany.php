@@ -17,8 +17,8 @@ class VntCompany extends Model
      * @var string
      */
 
-     protected $connection = 'tenant';
-     protected $table = 'vnt_companies';
+    protected $connection = 'tenant';
+    protected $table = 'vnt_companies';
 
     /**
      * El nombre de la llave primaria de la tabla.
@@ -26,7 +26,7 @@ class VntCompany extends Model
      *
      * @var string
      */
-     protected $primaryKey = 'id';
+    protected $primaryKey = 'id';
 
     /**
      * Los atributos que son asignables masivamente (Mass Assignable).
@@ -45,6 +45,7 @@ class VntCompany extends Model
         'secondLastName',
         'secondName',
         'status', // Tiene un default(1) en la migración
+        'type',
         'typePerson',
         'typeIdentificationId',
         'regimeId',
@@ -129,6 +130,14 @@ class VntCompany extends Model
             'id',
             'id'
         )->where('vnt_contacts.status', 1);
+    }
+
+    /**
+     * Relación con las rutas de la empresa
+     */
+    public function routes()
+    {
+        return $this->hasMany(TatCompanyRoute::class, 'company_id');
     }
 
     /**

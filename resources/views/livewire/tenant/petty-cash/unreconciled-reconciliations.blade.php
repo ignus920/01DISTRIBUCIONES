@@ -1,19 +1,15 @@
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
+<div class="w-full">
     <!-- Toolbar -->
-    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+    <div class="p-6 py-3 md:py-2 border-b border-gray-200 dark:border-gray-700">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <!-- Búsqueda -->
-            <div class="flex-1 max-w-md">
+            <div class="flex-1 max-w-sm">
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
+                        <x-heroicon-o-eye class="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <input wire:model.live.debounce.300ms="search" type="text" placeholder="Buscar reconciliaciones..."
-                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <input wire:model.live.debounce.300ms="search" type="text" placeholder="Buscar registros..."
+                        class="block w-full pl-10 pr-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
             </div>
 
@@ -30,145 +26,163 @@
                         <option value="50">50</option>
                     </select>
                 </div>
+
+                @if($this->getStatusPettyCash()==1)
+                <div class="">
+                    <button wire:click="openSalesFinishModal({{$pettyCash_id}})" wire:loading.attr="disabled"
+                        class="inline-flex justify-center items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150 relative">
+                        <span wire:loading.remove wire:target="openSalesFinishModal({{$pettyCash_id}})" class="flex items-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Arqueo/Cierre
+                        </span>
+                        <span wire:loading wire:target="openSalesFinishModal({{$pettyCash_id}})" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Cargando...
+                        </span>
+                    </button>
+                </div>
+                @endif
             </div>
         </div>
     </div>
 
     <!-- Tabla -->
-    <div class="relative overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                    <th wire:click="sortBy('id')"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
-                        <div class="flex items-center gap-1">
-                            ID
-                            @if($sortField === 'id')
-                            @if($sortDirection === 'desc')
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z">
-                                </path>
-                            </svg>
-                            @else
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z">
-                                </path>
-                            </svg>
-                            @endif
-                            @endif
-                        </div>
-                    </th>
-                    <th wire:click="sortBy('created_at')"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
-                        <div class="flex items-center gap-1">
-                            Fecha
-                            @if($sortField === 'created_at')
-                            @if($sortDirection === 'desc')
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z">
-                                </path>
-                            </svg>
-                            @else
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z">
-                                </path>
-                            </svg>
-                            @endif
-                            @endif
-                        </div>
-                    </th>
-                    <th
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Usuario</th>
-                    <th
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Observaciones</th>
-                    <th
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                @forelse ($reconciliations as $reconciliation)
-                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        #{{ $reconciliation->id }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {{ $reconciliation->created_at->format('d/m/Y H:i') }}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        {{ $reconciliation->user->name ?? 'N/A' }}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        <span class="truncate block max-w-xs">{{ $reconciliation->observations ?? '-' }}</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        <div x-data="{ open: false }" @click.outside="open = false" class="relative inline-block text-left">
-                            <button @click="open = !open"
-                                class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
-                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+    <div class="relative overflow-visible">
+        <div class="min-w-full overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th wire:click="sortBy('id')"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
+                            <div class="flex items-center gap-1">
+                                ID
+                                @if($sortField === 'id')
+                                @if($sortDirection === 'desc')
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path
-                                        d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z">
+                                    </path>
                                 </svg>
-                            </button>
-
-                            <div x-show="open" x-transition:enter="transition ease-out duration-100"
-                                x-transition:enter-start="transform opacity-0 scale-95"
-                                x-transition:enter-end="transform opacity-100 scale-100"
-                                x-transition:leave="transition ease-in duration-75"
-                                x-transition:leave-start="transform opacity-100 scale-100"
-                                x-transition:leave-end="transform opacity-0 scale-95" @click="open = false"
-                                class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
-                                style="display: none;">
-                                <div class="py-1" role="menu" aria-orientation="vertical">
-                                    <button wire:click="viewDetail({{ $reconciliation->id }})"
-                                        class="w-full text-left px-4 py-2 text-sm text-blue-800 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
-                                            </path>
-                                        </svg>
-                                        Ver Detalle
-                                    </button>
-                                    <button wire:click="markAsReconciled({{ $reconciliation->id }})"
-                                        class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        Marcar como Reconciliada
-                                    </button>
+                                @else
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z">
+                                    </path>
+                                </svg>
+                                @endif
+                                @endif
+                            </div>
+                        </th>
+                        <th wire:click="sortBy('created_at')"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
+                            <div class="flex items-center gap-1">
+                                Fecha
+                                @if($sortField === 'created_at')
+                                @if($sortDirection === 'desc')
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z">
+                                    </path>
+                                </svg>
+                                @else
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z">
+                                    </path>
+                                </svg>
+                                @endif
+                                @endif
+                            </div>
+                        </th>
+                        <th
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Usuario</th>
+                        <th
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Observaciones</th>
+                        <th
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    @forelse ($reconciliations as $reconciliation)
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td class="px-5 py-3 md:py-1 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            #{{ $reconciliation->id }}
+                        </td>
+                        <td class="px-5 py-2 md:py-1 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {{ $reconciliation->created_at->format('d/m/Y H:i') }}
+                        </td>
+                        <td class="px-5 py-2 md:py-1 text-sm text-gray-500 dark:text-gray-400">
+                            {{ $reconciliation->user->name ?? 'N/A' }}
+                        </td>
+                        <td class="px-5 py-2 md:py-1 text-sm text-gray-500 dark:text-gray-400">
+                            <span class="truncate block max-w-xs">{{ $reconciliation->observations ?? '-' }}</span>
+                        </td>
+                        <td class="px-5 py-2 md:py-1 whitespace-nowrap text-center text-sm font-medium">
+                            <div x-data="{ open: false }" @click.outside="open = false" 
+                                class="relative inline-block text-left static"
+                                style="position: static !important;">
+                                <button @click="open = !open" x-ref="button"
+                                    class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                    </svg>
+                                </button>
+    
+                                <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="transform opacity-0 scale-95"
+                                    x-transition:enter-end="transform opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="transform opacity-100 scale-100"
+                                    x-transition:leave-end="transform opacity-0 scale-95" @click="open = false"
+                                    class="origin-top-left fixed left-auto right-auto mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-[60]"
+                                    x-anchor="$refs.button"
+                                    style="display: none;">
+    
+                                    <div class="py-1" role="menu" aria-orientation="vertical">
+                                        <button wire:click="viewDetail({{ $reconciliation->id }})"
+                                            class="w-full text-left px-4 py-2 text-sm text-blue-800 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center">
+                                            <x-heroicon-o-eye class="w-5 h-5 mr-1" />
+                                            
+                                            Ver Detalle
+                                        </button>
+                                        <button wire:click="ticketPettyCash({{ $reconciliation->id }}, {{ $pettyCash_id }})"
+                                            class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
+                                            <x-heroicon-o-document class="w-6 h-6 mr-1" />
+                                            PDF
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                        <div class="flex flex-col items-center">
-                            <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <p class="text-lg font-medium">No hay reconciliaciones pendientes</p>
-                            <p class="text-sm">Todas las reconciliaciones han sido completadas</p>
-                        </div>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                            <div class="flex flex-col items-center">
+                                <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p class="text-lg font-medium">No hay reconciliaciones pendientes</p>
+                                <p class="text-sm">Todas las reconciliaciones han sido completadas</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Paginación -->
@@ -283,14 +297,14 @@
                             class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 font-medium text-sm transition-colors">
                             Cerrar
                         </button>
-                        <button type="button" wire:click="markAsReconciled({{ $selectedReconciliation }})"
+                        {{-- <button type="button" wire:click="markAsReconciled({{ $selectedReconciliation }})"
                             class="inline-flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 border border-transparent rounded-lg font-medium text-sm text-white transition-colors">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M5 13l4 4L19 7"></path>
                             </svg>
                             Marcar como Reconciliada
-                        </button>
+                        </button> --}}
                     </div>
                 </div>
             </div>
