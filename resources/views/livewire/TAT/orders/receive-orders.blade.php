@@ -102,8 +102,8 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900 dark:text-gray-200">
-                                            {{ $item->remise_number ?: 'Sin Remisión' }}
+                                        <div class="text-xs text-gray-500 dark:text-slate-400">
+                                             Rem: # {{ $item->remise_number ?: 'Sin Remisión' }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-slate-400">
                                             Ord: #{{ $item->order_number }}
@@ -160,7 +160,10 @@
             
             <!-- Footer with Actions -->
             <div class="px-6 py-4 bg-gray-50 dark:bg-slate-700/50 border-t border-gray-200 dark:border-slate-700 flex justify-between items-center gap-4">
-                <a href="{{ route('tenant.tat.restock.list') }}" class="text-sm font-medium text-gray-700 dark:text-slate-300 hover:text-gray-500 dark:hover:text-slate-200">
+                <a href="{{ route('tenant.tat.restock.list') }}" class="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 border border-red-200 dark:border-red-800 transition-colors">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
                     {{ count($items) > 0 ? 'Cancelar y Volver' : 'Volver a la lista' }}
                 </a>
 

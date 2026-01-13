@@ -5,6 +5,7 @@ namespace App\Models\Tenant\Items;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Tenant\Items\Brand;
+use App\Models\Tenant\Items\House;
 use App\Models\Tenant\Items\InvValues;
 use App\Models\Tenant\Items\ImageGallery;
 use App\Models\Tenant\Items\InvItemsStore;
@@ -60,6 +61,11 @@ class Items extends Model
     public function brand()
     {
         return $this->belongsTo(Brand::class, 'brandId', 'id');
+    }
+
+    public function house()
+    {
+        return $this->belongsTo(House::class, 'houseId', 'id');
     }
 
     public function purchasingUnit()

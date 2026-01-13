@@ -190,3 +190,6 @@ require __DIR__.'/tenants/uploads.php';
 
 // Incluir rutas del módulo de clientes del tenant
 require __DIR__.'/tenants/customers.php';
+
+// Incluir rutas del módulo de reportes del tenant
+require __DIR__.'/tenants/reports.php';

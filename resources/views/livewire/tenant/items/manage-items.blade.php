@@ -125,7 +125,13 @@
                                 Marca</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Casa</th>    
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Stock</th>
+                              <th
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Precios</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Unidad de compra</th>
@@ -156,14 +162,17 @@
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $it->internal_code ?? $it->internalCode ?? '' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            <td class="text-xs text-gray-500 dark:text-gray-400">
                                 {{ $it->name }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            <td class="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
                                 {{ $it->type }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            <td class="px-2 py-2 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $it->brand->name ?? 'SIN MARCA' }}
+                            </td>
+                             <td class="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                {{ $it->house->name ?? 'SIN MARCA' }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 @if($it->inventoriable == 1)
@@ -176,6 +185,22 @@
                                 @endif
                                 @else
                                 No maneja inventario
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                @if($it->invValues->isNotEmpty())
+                                    <div class="space-y-1.5">
+                                        @foreach($it->invValues->where('type', 'precio') as $value)
+                                            <div class="flex items-center gap-2">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                                    {{ str_replace('Precio ', '', $value->label) }}:
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">${{ number_format($value->values, 0, ',', '.') }}</span>
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="text-gray-400 dark:text-gray-500 italic">Sin precios</span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\Livewire\WithExport;
 use App\Models\Central\CnfPosition;
+use App\Models\Central\VntCompany;
 use App\Traits\HasCompanyConfiguration;
 use App\Models\Auth\Tenant;
 use App\Services\Tenant\TenantManager;
@@ -107,8 +108,16 @@ class UserRapForm extends Component
      */
     private function loadProfiles(): void
     {
+        $centralDbName = config('database.connections.central.database');
+        
         $this->profiles = UsrProfile::where('status', 1)
            ->where('name', '!=', 'Tienda')
+           ->whereExists(function($query) use ($centralDbName) {
+               $query->select(DB::raw(1))
+                   ->from("{$centralDbName}.usr_profile_merchant as upm")
+                   ->whereColumn('upm.profile_id', 'usr_profiles.id')
+                   ->where('upm.merchant_type_id', 4);
+           })
            ->orderBy('name')
            ->get();
     }
@@ -404,12 +413,12 @@ class UserRapForm extends Component
             }
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Validation errors are automatically handled by Livewire
-            // The modal stays open so user can see and fix errors
+            // Log validation errors for debugging
             Log::info('Validation error in save method', [
                 'errors' => $e->errors(),
             ]);
-            // Don't throw - let Livewire handle validation display
+            // Re-throw the exception so Livewire can display the errors in the form
+            throw $e;
         } catch (\Exception $e) {
             // Other errors are handled in create/update methods
             // This catch is for any unexpected errors
@@ -578,7 +587,6 @@ class UserRapForm extends Component
         $sessionTenant = $this->getTenantId();
 
         return User::query()
-           
             ->with(['profile', 'contact.warehouse.company'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -633,23 +641,42 @@ class UserRapForm extends Component
                 throw new \Exception('Usuario sin contacto asociado');
             }
             
+            // dd($userId);
             // 4. Buscar relación UserTenant
             $userTenant = UserTenant::where('user_id', $userId)
                 ->where('tenant_id', $tenantId)
                 ->firstOrFail();
-            
+            // dd($userTenant);
             // 5. Iniciar transacción
             DB::beginTransaction();
             
             // 6. Calcular nuevo estado (toggle)
             $newStatus = !$user->contact->status;
-            
+
             if ($this->canCreateOrUpdateUsers(true, $newStatus)) {
                 DB::rollBack();
                 $this->errorMessage = 'No tienes permisos para crear usuarios';
                 return;
             }
             
+            $company = VntCompany::with(['warehouses.contacts', 'contacts'])->where('billingEmail', $user->email)->firstOrFail();
+             // Toggle company status
+            $newStatus = $company->status ? 0 : 1;
+            $company->update(['status' => $newStatus]);
+             // Update all warehouses status
+            foreach ($company->warehouses as $warehouse) {
+                 $warehouse->update(['status' => $newStatus]);
+                // Update all contacts for this warehouse
+                foreach ($warehouse->contacts as $contact) {
+                   $contact->update(['status' => $newStatus]);
+                } 
+            }
+             
+             // Update all contacts directly from company (vnt_contacts)
+            foreach ($company->contacts as $contact) {
+              $contact->update(['status' => $newStatus]);
+            }
+
             // 7. Actualizar vnt_contacts
             $user->contact->update(['status' => $newStatus]);
             

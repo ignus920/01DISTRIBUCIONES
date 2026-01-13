@@ -551,19 +551,21 @@ class Quoter extends Component
                 return $query->where('userId', Auth::id());
             })
             ->when($this->search, function ($query) {
-                $query->where('consecutive', 'like', '%' . $this->search . '%')
-                    ->orWhere('status', 'like', '%' . $this->search . '%')
-                    ->orWhere('typeQuote', 'like', '%' . $this->search . '%')
-                    ->orWhere('observations', 'like', '%' . $this->search . '%')
-                    ->orWhereHas('customer', function ($q) {
-                        $q->where('firstName', 'like', '%' . $this->search . '%')
-                            ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                            ->orWhere('email', 'like', '%' . $this->search . '%');
-                    })
-                    ->orWhereHas('warehouse', function ($q) {
-                        $q->where('name', 'like', '%' . $this->search . '%')
-                            ->orWhere('address', 'like', '%' . $this->search . '%');
-                    });
+                $query->where(function ($q) {
+                    $q->where('consecutive', 'like', '%' . $this->search . '%')
+                        ->orWhere('status', 'like', '%' . $this->search . '%')
+                        ->orWhere('typeQuote', 'like', '%' . $this->search . '%')
+                        ->orWhere('observations', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('customer', function ($subQ) {
+                            $subQ->where('firstName', 'like', '%' . $this->search . '%')
+                                ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                                ->orWhere('billingEmail', 'like', '%' . $this->search . '%');
+                        })
+                        ->orWhereHas('warehouse', function ($subQ) {
+                            $subQ->where('name', 'like', '%' . $this->search . '%')
+                                ->orWhere('address', 'like', '%' . $this->search . '%');
+                        });
+                });
             });
 
         // Aplicar ordenamiento
@@ -846,13 +848,13 @@ class Quoter extends Component
                         ->orWhere('status', 'like', '%' . $this->search . '%')
                         ->orWhere('typeQuote', 'like', '%' . $this->search . '%')
                         ->orWhere('observations', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('customer', function ($q) {
-                            $q->where('firstName', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('customer', function ($subQ) {
+                            $subQ->where('firstName', 'like', '%' . $this->search . '%')
                                 ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                                ->orWhere('email', 'like', '%' . $this->search . '%');
+                                ->orWhere('billingEmail', 'like', '%' . $this->search . '%');
                         })
-                        ->orWhereHas('warehouse', function ($q) {
-                            $q->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('warehouse', function ($subQ) {
+                            $subQ->where('name', 'like', '%' . $this->search . '%')
                                 ->orWhere('address', 'like', '%' . $this->search . '%');
                         });
                 });

@@ -90,7 +90,12 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                             <div class="flex items-center space-x-1">
-                                <span>ESTADO</span>
+                                <span>SOLICITUD</span>
+                            </div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                            <div class="flex items-center space-x-1">
+                                <span>PEDIDO</span>
                             </div>
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -102,7 +107,15 @@
                     @forelse($restockOrders as $order)
                         <tr class="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                #{{ $order->order_number }}
+                                <div class="flex flex-col gap-1">
+                                    <span class="font-bold">#{{ $order->order_number }}</span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 w-fit">
+                                        Remisión: {{ $order->remise_number ?: 'N/A' }}
+                                    </span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 w-fit">
+                                        Cotización: {{ $order->quote_consecutive ?: 'N/A' }}
+                                    </span>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
                                 {{ \Carbon\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}
@@ -120,17 +133,32 @@
                                     {{ $order->status }}
                                 </span>
                             </td>
+                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                                    {{ $order->rem_status }}
+                                </span>
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                 @if($order->order_number)
                                     <!-- Registro confirmado -->
                                     @if($order->status === 'Confirmado')
+                                         @if($order->rem_status === 'EN RECORRIDO')
                                          <a href="{{ route('tenant.tat.receive.orders', ['order_number' => $order->order_number]) }}"
                                            class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 inline-flex items-center transition-colors text-sm font-medium">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                             </svg>
-                                            Recibir
+                                            Ver detalle
                                         </a>
+                                        @else
+                                         <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                                          <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor"  stroke-linecap="round" stroke-linejoin="round" stroke-width="2" aria-hidden="true">
+                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" /> <path d="M7 17L17 7" />
+                                          </svg>
+                                           No habilitado
+                                          </span>
+                                        @endif
                                     @elseif($order->status === 'Recibido')
                                         <a href="{{ route('tenant.tat.receive.orders', ['order_number' => $order->order_number]) }}" 
                                            class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center text-sm font-medium transition-colors">

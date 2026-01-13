@@ -36,13 +36,6 @@
       0 => 'Jenssegers\\Agent\\AgentServiceProvider',
     ),
   ),
-  'kitloong/laravel-migrations-generator' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'KitLoong\\MigrationsGenerator\\MigrationsGeneratorServiceProvider',
-    ),
-  ),
   'laravel-shift/blueprint' => 
   array (
     'providers' => 
