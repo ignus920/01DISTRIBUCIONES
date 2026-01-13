@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\TAT\Items\TatItems;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class QuoteItem extends Model
 {
@@ -47,9 +48,9 @@ class QuoteItem extends Model
         return $this->belongsTo(Quote::class, 'quoteId', 'id');
     }
 
-    public function item()
+    public function item(): BelongsTo
     {
-        return $this->belongsTo(TatItems::class, 'itemId', 'id');
+        return $this->belongsTo(TatItems::class, 'itemId');
     }
 
     // Accessors

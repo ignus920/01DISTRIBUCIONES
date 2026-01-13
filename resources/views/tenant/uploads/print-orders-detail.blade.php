@@ -281,35 +281,164 @@
 </head>
 <body>
     @if(count($customerOrders) > 0)
-
-        <div class="container">
-            @foreach($customerOrders as $index => $order)
-            <div class="order-card {{ $index < count($customerOrders) - 1 ? 'page-break' : '' }}">
-                <!-- Contenido de la tarjeta de pedido -->
-                <div class="mas-header">MAS 10</div>
-                    
-                    <!-- Información de la empresa -->
-                    <div class="company-info">
-                        Mas distribuciones JM<br>
-                        Nit: 1017134785-1<br>
-                        <h2 class="text-sm font-bold mb-1">PEDIDO #{{ $loop->iteration }}</h2>
-                    </div>
-                    <!-- Customer Info -->
-                     <!-- Contacto (opcional, aparece en algunos pedidos del PDF) -->
-                    @if(isset($order['customer']['contact_name']))
-                    <div class="customer-info">
-                        <div class="customer-row">
-                            <span class="customer-label">Contacto:</span>
-                            <span>{{ $order['customer']['contact_name'] }}</span>
+        @php
+            $orderChunks = collect($customerOrders)->chunk(2);
+            $totalPages = $orderChunks->count();
+        @endphp
+        @foreach($orderChunks as $chunk)
+            <div class="container">
+                @foreach($chunk as $order)
+                    @php
+                        $overall_index = ($loop->parent->index * 2) + $loop->index;
+                    @endphp
+                    <div class="order-card">
+                        <!-- Encabezado MAS 10 -->
+                        <div class="mas-header">MAS 10</div>
+                        
+                        <!-- Información de la empresa -->
+                        <div class="company-info">
+                            Mas distribuciones JM<br>
+                            Nit: 1017134785-1<br>
+                        </div>
+                        
+                        <!-- Número de página -->
+                        <div class="page-info">PÁGINA: {{ $loop->parent->iteration }} de {{ $totalPages }}</div>
+                        
+                        <!-- Contacto (opcional, aparece en algunos pedidos del PDF) -->
+                        @if(isset($order['customer']['contact_name']))
+                        <div class="customer-info">
+                            <div class="customer-row">
+                                <span class="customer-label">Contacto:</span>
+                                <span>{{ $order['customer']['contact_name'] }}</span>
+                            </div>
+                        </div>
+                        @endif
+                        
+                        <!-- Encabezado del pedido -->
+                        <div class="order-header">
+                            <div>
+                                <div class="order-number">PEDIDO # {{ $overall_index + 101816 }}</div>
+                                <div>FECHA: {{ \Carbon\Carbon::parse($order['order_date'] ?? now())->format('Y-m-d') }}</div>
+                                <div>FECHA ENTRE: {{ \Carbon\Carbon::parse($order['delivery_date'] ?? now()->addDays(3))->format('Y-m-d') }}</div>
+                            </div>
+                            <div class="seller-contact">
+                                <div class="seller-row">
+                                    <span>Vendedor:</span>
+                                    <span>{{ $order['customer']['salesPerson'] ?? 'JULIO RIAÑO' }}</span>
+                                </div>
+                                <div class="seller-row">
+                                    <span>Día visita:</span>
+                                    <span>{{ $order['customer']['saleDay'] ?? '4' }}</span>
+                                </div>
+                                <div class="seller-row">
+                                    <span>Tel vendedor:</span>
+                                    <span>304 6800740</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Información del cliente -->
+                        <div class="customer-info">
+                            <div class="customer-row">
+                                <span class="customer-label">Cliente:</span>
+                                <span>{{ $order['customer']['name'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Identificación:</span>
+                                <span>{{ $order['customer']['identification'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Barrio:</span>
+                                <span>{{ $order['customer']['district'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Dirección:</span>
+                                <span>{{ $order['customer']['address'] }}</span>
+                            </div>
+                            <div class="customer-row">
+                                <span class="customer-label">Teléfono:</span>
+                                <span>{{ $order['customer']['phone'] }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Observaciones -->
+                        @if(isset($order['observations']) && $order['observations'])
+                        <div class="observations">
+                            <span class="obs-label">Observaciones:</span> {{ $order['observations'] }}
+                        </div>
+                        @else
+                        <div class="observations">
+                            <span class="obs-label">Observaciones:</span>
+                        </div>
+                        @endif
+                        
+                        <!-- Tabla de items -->
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-ref">Ref</th>
+                                    <th class="col-cant">Cant</th>
+                                    <th class="col-desc">Descripción</th>
+                                    <th class="col-price">Precio</th>
+                                    <th class="col-subtotal">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($order['items'] as $item)
+                                <tr>
+                                    <td class="col-ref">{{ $item['code'] }}</td>
+                                    <td class="col-cant">{{ number_format($item['quantity'], 0) }}</td>
+                                    <td class="col-desc">{{ $item['name'] }}</td>
+                                    <td class="col-price">{{ number_format($item['unit_price'] ?? ($item['subtotal'] / ($item['quantity'] ?: 1)), 2) }}</td>
+                                    <td class="col-subtotal">{{ number_format($item['subtotal'], 0) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        
+                        <!-- Descripción legal -->
+                        <div class="legal-description">
+                            Documento sustituívo de la factura, Decreto 1514 del 98 artículo 1, IVA Regimen simplificado
+                        </div>
+                        
+                        <!-- Valor en letras -->
+                        <div class="amount-words">
+                            VALOR EN LETRAS: {{ $order['totalInWords'] }}
+                        </div>
+                        
+                        <!-- Totales -->
+                        <div class="totals">
+                            <div class="total-row">
+                                <span class="total-label">TOTAL PÁGINA</span>
+                                <span class="total-value">$ {{ number_format($order['total'], 0) }}</span>
+                            </div>
+                            <div class="total-row">
+                                <span class="total-label">Subtotal Pedido</span>
+                                <span class="total-value">$ {{ number_format($order['subtotal'], 0) }}</span>
+                            </div>
+                            <div class="total-row">
+                                <span class="total-label">Iva</span>
+                                <span class="total-value">$ {{ number_format($order['iva'], 0) }}</span>
+                            </div>
+                            <div class="total-row total-pagar">
+                                <span class="total-label">TOTAL A PAGAR</span>
+                                <span class="total-value">$ {{ number_format($order['total'], 0) }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Pie de página -->
+                        <div class="footer">
+                            Teléfono: 6014774491 - Bogota - Colombia
                         </div>
                     </div>
-                    @endif
+                @endforeach
             </div>
+            <h2 class="text-sm font-bold mb-1">PEDIDO #{{ $loop->iteration }}</h2>
+
             @if($loop->iteration % 2 == 0 && !$loop->last)
-            <div class="page-break col-span-2"></div>
+            <div class="page-break"></div>
             @endif
-            @endforeach
-        </div>
+        @endforeach
     @else
         <div style="text-align: center; padding: 2cm; font-size: 12px;">
             No se encontraron pedidos para esta entrega.

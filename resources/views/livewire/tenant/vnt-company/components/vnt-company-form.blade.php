@@ -141,7 +141,6 @@
                                 <select wire:model.live="searchType"
                                     class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="TODOS">TODOS</option>
-                                    <option value="USUARIO">USUARIO</option>
                                     <option value="CLIENTE">CLIENTE</option>
                                     <option value="PROVEEDOR">PROVEEDOR</option>
                                 </select>

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Livewire\Tenant\Quoter;
+
 use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
 use App\Models\Tenant\Quoter\VntQuote;
@@ -24,7 +25,7 @@ class Quoter extends Component
     public $selectedQuote = null;
     public $sortBy = 'created_at'; // Campo para ordenar
     public $sortDirection = 'desc'; // Dirección: 'asc' o 'desc'
-    
+
     // Propiedades para el modal de confirmación de pedido
     public $showConfirmationModal = false;
     public $selectedReason = null;
@@ -76,7 +77,7 @@ class Quoter extends Component
         $this->initializeCompanyConfiguration();
     }
 
-    
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -102,7 +103,7 @@ class Quoter extends Component
             $this->sortBy = $field;
             $this->sortDirection = 'asc';
         }
-        
+
         // Resetear a la primera página cuando se cambia el ordenamiento
         $this->resetPage();
     }
@@ -144,14 +145,14 @@ class Quoter extends Component
                 'warehouse',
                 'branch'
             ])->findOrFail($id);
-            
+
             Log::info('✅ Cotización cargada', [
                 'consecutive' => $this->selectedQuote->consecutive,
                 'has_customer' => $this->selectedQuote->customer ? 'YES' : 'NO',
                 'detalles_count' => $this->selectedQuote->detalles->count()
             ]);
 
-         
+
             Log::info('✅ Modal activado', ['showDetailsModal' => $this->showDetailsModal]);
 
             // Log detallado para debug
@@ -178,10 +179,9 @@ class Quoter extends Component
             }
 
             Log::info('✅ verDetalles completado exitosamente');
-            
+
             // Forzar actualización del DOM
             $this->js('console.log("Modal should be visible now", ' . json_encode(['showDetailsModal' => $this->showDetailsModal]) . ')');
-
         } catch (\Exception $e) {
             Log::error('❌ Error al cargar detalles de cotización', [
                 'quote_id' => $id,
@@ -298,7 +298,6 @@ class Quoter extends Component
             ]);
 
             return $finalValue;
-
         } catch (\Exception $e) {
             Log::error('❌ getPrintCopiesLimit() - Error al obtener valor', [
                 'error' => $e->getMessage(),
@@ -307,11 +306,11 @@ class Quoter extends Component
 
             return 0; // Default a POS en caso de error
         }
-     }
+    }
 
 
 
-     
+
 
     /**
      * Método para imprimir cotización
@@ -436,7 +435,6 @@ class Quoter extends Component
                 'type' => 'success',
                 'message' => 'Cotización #' . $quote->consecutive . ' preparada para impresión (' . ($printFormat === 1 ? 'Formato Carta' : 'Formato POS') . ')'
             ]);
-
         } catch (\Exception $e) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
@@ -517,7 +515,7 @@ class Quoter extends Component
     }
 
 
-      private function ensureTenantConnection()
+    private function ensureTenantConnection()
     {
         $tenantId = session('tenant_id');
 
@@ -544,10 +542,10 @@ class Quoter extends Component
     {
         // Asegurar conexión tenant activa
         $this->ensureTenantConnection();
-        
+
         //dd(Auth::id());
         // Cargar cotizaciones con sus relaciones
-        
+
         $quotes = VntQuote::with(['customer', 'warehouse.contacts', 'branch', 'detalles', 'user'])
             ->when(Auth::user()->profile_id != 2, function ($query) {
                 return $query->where('userId', Auth::id());
@@ -559,12 +557,12 @@ class Quoter extends Component
                     ->orWhere('observations', 'like', '%' . $this->search . '%')
                     ->orWhereHas('customer', function ($q) {
                         $q->where('firstName', 'like', '%' . $this->search . '%')
-                          ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                          ->orWhere('email', 'like', '%' . $this->search . '%');
+                            ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                            ->orWhere('email', 'like', '%' . $this->search . '%');
                     })
                     ->orWhereHas('warehouse', function ($q) {
                         $q->where('name', 'like', '%' . $this->search . '%')
-                          ->orWhere('address', 'like', '%' . $this->search . '%');
+                            ->orWhere('address', 'like', '%' . $this->search . '%');
                     });
             });
 
@@ -572,7 +570,7 @@ class Quoter extends Component
         // Para campos que son accessors, ordenar en PHP después de paginar
         if (in_array($this->sortBy, ['customer_name', 'warehouse_name'])) {
             $quotes = $quotes->paginate($this->perPage);
-            
+
             // Ordenar en PHP para accessors
             if ($this->sortBy === 'customer_name') {
                 $quotes->getCollection()->transform(function ($item) {
@@ -608,26 +606,26 @@ class Quoter extends Component
             'quotes' => $quotes
         ]);
     }
-     /**
+    /**
      * Abrir modal de confirmación de pedido
      * 
      * @param int|null $quoteId ID de la cotización a confirmar (opcional)
      */
-    
-     public function validateRemision($quoteId)
+
+    public function validateRemision($quoteId)
     {
         $hasRemission = InvRemissions::where('quoteId', $quoteId)->exists();
-       if($hasRemission){
+        if ($hasRemission) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
                 'message' => 'La cotización tiene una remisión asignada'
             ]);
             return false;
-        }else{
+        } else {
             return true;
         }
     }
-    
+
     /**
      * Abrir modal de confirmación de pedido
      * 
@@ -644,12 +642,12 @@ class Quoter extends Component
         }
 
         $this->ensureTenantConnection();
-        
+
         // Si se proporciona un quoteId, cargar la cotización desde la base de datos
         if ($quoteId) {
             try {
                 $quote = VntQuote::with(['detalles.item', 'customer'])->findOrFail($quoteId);
-                
+
                 // Mapear los detalles de la cotización a items del cotizador
                 $this->quoterItems = $quote->detalles->map(function ($detail) {
                     return [
@@ -661,15 +659,15 @@ class Quoter extends Component
                         'total' => $detail->quantity * $detail->value,
                     ];
                 })->toArray();
-                
+
                 // Cargar cliente si existe
                 if ($quote->customer) {
                     $this->selectedCustomer = $quote->customer->id;
                 }
-                
+
                 // Cargar observaciones
                 $this->observaciones = $quote->observations ?? null;
-                
+
                 Log::info('Cotización cargada para confirmación', [
                     'quote_id' => $quoteId,
                     'items_count' => count($this->quoterItems)
@@ -679,7 +677,7 @@ class Quoter extends Component
                     'quote_id' => $quoteId,
                     'error' => $e->getMessage()
                 ]);
-                
+
                 $this->dispatch('show-toast', [
                     'type' => 'error',
                     'message' => 'Error al cargar la cotización: ' . $e->getMessage()
@@ -687,7 +685,7 @@ class Quoter extends Component
                 return;
             }
         }
-        
+
         // Cargar razones disponibles
         try {
             $this->availableReasons = \App\Models\Tenant\Movements\InvReason::active()->get()->toArray();
@@ -697,7 +695,7 @@ class Quoter extends Component
             ]);
             $this->availableReasons = [];
         }
-        
+
         // Abrir modal
         $this->showConfirmationModal = true;
     }
@@ -739,7 +737,7 @@ class Quoter extends Component
         try {
             // Obtener la razón seleccionada
             $reason = \App\Models\Tenant\Movements\InvReason::find($this->selectedReason);
-            
+
             if (!$reason) {
                 throw new \Exception('Razón no encontrada');
             }
@@ -794,7 +792,6 @@ class Quoter extends Component
 
             // Redirigir a la página de remisiones o cotizaciones
             return redirect()->route('tenant.quoter');
-
         } catch (\Exception $e) {
             Log::error('Error al procesar confirmación de pedido: ' . $e->getMessage());
             $this->dispatch('show-toast', [
@@ -851,19 +848,19 @@ class Quoter extends Component
                         ->orWhere('observations', 'like', '%' . $this->search . '%')
                         ->orWhereHas('customer', function ($q) {
                             $q->where('firstName', 'like', '%' . $this->search . '%')
-                              ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                              ->orWhere('email', 'like', '%' . $this->search . '%');
+                                ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                                ->orWhere('email', 'like', '%' . $this->search . '%');
                         })
                         ->orWhereHas('warehouse', function ($q) {
                             $q->where('name', 'like', '%' . $this->search . '%')
-                              ->orWhere('address', 'like', '%' . $this->search . '%');
+                                ->orWhere('address', 'like', '%' . $this->search . '%');
                         });
                 });
             });
 
         if (in_array($this->sortBy, ['customer_name', 'warehouse_name'])) {
             $data = $query->get();
-            
+
             if ($this->sortBy === 'customer_name') {
                 $sorted = $data->sortBy(function ($item) {
                     return $item->customer_name;
