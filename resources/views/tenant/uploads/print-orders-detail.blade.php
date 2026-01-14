@@ -5,443 +5,348 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pedidos Cargue #{{ $deliveryId }}</title>
     <style>
-        /* Estilos generales para coincidir con el PDF */
+        @page {
+            size: letter landscape;
+            margin: 0.5cm;
+        }
         body {
             font-family: 'Arial', sans-serif;
-            font-size: 10px;
-            line-height: 1.2;
-            color: #000000;
-            background-color: #ffffff;
+            font-size: 7.5pt;
             margin: 0;
             padding: 0;
+            color: #000;
+            line-height: 1.1;
+        }
+        .page-wrapper {
+            width: 100%;
+            page-break-after: always;
+        }
+        .page-wrapper:last-child {
+            page-break-after: avoid;
         }
         
-        .container {
-            width: 40%; /* Tamaño carta landscape */
-            margin: 0 auto;
-            padding: 0.3cm;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.5cm;
+        /* Matriz 2x2 */
+        .outer-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 5px;
+            table-layout: fixed;
         }
-        
-        /* Tarjeta de pedido individual */
-        .order-card {
+        .order-cell {
+            width: 50%;
+            height: 10.7cm; /* Aumentado para llenar más la hoja verticalmente */
+            vertical-align: top;
             border: 1px solid #000;
-            border-radius: 3px;
-            padding: 0.3cm;
-            background-color: #ffffff;
-            break-inside: avoid;
-            page-break-inside: avoid;
-            min-height: 12.5cm;
-            position: relative;
+            border-radius: 4px;
+            padding: 8px; /* Un poco más de aire interno */
+            overflow: hidden;
         }
-        
-        /* Encabezado MAS 10 */
-        .mas-header {
-            text-align: center;
-            font-weight: bold;
-            font-size: 12px;
-            margin-bottom: 5px;
-        }
-        
-        /* Información de la empresa */
-        .company-info {
-            text-align: center;
-            font-size: 9px;
-            margin-bottom: 8px;
-            line-height: 1.1;
-        }
-        
-        /* Número de página */
-        .page-info {
-            text-align: center;
-            font-size: 9px;
-            margin-bottom: 8px;
-        }
-        
-        /* Encabezado del pedido */
-        .order-header {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px;
-            margin-bottom: 8px;
-            font-size: 9px;
-        }
-        
-        .order-number {
-            font-weight: bold;
-            font-size: 10px;
-        }
-        
-        /* Información del cliente */
-        .customer-info {
-            margin-bottom: 8px;
-            font-size: 9px;
-            line-height: 1.1;
-        }
-        
-        .customer-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2px;
-        }
-        
-        .customer-label {
-            font-weight: bold;
-            min-width: 70px;
-        }
-        
-        /* Tabla de items */
-        .items-table {
+
+        /* Estilos Internos del Pedido */
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 8px;
-            font-size: 9px;
         }
         
-        .items-table th {
-            border-bottom: 1px solid #000;
-            padding: 3px;
-            text-align: left;
+        /* Logo y Header */
+        .header-center {
+            text-align: center;
+            font-size: 8.5pt;
+        }
+        .header-right {
+            text-align: right;
+            font-size: 8.5pt;
+        }
+        .order-title {
             font-weight: bold;
-            background-color: #f0f0f0;
+            font-size: 9.5pt;
         }
-        
-        .items-table td {
-            padding: 2px 3px;
-            border-bottom: 1px solid #ddd;
+
+        /* Info Cliente 3 Columnas */
+        .info-table {
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        .info-table td {
+            width: 33.33%;
             vertical-align: top;
+            padding-right: 5px;
         }
-        
-        .col-ref {
-            width: 40px;
+        .label {
+            font-weight: bold;
+        }
+
+        /* Tabla de Items */
+        .items-header th {
+            border-top: 1.5pt solid #000;
+            border-bottom: 1.5pt solid #000;
             text-align: left;
+            padding: 4px 2px;
+            font-size: 8pt;
+        }
+        .items-table td {
+            padding: 3px 2px;
+            font-size: 8pt;
+        }
+        .row-even {
+            background-color: #f2f2f2;
         }
         
-        .col-cant {
-            width: 30px;
+        /* Alineación especial para precios solicitada */
+        .col-right {
+            text-align: right;
+            padding-right: 20px !important; /* Espacio extra a la derecha para empujar los números hacia el centro */
+        }
+        .col-center {
             text-align: center;
         }
-        
-        .col-desc {
-            width: auto;
-            text-align: left;
-        }
-        
-        .col-price {
-            width: 40px;
+        .th-align {
             text-align: right;
+            padding-right: 25px !important; /* Alinear cabecera con el bloque de números */
         }
-        
-        .col-subtotal {
-            width: 50px;
-            text-align: right;
-        }
-        
-        /* Observaciones */
-        .observations {
-            margin-bottom: 8px;
-            font-size: 9px;
-            min-height: 20px;
-        }
-        
-        .obs-label {
-            font-weight: bold;
-        }
-        
-        /* Descripción legal */
-        .legal-description {
-            font-size: 8px;
-            text-align: justify;
-            margin-bottom: 8px;
-            font-style: italic;
-        }
-        
-        /* Valor en letras */
-        .amount-words {
-            font-size: 9px;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            min-height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        /* Totales */
-        .totals {
-            font-size: 9px;
-            margin-bottom: 8px;
-        }
-        
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2px;
-        }
-        
-        .total-label {
-            font-weight: bold;
-        }
-        
-        .total-value {
-            font-weight: bold;
-            min-width: 60px;
-            text-align: right;
-        }
-        
-        .total-pagar {
-            border-top: 1px solid #000;
-            padding-top: 2px;
-            font-weight: bold;
-        }
-        
-        /* Pie de página */
-        .footer {
-            position: absolute;
-            bottom: 0.3cm;
-            left: 0.3cm;
-            right: 0.3cm;
-            text-align: center;
-            font-size: 8px;
-            color: #000;
-        }
-        
-        /* Contacto del vendedor */
-        .seller-contact {
-            font-size: 8px;
+
+        /* Footer y Totales */
+        .footer-area {
             margin-top: 5px;
         }
-        
-        .seller-row {
-            display: flex;
-            justify-content: space-between;
+        .legal-note {
+            font-size: 6.5pt;
+            font-style: italic;
+            width: 60%;
+            vertical-align: top;
         }
-        
-        /* Control de paginación - VERSIÓN CORREGIDA */
-        @media print {
-            body {
-                font-size: 9px;
-            }
-            
-            @page {
-                margin: 0.3cm;
-                size: letter landscape;
-            }
-            
-            .container {
-                padding: 0;
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 0.5cm;
-                width: 100%;
-                max-width: 100%;
-                /* page-break-inside: avoid; */
-            }
-            
-            .order-card {
-                /* min-height: 12.5cm;
-                max-height: 12.5cm; Añadido para uniformidad */
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            /* SOLUCIÓN: Remover o corregir los saltos de página automáticos */
-            /* Esto estaba causando el problema */
-            /* .order-card:nth-child(4n+1) {
-                page-break-before: auto;
-            } */
-            
-            /* En lugar de eso, usar una clase específica para controlar páginas */
-            .page-break {
-                page-break-after: always;
-            }
-            
-            /* Asegurar que el contenedor se comporte bien en impresión */
-            /* .container {
-                page-break-inside: avoid;
-            } */
+        .totals-area {
+            width: 40%;
+            vertical-align: top;
         }
-        
-        /* Estilos específicos para la vista previa */
-        @media screen {
-            body {
-                background-color: #f0f0f0;
-            }
-            
-            .container {
-                background-color: #fff;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            }
+        .totals-table td {
+            padding: 1px 2px;
+        }
+        .total-pay {
+            font-weight: bold;
+            border-top: 1pt solid #000;
+        }
+        .bottom-contact {
+            text-align: center;
+            font-weight: bold;
+            font-size: 8.5pt;
+            margin-top: 8px;
         }
     </style>
 </head>
 <body>
     @if(count($customerOrders) > 0)
         @php
-            $orderChunks = collect($customerOrders)->chunk(2);
-            $totalPages = $orderChunks->count();
+            $allCards = [];
+            foreach($customerOrders as $orderIndex => $order) {
+                // Forzamos el índice a entero para evitar TypeError: string + int
+                $numO = (int)$orderIndex;
+                
+                // Obtenemos los ítems reales del pedido
+                $items = collect($order['items'] ?? []);
+                
+                // MODO PRUEBA: Comenta estas líneas para usar datos reales sin simulación
+                /*
+                if($items->count() > 0) {
+                    $originalItems = $items;
+                    while($items->count() < 45) {
+                        $items = $items->concat($originalItems);
+                    }
+                }
+                */
+                
+                // OPTIMIZACIÓN: Aumentamos a 26 productos por tarjeta para usar todo el espacio vertical
+                $chunkedItems = $items->chunk(26); 
+                $countPages = (int)$chunkedItems->count();
+                
+                if ($countPages == 0) {
+                    $allCards[] = [
+                        'order' => $order,
+                        'orderNumber' => $numO + 1,
+                        'items' => collect([]),
+                        'currentPage' => 1,
+                        'totalPages' => 1,
+                        'isLast' => true,
+                        'pageSubtotal' => 0
+                    ];
+                } else {
+                    foreach($chunkedItems as $pageIndex => $chunk) {
+                        $pIdx = (int)$pageIndex;
+                        $allCards[] = [
+                            'order' => $order,
+                            'orderNumber' => $numO + 1,
+                            'items' => $chunk,
+                            'currentPage' => $pIdx + 1,
+                            'totalPages' => $countPages,
+                            'isLast' => ($pIdx + 1) == $countPages,
+                            'pageSubtotal' => $chunk->sum('subtotal')
+                        ];
+                    }
+                }
+            }
+            
+            // Agrupamos en bloques de 4 para la rejilla 2x2
+            $cardChunks = collect($allCards)->chunk(4);
+            $logoPath = public_path('logo.png');
+            $hasLogo = file_exists($logoPath);
         @endphp
-        @foreach($orderChunks as $chunk)
-            <div class="container">
-                @foreach($chunk as $order)
-                    @php
-                        $overall_index = ($loop->parent->index * 2) + $loop->index;
-                    @endphp
-                    <div class="order-card">
-                        <!-- Encabezado MAS 10 -->
-                        <div class="mas-header">MAS 10</div>
-                        
-                        <!-- Información de la empresa -->
-                        <div class="company-info">
-                            Mas distribuciones JM<br>
-                            Nit: 1017134785-1<br>
-                        </div>
-                        
-                        <!-- Número de página -->
-                        <div class="page-info">PÁGINA: {{ $loop->parent->iteration }} de {{ $totalPages }}</div>
-                        
-                        <!-- Contacto (opcional, aparece en algunos pedidos del PDF) -->
-                        @if(isset($order['customer']['contact_name']))
-                        <div class="customer-info">
-                            <div class="customer-row">
-                                <span class="customer-label">Contacto:</span>
-                                <span>{{ $order['customer']['contact_name'] }}</span>
-                            </div>
-                        </div>
-                        @endif
-                        
-                        <!-- Encabezado del pedido -->
-                        <div class="order-header">
-                            <div>
-                                <div class="order-number">PEDIDO # {{ $overall_index + 101816 }}</div>
-                                <div>FECHA: {{ \Carbon\Carbon::parse($order['order_date'] ?? now())->format('Y-m-d') }}</div>
-                                <div>FECHA ENTRE: {{ \Carbon\Carbon::parse($order['delivery_date'] ?? now()->addDays(3))->format('Y-m-d') }}</div>
-                            </div>
-                            <div class="seller-contact">
-                                <div class="seller-row">
-                                    <span>Vendedor:</span>
-                                    <span>{{ $order['customer']['salesPerson'] ?? 'JULIO RIAÑO' }}</span>
-                                </div>
-                                <div class="seller-row">
-                                    <span>Día visita:</span>
-                                    <span>{{ $order['customer']['saleDay'] ?? '4' }}</span>
-                                </div>
-                                <div class="seller-row">
-                                    <span>Tel vendedor:</span>
-                                    <span>304 6800740</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Información del cliente -->
-                        <div class="customer-info">
-                            <div class="customer-row">
-                                <span class="customer-label">Cliente:</span>
-                                <span>{{ $order['customer']['name'] }}</span>
-                            </div>
-                            <div class="customer-row">
-                                <span class="customer-label">Identificación:</span>
-                                <span>{{ $order['customer']['identification'] }}</span>
-                            </div>
-                            <div class="customer-row">
-                                <span class="customer-label">Barrio:</span>
-                                <span>{{ $order['customer']['district'] }}</span>
-                            </div>
-                            <div class="customer-row">
-                                <span class="customer-label">Dirección:</span>
-                                <span>{{ $order['customer']['address'] }}</span>
-                            </div>
-                            <div class="customer-row">
-                                <span class="customer-label">Teléfono:</span>
-                                <span>{{ $order['customer']['phone'] }}</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Observaciones -->
-                        @if(isset($order['observations']) && $order['observations'])
-                        <div class="observations">
-                            <span class="obs-label">Observaciones:</span> {{ $order['observations'] }}
-                        </div>
-                        @else
-                        <div class="observations">
-                            <span class="obs-label">Observaciones:</span>
-                        </div>
-                        @endif
-                        
-                        <!-- Tabla de items -->
-                        <table class="items-table">
-                            <thead>
-                                <tr>
-                                    <th class="col-ref">Ref</th>
-                                    <th class="col-cant">Cant</th>
-                                    <th class="col-desc">Descripción</th>
-                                    <th class="col-price">Precio</th>
-                                    <th class="col-subtotal">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($order['items'] as $item)
-                                <tr>
-                                    <td class="col-ref">{{ $item['code'] }}</td>
-                                    <td class="col-cant">{{ number_format($item['quantity'], 0) }}</td>
-                                    <td class="col-desc">{{ $item['name'] }}</td>
-                                    <td class="col-price">{{ number_format($item['unit_price'] ?? ($item['subtotal'] / ($item['quantity'] ?: 1)), 2) }}</td>
-                                    <td class="col-subtotal">{{ number_format($item['subtotal'], 0) }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                        
-                        <!-- Descripción legal -->
-                        <div class="legal-description">
-                            Documento sustituívo de la factura, Decreto 1514 del 98 artículo 1, IVA Regimen simplificado
-                        </div>
-                        
-                        <!-- Valor en letras -->
-                        <div class="amount-words">
-                            VALOR EN LETRAS: {{ $order['totalInWords'] }}
-                        </div>
-                        
-                        <!-- Totales -->
-                        <div class="totals">
-                            <div class="total-row">
-                                <span class="total-label">TOTAL PÁGINA</span>
-                                <span class="total-value">$ {{ number_format($order['total'], 0) }}</span>
-                            </div>
-                            <div class="total-row">
-                                <span class="total-label">Subtotal Pedido</span>
-                                <span class="total-value">$ {{ number_format($order['subtotal'], 0) }}</span>
-                            </div>
-                            <div class="total-row">
-                                <span class="total-label">Iva</span>
-                                <span class="total-value">$ {{ number_format($order['iva'], 0) }}</span>
-                            </div>
-                            <div class="total-row total-pagar">
-                                <span class="total-label">TOTAL A PAGAR</span>
-                                <span class="total-value">$ {{ number_format($order['total'], 0) }}</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Pie de página -->
-                        <div class="footer">
-                            Teléfono: 6014774491 - Bogota - Colombia
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-            <h2 class="text-sm font-bold mb-1">PEDIDO #{{ $loop->iteration }}</h2>
 
-            @if($loop->iteration % 2 == 0 && !$loop->last)
-            <div class="page-break"></div>
-            @endif
+        @foreach($cardChunks as $sheetIndex => $sheet)
+            <div class="page-wrapper">
+                <table class="outer-table">
+                    @foreach($sheet->chunk(2) as $row)
+                        <tr>
+                            @foreach($row as $card)
+                                @php
+                                    $order = $card['order'];
+                                    // La ID real es remission_id dentro del sub-array customer
+                                    $idPed = $order['customer']['remission_id'] ?? $order['id'] ?? 'S/N';
+                                @endphp
+                                <td class="order-cell">
+                                    <!-- Cabecera -->
+                                    <table style="margin-bottom: 5px;">
+                                        <tr>
+                                            <td width="25%" style="vertical-align: middle;">
+                                                @if($hasLogo)
+                                                    <img src="{{ $logoPath }}" alt="Logo" style="width: 130px; height: auto;">
+                                                @else
+                                                    <div style="font-size: 18pt; font-weight: bold; color: #003366;">MAS JM</div>
+                                                @endif
+                                            </td>
+                                            <td width="45%" class="header-center">
+                                                <strong>Mas distribuciones JM</strong><br>
+                                                Nit: 1017134785-1<br>
+                                                PÁGINA: {{ ($card['orderNumber']) }}-{{ ($card['currentPage']) }}
+                                            </td>
+                                            <td width="30%" class="header-right">
+                                                <span class="order-title">PEDIDO # {{ $idPed }}</span><br>
+                                                <strong>FECHA:</strong> {{ \Carbon\Carbon::parse($order['order_date'] ?? now())->format('Y-m-d') }}<br>
+                                                <strong>FECHA ENTRE:</strong> {{ \Carbon\Carbon::parse($order['delivery_date'] ?? now())->format('Y-m-d') }}
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- Cliente -->
+                                    <table class="info-table">
+                                        <tr>
+                                            <td>
+                                                <span class="label">Cliente:</span> {{ substr((string)($order['customer']['name'] ?? ''), 0, 25) }}<br>
+                                                <span class="label">Identificación:</span> {{ (string)($order['customer']['identification'] ?? '') }}<br>
+                                                <span class="label">Barrio:</span> {{ (string)($order['customer']['district'] ?? '') }}
+                                            </td>
+                                            <td>
+                                                <span class="label">Contacto:</span> {{ substr((string)($order['customer']['contact_name'] ?? 'N/A'), 0, 25) }}<br>
+                                                <span class="label">Dirección:</span> {{ substr((string)($order['customer']['address'] ?? ''), 0, 30) }}<br>
+                                                <span class="label">Teléfono:</span> {{ (string)($order['customer']['phone'] ?? '') }}
+                                            </td>
+                                            <td>
+                                                <span class="label">Vendedor:</span> {{ (string)($order['customer']['salesPerson'] ?? '') }}<br>
+                                                <span class="label">Día visita:</span> {{ (string)($order['customer']['saleDay'] ?? '') }}<br>
+                                                <span class="label">Tel vendedor:</span> 304 6800740
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <div style="font-size: 7.5pt; margin-bottom: 3px;">
+                                        <span class="label">Observaciones:</span> {{ (string)($order['observations'] ?? '') }}
+                                    </div>
+
+                                    <!-- Productos -->
+                                    <table class="items-table">
+                                        <thead class="items-header">
+                                            <tr>
+                                                <th width="12%">Ref</th>
+                                                <th width="8%" class="col-center">Cant</th>
+                                                <th width="50%">Descripcion</th>
+                                                <th width="15%" class="th-align">Precio</th>
+                                                <th width="15%" class="th-align">Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($card['items'] as $item)
+                                            <tr class="{{ $loop->even ? 'row-even' : '' }}">
+                                                <td>{{ (string)($item['code'] ?? '') }}</td>
+                                                <td class="col-center">{{ number_format((float)($item['quantity'] ?? 0), 0) }}</td>
+                                                <td>{{ substr((string)($item['name'] ?? ''), 0, 42) }}</td>
+                                                <td class="col-right">{{ number_format((float)($item['unit_price'] ?? ($item['subtotal'] / (($item['quantity'] ?? 1) ?: 1))), 0, '.', '.') }}</td>
+                                                <td class="col-right">{{ number_format((float)($item['subtotal'] ?? 0), 0, '.', '.') }}</td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+
+                                    <!-- Footer -->
+                                    <table class="footer-area">
+                                        <tr>
+                                            <td class="legal-note">
+                                                <div style="margin-bottom: 5px;">
+                                                    <strong>Descripcion:</strong><br>
+                                                    Documento sustitutivo de la factura, Decreto 1514 del 98 artículo 1, IVA Regimen simplificado
+                                                </div>
+                                                @if($card['isLast'])
+                                                    @if(isset($order['totalInWords']))
+                                                    <div style="font-weight: bold; text-transform: uppercase;">
+                                                        VALOR EN LETRAS: {{ (string)$order['totalInWords'] }}
+                                                    </div>
+                                                    @endif
+                                                @else
+                                                <div style="font-weight: bold; color: #777; font-style: italic;">
+                                                    @php $nextP = (int)$card['currentPage'] + 1; @endphp
+                                                    (SIGUE EN PAG. {{ (int)$card['orderNumber'] }}-{{ $nextP }})
+                                                </div>
+                                                @endif
+                                            </td>
+                                            <td class="totals-area">
+                                                <table class="totals-table">
+                                                    @if($card['isLast'])
+                                                        <tr>
+                                                            <td class="label">TOTAL PÁGINA</td>
+                                                            <td class="col-right">$ {{ number_format((float)$card['pageSubtotal'], 0, '.', '.') }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="label">Subtotal Pedido</td>
+                                                            <td class="col-right">$ {{ number_format((float)($order['subtotal'] ?? 0), 0, '.', '.') }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="label">Iva</td>
+                                                            <td class="col-right">$ {{ number_format((float)($order['iva'] ?? 0), 0, '.', '.') }}</td>
+                                                        </tr>
+                                                        <tr class="total-pay">
+                                                            <td class="label">TOTAL A PAGAR</td>
+                                                            <td class="col-right"><strong>$ {{ number_format((float)($order['total'] ?? 0), 0, '.', '.') }}</strong></td>
+                                                        </tr>
+                                                    @else
+                                                        <tr>
+                                                            <td class="label">TOTAL PÁGINA</td>
+                                                            <td class="col-right">$ {{ number_format((float)$card['pageSubtotal'], 0, '.', '.') }}</td>
+                                                        </tr>
+                                                        <tr class="total-pay">
+                                                            <td class="label" colspan="2" style="text-align: center; color: #777; font-size: 7pt; border-top: 1pt solid #ccc;">
+                                                                (TOTAL FINAL EN ÚLTIMA PÁG.)
+                                                            </td>
+                                                        </tr>
+                                                    @endif
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <div class="bottom-contact">
+                                        Teléfono: 6014774491 - Bogota - Colombia
+                                    </div>
+                                </td>
+                            @endforeach
+                            @if($row->count() < 2)
+                                <td class="order-cell" style="border: none;"></td>
+                            @endif
+                        </tr>
+                    @endforeach
+                </table>
+            </div>
         @endforeach
     @else
-        <div style="text-align: center; padding: 2cm; font-size: 12px;">
-            No se encontraron pedidos para esta entrega.
+        <div style="text-align: center; padding: 2cm; font-family: sans-serif;">
+            No se encontraron pedidos.
         </div>
     @endif
 </body>
