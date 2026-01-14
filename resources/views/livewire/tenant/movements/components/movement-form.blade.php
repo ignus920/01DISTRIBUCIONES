@@ -280,6 +280,14 @@
                                         ], key('unit-select-' . now()->timestamp))
                                         @error('detailForm.unitMeasurementId') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
+                                      @if($warehouseForm['movementType'] == 'ENTRADA' && $movementForm['reasonId'] == 1)
+                                       <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Costo <span class="text-red-500">*</span></label>
+                                        <input type="number" step="0.01" wire:model.defer="detailForm.cost"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
+                                        @error('detailForm.cost') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                                    </div>
+                                    @endif
                                 </div>
 
                                 <button wire:click="addDetail" type="button" 
@@ -327,6 +335,11 @@
                                             <th
                                                 class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                                 Cant Ajustada</th>
+                                            @if($warehouseForm['movementType'] == 'ENTRADA' && $movementForm['reasonId'] == 1)
+                                            <th
+                                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                                Costo Unitario</th>
+                                            @endif
                                             <th
                                                 class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                                 Precio base</th>
@@ -356,6 +369,10 @@
                                                 number_format($detail['currentQuantity'], 0) }}</td>
                                             <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">{{
                                                 number_format($detail['adjustedQuantity'], 0) }}</td>
+                                            @if($warehouseForm['movementType'] == 'ENTRADA' && $movementForm['reasonId'] == 1)
+                                            <td class="px-4 py-2 text-sm text-gray-900 dark:text-white font-medium">
+                                                ${{ number_format($detail['cost'] ?? 0, 2) }}</td>
+                                            @endif
                                             <td class="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">${{
                                                 number_format($detail['price'], 0) }}</td>
                                             <td class="px-4 py-2 text-sm text-gray-900 dark:text-white font-semibold">

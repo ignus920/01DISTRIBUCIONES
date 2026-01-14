@@ -48,6 +48,7 @@ class MovementForm extends Component
         'itemId' => '',
         'quantity' => '',
         'unitMeasurementId' => '',
+        'cost' => 0
     ];
     
     // Messages
@@ -398,6 +399,21 @@ class MovementForm extends Component
                 return;
             }
             
+            // Validación condicional del campo cost
+            if ($this->warehouseForm['movementType'] == 'ENTRADA' && $this->movementForm['reasonId'] == 1) {
+                if (empty($this->detailForm['cost']) || $this->detailForm['cost'] <= 0) {
+                    $this->errorMessage = 'El costo unitario es obligatorio y debe ser mayor a 0';
+                    $this->isProcessing = false;
+                    return;
+                }
+                
+                if (!is_numeric($this->detailForm['cost'])) {
+                    $this->errorMessage = 'El costo debe ser un valor numérico';
+                    $this->isProcessing = false;
+                    return;
+                }
+            }
+            
             // Get item and unit measurement info with all relationships
             $item = Items::with(['invValues', 'purchasingUnit', 'consumptionUnit'])
                 ->find($this->detailForm['itemId']);
@@ -479,6 +495,7 @@ class MovementForm extends Component
                     'adjustedQuantity' => $adjustedQuantity,
                     'price' => $price,
                     'total' => $price * $quantity,
+                    'cost' => $this->detailForm['cost'] ?? 0,
                 ];
             }
 
@@ -595,6 +612,7 @@ class MovementForm extends Component
                         'itemId' => $detail['itemId'],
                         'quantity' => $detail['quantity'],
                         'unitMeasurementId' => $detail['unitMeasurementId'],
+                        'cost' => $detail['cost'] ?? 0,
                     ]);
 
                     // Update or create stock
@@ -696,6 +714,7 @@ class MovementForm extends Component
             'itemId' => '',
             'quantity' => '',
             'unitMeasurementId' => '',
+            'cost' => 0,
         ];
         $this->setDefaultUnitMeasurement();
     }
