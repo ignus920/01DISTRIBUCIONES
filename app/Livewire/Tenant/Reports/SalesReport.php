@@ -24,18 +24,8 @@ class SalesReport extends Component
     public $sortDirection = 'asc';
     public $perPage = 10;
 
-    // Reglas de validación
-    protected $rules = [
-        'startDate' => 'nullable|date',
-        'endDate' => 'nullable|date|after_or_equal:startDate',
-    ];
-
-    // Mensajes de validación personalizados
-    protected $messages = [
-        'endDate.after_or_equal' => 'La fecha final debe ser posterior o igual a la fecha inicial',
-        'startDate.date' => 'La fecha inicial debe ser una fecha válida',
-        'endDate.date' => 'La fecha final debe ser una fecha válida',
-    ];
+    // Configuración de campos para el componente genérico de filtros
+    public $filterFields = [];
 
     /**
      * Inicializar fechas por defecto (sin filtro)
@@ -44,6 +34,51 @@ class SalesReport extends Component
     {
         $this->startDate = '';
         $this->endDate = '';
+        
+        // Configurar campos del filtro genérico
+        $this->filterFields = [
+            [
+                'name' => 'startDate',
+                'label' => 'Fecha Inicial',
+                'type' => 'date',
+                'default' => null,
+                'required' => false,
+            ],
+            [
+                'name' => 'endDate',
+                'label' => 'Fecha Final',
+                'type' => 'date',
+                'default' => null,
+                'required' => false,
+            ],
+        ];
+    }
+
+    /**
+     * Listener para cuando se aplican filtros desde el componente genérico
+     */
+    protected $listeners = ['filtersApplied', 'filtersCleared'];
+
+    /**
+     * Manejar evento de filtros aplicados
+     */
+    public function filtersApplied($filters)
+    {
+        $this->startDate = $filters['startDate'] ?? '';
+        $this->endDate = $filters['endDate'] ?? '';
+        $this->hasSearched = true;
+        $this->resetPage();
+    }
+
+    /**
+     * Manejar evento de filtros limpiados
+     */
+    public function filtersCleared()
+    {
+        $this->startDate = '';
+        $this->endDate = '';
+        $this->hasSearched = false;
+        $this->resetPage();
     }
 
     /**
@@ -58,27 +93,6 @@ class SalesReport extends Component
         }
 
         $this->sortField = $field;
-        $this->resetPage();
-    }
-
-    /**
-     * Aplicar filtros
-     */
-    public function applyFilters()
-    {
-        $this->validate();
-        $this->hasSearched = true;
-        $this->resetPage();
-    }
-
-    /**
-     * Limpiar filtros
-     */
-    public function clearFilters()
-    {
-        $this->startDate = '';
-        $this->endDate = '';
-        $this->hasSearched = false;
         $this->resetPage();
     }
 
