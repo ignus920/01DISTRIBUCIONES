@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Livewire\Tenant\Reports\SalesReport;
 use App\Livewire\Tenant\Reports\ProfitabilityReport;
+use App\Livewire\Tenant\Reports\PortfolioReport;
 
 /**
  * Rutas para el módulo de Reportes del Tenant
@@ -19,6 +20,10 @@ Route::prefix('/reports')->group(function () {
     // Ruta para reporte de rentabilidad
     Route::get('/profitability', ProfitabilityReport::class)
         ->name('tenant.reports.profitability');
+    
+    // Ruta para reporte de cartera
+    Route::get('/portfolio', PortfolioReport::class)
+        ->name('tenant.reports.portfolio');
     
     // Aquí se pueden agregar más rutas de reportes en el futuro
     // Ejemplo:

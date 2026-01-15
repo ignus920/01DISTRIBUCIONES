@@ -473,12 +473,12 @@ new class extends Component
                 <!-- Submenú -->
                 <div x-show="open && !sidebarCollapsed" x-transition
                     class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                    <a href="{{ url('/items/items') }}" wire:navigate
+                    <a href="{{ url('/reports/sales') }}" wire:navigate
                         class="block px-2 py-1 hover:text-indigo-600 dark:hover:text-indigo-400">
                         Vendedor x vendedor
                     </a>
 
-                    <a href="{{ route('movements.movements') }}" wire:navigate
+                    <a href="{{ url('/reports/profitability') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Rentabilidad
                     </a>
@@ -486,7 +486,7 @@ new class extends Component
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Ventas x producto
                     </a>
-                    <a href="{{ route('movements.movements') }}" wire:navigate
+                    <a href="{{ url('/reports/portfolio') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Cartera
                     </a>
