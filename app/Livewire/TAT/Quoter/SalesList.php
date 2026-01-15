@@ -242,8 +242,8 @@ class SalesList extends Component
 
             // Seleccionar la vista según el formato
             $viewName = ($printFormat === 1)
-                ? 'livewire.tat.quoter.print.print-carta'
-                : 'livewire.tat.quoter.print.print-pos';
+                ? 'livewire.TAT.quoter.print.print-carta'
+                : 'livewire.TAT.quoter.print.print-pos';
             Log::info('🎨 Vista seleccionada', ['viewName' => $viewName]);
 
             // Generar el HTML y redirigir a nueva ventana para impresión
