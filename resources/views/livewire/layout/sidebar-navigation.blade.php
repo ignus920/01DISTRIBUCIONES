@@ -482,7 +482,7 @@ new class extends Component
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Rentabilidad
                     </a>
-                    <a href="{{ route('movements.movements') }}" wire:navigate
+                    <a href="{{ route('tenant.reports.sales-x-items') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Ventas x producto
                     </a>
@@ -498,11 +498,11 @@ new class extends Component
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Comisiones
                     </a>
-                    <a href="{{ route('movements.movements') }}" wire:navigate
+                    <a href="{{ route('tenant.reports.salesman-x-item') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Vendedor x Producto
                     </a>
-                    <a href="{{ route('movements.movements') }}" wire:navigate
+                    <a href="{{ route('tenant.reports.impact-sales') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Informe impacto de ventas
                     </a>
@@ -540,11 +540,11 @@ new class extends Component
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Comisiones
                     </a>
-                      <a href="{{ route('movements.movements') }}" wire:navigate
+                      <a href="{{ route('tenant.reports.salesman-x-item') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Vendedor x Producto
                     </a>
-                      <a href="{{ route('movements.movements') }}" wire:navigate
+                      <a href="{{ route('tenant.reports.impact-sales') }}" wire:navigate
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Informe de impacto de ventas
                     </a>
