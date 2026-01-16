@@ -1183,10 +1183,16 @@ class VntCompanyForm extends Component
         if ($this->type === 'PROVEEDOR') {
             $this->validatingType = true;  // TRUE para inhabilitar el checkbox
             $this->createUser = false;  // Desmarcar el checkbox
-            Log::info('Contact type changed to PROVEEDOR, createUser disabled', ['validatingContactType' => $this->validatingType]);
+            $this->district = '000'; // Asignar '000' al campo district
+            Log::info('Contact type changed to PROVEEDOR, createUser disabled and district set to 000', ['validatingContactType' => $this->validatingType, 'district' => $this->district]);
         } else {
-            // Para otros tipos, permitir crear usuario (si el email es válido)
+            // Para otros tipos
             $this->validatingType = false;  // FALSE para habilitar el checkbox
+            // Si el distrito fue establecido a '000' por la lógica de PROVEEDOR, lo reseteamos
+            if ($this->district === '000') {
+                $this->district = ''; // Permitir que el usuario ingrese un valor o quede vacío
+                Log::info('Contact type changed from PROVEEDOR, district reset to empty', ['district' => $this->district]);
+            }
             Log::info('Contact type changed to ' . $this->type . ', createUser available', ['validatingType' => $this->validatingType]);
         }
     }

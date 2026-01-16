@@ -192,4 +192,61 @@ class SalesXItems extends Component
             'reporteVentasProductos' => $reporteVentasProductos,
         ]);
     }
+
+    protected function getExportData()
+    {
+        $query = VntDetailQuote::query()
+            ->select([
+                'inv_items.id as itemId',
+                'inv_items.name as producto',
+                'inv_item_house.name as casa',
+                'inv_categories.name as categoria',
+                DB::raw('COUNT(DISTINCT vnt_detail_quotes.quoteId) as pedidos'),
+                DB::raw('SUM(vnt_detail_quotes.quantity) as cantidad'),
+                DB::raw('SUM(vnt_detail_quotes.price) as total')
+            ])
+            ->join('vnt_quotes', 'vnt_detail_quotes.quoteId', '=', 'vnt_quotes.id')
+            ->join('inv_items', 'vnt_detail_quotes.itemId', '=', 'inv_items.id')
+            ->join('inv_categories', 'inv_items.categoryId', '=', 'inv_categories.id')
+            ->join('inv_item_house', 'inv_items.houseId', '=', 'inv_item_house.id')
+            ->where('vnt_quotes.status', 'REMISIÓN')
+            ->whereNull('vnt_quotes.deleted_at')
+            ->whereNull('vnt_detail_quotes.deleted_at')
+            ->groupBy('inv_items.id', 'inv_items.name', 'inv_item_house.name', 'inv_categories.name')
+            ->orderBy('inv_items.name');
+
+        if ($this->startDate) {
+            $query->whereDate('vnt_quotes.created_at', '>=', $this->startDate);
+        }
+
+        if ($this->endDate) {
+            $query->whereDate('vnt_quotes.created_at', '<=', $this->endDate);
+        }
+
+        return $query->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['Producto', 'Casa', 'Categoría', 'Pedidos', 'Cantidad', 'Total'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function ($item) {
+            return [
+                $item->producto,
+                $item->casa,
+                $item->categoria,
+                $item->pedidos,
+                $item->cantidad,
+                $item->total,
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'ventas_productos_' . now()->format('Y-m-d_His');
+    }
 }

@@ -15,7 +15,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                             </svg>
-                            Crear Nuevo Cliente
+                            Crear Nuevo Contacto
                         </button>
                         <div class="flex flex-col sm:flex-row items-start sm:items-start justify-start sm:justify-between gap-4">
                             <button wire:click="openRoutes"
@@ -401,7 +401,7 @@
                     <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
                         <div>
                           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                            {{ $editingId ? 'Editar' : 'Crear' }} Cliente
+                            {{ $editingId ? 'Editar' : 'Crear' }} Contacto
                           </h3>
                         </div>
                         <button wire:click="cancelForm" 
@@ -448,6 +448,17 @@
                     <!-- Form -->
                     <form wire:submit="save" class="p-6 space-y-6">
                         <div class="space-y-6">
+                            <!-- Tipo de Contacto -->
+                            <div class="md:col-span-2">
+                                <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Contacto *</label>
+                                <select wire:model.live="type" id="type" name="type"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">Seleccione un tipo de contacto</option>
+                                    <option value="CLIENTE">CLIENTE</option>
+                                    <option value="PROVEEDOR">PROVEEDOR</option>
+                                </select>
+                                @error('type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            </div>
                             <!-- Tipo de Identificación -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -695,25 +706,27 @@
                             @endif
                         </div>
 
-
-                        <!--  vendedor -->
-
-                        @livewire('selects.route-sales-day', [
-                        'name' => 'routeId',
-                        'label' => 'Ruta',
-                        'required' => false,
-                        'placeholder' => 'Seleccione una ruta (opcional)',
-                        'routeId' => $routeId ?? ''
-                        ])
+                        @if ($type)
+                            @if ($type == 'CLIENTE')
+                            <!--  vendedor -->
+                            @livewire('selects.route-sales-day', [
+                            'name' => 'routeId',
+                            'label' => 'Ruta',
+                            'required' => false,
+                            'placeholder' => 'Seleccione una ruta (opcional)',
+                            'routeId' => $routeId ?? ''
+                            ])
+                            <!-- district -->
+                            <div>
+                                <label for="district" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Barrio</label>
+                                <input wire:model="district" type="text" id="district"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    placeholder="ej: Galan" required>
+                                @error('district') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            @endif
+                        @endif
                             
-                        <!-- district -->
-                        <div>
-                            <label for="district" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Barrio</label>
-                            <input wire:model="district" type="text" id="district"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="ej: Galan" required>
-                            @error('district') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
 
                         <!-- Teléfono Empresarial -->
                         <div>
@@ -787,19 +800,6 @@
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Ej: Calle 123 #45-67">
                             @error('warehouseAddress') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <!-- Tipo de Contacto -->
-                        <div class="md:col-span-2">
-                            <label for="type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Contacto *</label>
-                            <select wire:model.live="type" id="type" name="type"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">Seleccione un tipo de contacto</option>
-                                <option value="USUARIO">USUARIO</option>
-                                <option value="CLIENTE">CLIENTE</option>
-                                <option value="PROVEEDOR">PROVEEDOR</option>
-                            </select>
-                            @error('type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div> 
 
                         <!-- Crear Usuario Checkbox -->

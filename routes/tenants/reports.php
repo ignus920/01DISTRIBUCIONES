@@ -6,6 +6,7 @@ use App\Livewire\Tenant\Reports\SalesXItems;
 use App\Livewire\Tenant\Reports\ImpactSales;
 use App\Livewire\Tenant\Reports\ProfitabilityReport;
 use App\Livewire\Tenant\Reports\PortfolioReport;
+use App\Livewire\Tenant\Reports\SalesmanXItem;
 
 /**
  * Rutas para el módulo de Reportes del Tenant
@@ -33,6 +34,9 @@ Route::prefix('/reports')->group(function () {
     // Ruta para reporte de cartera
     Route::get('/portfolio', PortfolioReport::class)
         ->name('tenant.reports.portfolio');
+
+    Route::get('/salesman-x-item', SalesmanXItem::class)
+        ->name('tenant.reports.salesman-x-item');
 
     // Aquí se pueden agregar más rutas de reportes en el futuro
     // Ejemplo:

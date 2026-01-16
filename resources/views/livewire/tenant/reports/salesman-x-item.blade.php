@@ -4,7 +4,8 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Reportes - Impacto de Ventas</h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Reporte de Vendedor por Item</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-1">Consulta consolidada de vendedor por item</p>
                 </div>
             </div>
         </div>
@@ -130,14 +131,14 @@
                                 </div>
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Casa</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Devoluciones</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Devolución</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Efectiva</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        @forelse($reporteImpactoVentas as $item)
+                        @forelse($reporteVendedorXItem as $item)
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                 {{ $item->vendedor }}
@@ -148,16 +149,14 @@
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $item->casa ?? 'Sin casa asignada' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                                <div class="font-medium">{{ $item->businessName ?? 'N/A' }}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $item->cliente }}</div>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                {{ $item->producto }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900 dark:text-white">
-                                <!-- Estado Toggle -->
-                                {{ $item->producto}}
+                                {{$item->cantidad}}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900 dark:text-white">
-                                {{ $item->cantidad }}
+                                0
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900 dark:text-white">
                                 0
@@ -181,14 +180,14 @@
             </div>
 
             <!-- Paginación -->
-            @if($reporteImpactoVentas->hasPages())
+            @if($reporteVendedorXItem->hasPages())
             <div class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
                 <div class="flex items-center justify-between">
                     <div class="text-sm text-gray-700 dark:text-gray-300">
-                        Mostrando {{ $reporteImpactoVentas->firstItem() }} a {{ $reporteImpactoVentas->lastItem() }} de {{ $reporteImpactoVentas->total() }} resultados
+                        Mostrando {{ $reporteVendedorXItem->firstItem() }} a {{ $reporteVendedorXItem->lastItem() }} de {{ $reporteVendedorXItem->total() }} resultados
                     </div>
                     <div>
-                        {{ $reporteImpactoVentas->links() }}
+                        {{ $reporteVendedorXItem->links() }}
                     </div>
                 </div>
             </div>
@@ -196,3 +195,4 @@
         </div>
     </div>
 </div>
+

@@ -15,7 +15,7 @@ class MoveDistrictModal extends Component
     public $showModal = false;
     public $search = '';
     public $perPage = 10;
-    
+
     // Form properties
     public $district = '';
     public $sourceRouteId = '';
@@ -84,9 +84,9 @@ class MoveDistrictModal extends Component
         $query->when($this->search, function ($query) {
             $query->whereHas('company', function ($q) {
                 $q->where('businessName', 'like', '%' . $this->search . '%')
-                  ->orWhere('firstName', 'like', '%' . $this->search . '%')
-                  ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                  ->orWhere('identification', 'like', '%' . $this->search . '%');
+                    ->orWhere('firstName', 'like', '%' . $this->search . '%')
+                    ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                    ->orWhere('identification', 'like', '%' . $this->search . '%');
             });
         });
 
@@ -115,9 +115,9 @@ class MoveDistrictModal extends Component
             $query->when($this->search, function ($query) {
                 $query->whereHas('company', function ($q) {
                     $q->where('businessName', 'like', '%' . $this->search . '%')
-                      ->orWhere('firstName', 'like', '%' . $this->search . '%')
-                      ->orWhere('lastName', 'like', '%' . $this->search . '%')
-                      ->orWhere('identification', 'like', '%' . $this->search . '%');
+                        ->orWhere('firstName', 'like', '%' . $this->search . '%')
+                        ->orWhere('lastName', 'like', '%' . $this->search . '%')
+                        ->orWhere('identification', 'like', '%' . $this->search . '%');
                 });
             });
             return $query->orderBy('route_id')->orderBy('sales_order')->paginate($this->perPage);
@@ -139,6 +139,7 @@ class MoveDistrictModal extends Component
                 ->select('district')
                 ->whereNotNull('district')
                 ->where('district', '!=', '')
+                ->where('district', '!=', '000')
                 ->distinct()
                 ->orderBy('district')
                 ->pluck('district')
@@ -224,7 +225,7 @@ class MoveDistrictModal extends Component
 
             $totalSwapped = $sourceCompanies->count() + $targetCompanies->count();
             session()->flash('message', "Se intercambiaron {$totalSwapped} cliente(s) entre las rutas exitosamente.");
-            
+
             $this->sourceRouteId = '';
             $this->targetRouteId = '';
             $this->selectedCompanies = [];
@@ -255,20 +256,20 @@ class MoveDistrictModal extends Component
             $movedCount = 0;
             foreach ($this->selectedCompanies as $companyRouteId) {
                 $companyRoute = TatCompanyRoute::find($companyRouteId);
-                
+
                 if ($companyRoute) {
                     // Obtener el último sales_order de la ruta destino
                     $lastOrder = TatCompanyRoute::where('route_id', $this->targetRouteId)
                         ->orderBy('sales_order', 'desc')
                         ->first();
-                    
+
                     $newSalesOrder = $lastOrder ? ($lastOrder->sales_order + 1) : 1;
-                    
+
                     $companyRoute->update([
                         'route_id' => $this->targetRouteId,
                         'sales_order' => $newSalesOrder,
                     ]);
-                    
+
                     $movedCount++;
                 }
             }

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Tenant\Quoter\VntDetailQuote;
 use Livewire\Attributes\Computed;
 
-class ImpactSales extends Component
+class SalesmanXItem extends Component
 {
     use WithPagination;
     use \App\Traits\Livewire\WithExport;
@@ -18,7 +18,6 @@ class ImpactSales extends Component
     public $endDate = '';
     public $hasSearched = false; // Indica si se ha realizado una búsqueda
     public $showDetail = false;
-    public $idItem;
 
     // Propiedades para la tabla
     public $search = '';
@@ -97,7 +96,7 @@ class ImpactSales extends Component
         $this->resetPage();
     }
 
-    public function getReporteImpactoVentas($paginate = true)
+    public function getReporteVendedorXItem($paginate = true)
     {
         if (!$this->hasSearched) {
             return $paginate ? new \Illuminate\Pagination\LengthAwarePaginator([], 0, $this->perPage) : collect([]);
@@ -108,23 +107,17 @@ class ImpactSales extends Component
                 'users.name as vendedor',
                 'inv_categories.name as categoria',
                 'inv_item_house.name as casa',
-                DB::raw("CONCAT(vnt_companies.firstName, ' ', vnt_companies.lastName) as cliente"),
-                'vnt_companies.businessName',
-                'inv_items.id as idProducto',
                 'inv_items.name as producto',
-                DB::raw("SUM(vnt_detail_quotes.quantity) as cantidad")
+                DB::raw('SUM(vnt_detail_quotes.quantity) as cantidad')
             ])
             ->join('vnt_quotes', 'vnt_detail_quotes.quoteId', '=', 'vnt_quotes.id')
             ->join('inv_items', 'vnt_detail_quotes.itemId', '=', 'inv_items.id')
             ->join('inv_categories', 'inv_items.categoryId', '=', 'inv_categories.id')
             ->join('inv_item_house', 'inv_items.houseId', '=', 'inv_item_house.id')
             ->join('users', 'vnt_quotes.userId', '=', 'users.id')
-            ->join('vnt_companies', 'vnt_quotes.customerId', '=', 'vnt_companies.id')
             ->where('vnt_quotes.status', 'REMISIÓN')
-            ->whereNull('vnt_quotes.deleted_at')
-            ->whereNull('vnt_detail_quotes.deleted_at')
-            ->groupBy('inv_items.id', 'inv_items.name', 'users.name', 'inv_categories.name', 'inv_item_house.name', 'vnt_companies.firstName', 'vnt_companies.lastName', 'vnt_companies.businessName')
-            ->orderBy('inv_items.name');
+            ->groupBy('users.id', 'users.name', 'inv_categories.name', 'inv_item_house.name', 'inv_items.name')
+            ->orderBy('users.name');
 
         if ($this->startDate) {
             $query->whereDate('vnt_quotes.created_at', '>=', $this->startDate);
@@ -139,12 +132,15 @@ class ImpactSales extends Component
 
     public function render()
     {
-        $reporteImpactoVentas = $this->getReporteImpactoVentas();
-        return view('livewire.tenant.reports.impact-sales', [
-            'reporteImpactoVentas' => $reporteImpactoVentas,
+        $reporteVendedorXItem = $this->getReporteVendedorXItem();
+        return view('livewire.tenant.reports.salesman-x-item', [
+            'reporteVendedorXItem' => $reporteVendedorXItem
         ]);
     }
 
+    /**
+     * Métodos para Exportación
+     */
     protected function getExportData()
     {
         $query = VntDetailQuote::query()
@@ -152,31 +148,33 @@ class ImpactSales extends Component
                 'users.name as vendedor',
                 'inv_categories.name as categoria',
                 'inv_item_house.name as casa',
-                DB::raw("CONCAT(vnt_companies.firstName, ' ', vnt_companies.lastName) as cliente"),
-                'vnt_companies.businessName',
-                'inv_items.id as idProducto',
                 'inv_items.name as producto',
-                DB::raw("SUM(vnt_detail_quotes.quantity) as cantidad")
+                DB::raw('SUM(vnt_detail_quotes.quantity) as cantidad')
             ])
             ->join('vnt_quotes', 'vnt_detail_quotes.quoteId', '=', 'vnt_quotes.id')
             ->join('inv_items', 'vnt_detail_quotes.itemId', '=', 'inv_items.id')
             ->join('inv_categories', 'inv_items.categoryId', '=', 'inv_categories.id')
             ->join('inv_item_house', 'inv_items.houseId', '=', 'inv_item_house.id')
             ->join('users', 'vnt_quotes.userId', '=', 'users.id')
-            ->join('vnt_companies', 'vnt_quotes.customerId', '=', 'vnt_companies.id')
             ->where('vnt_quotes.status', 'REMISIÓN')
-            ->whereNull('vnt_quotes.deleted_at')
-            ->whereNull('vnt_detail_quotes.deleted_at')
-            ->groupBy('inv_items.id', 'inv_items.name', 'users.name', 'inv_categories.name', 'inv_item_house.name', 'vnt_companies.firstName', 'vnt_companies.lastName', 'vnt_companies.businessName')
-            ->orderBy('inv_items.name');
+            ->groupBy('users.id', 'users.name', 'inv_categories.name', 'inv_item_house.name', 'inv_items.name')
+            ->orderBy('users.name');
+
+        if ($this->startDate) {
+            $query->whereDate('vnt_quotes.created_at', '>=', $this->startDate);
+        }
+
+        if ($this->endDate) {
+            $query->whereDate('vnt_quotes.created_at', '<=', $this->endDate);
+        }
+
         return $query->get();
     }
 
     protected function getExportHeadings(): array
     {
-        return ['Vendedor', 'Categoría', 'Casa', 'Cliente', 'Razón Social', 'ID Producto', 'Producto', 'Cantidad'];
+        return ['Vendedor', 'Categoría', 'Casa', 'Producto', 'Cantidad'];
     }
-
     protected function getExportMapping()
     {
         return function ($item) {
@@ -184,9 +182,6 @@ class ImpactSales extends Component
                 $item->vendedor,
                 $item->categoria,
                 $item->casa,
-                $item->cliente,
-                $item->businessName,
-                $item->idProducto,
                 $item->producto,
                 $item->cantidad,
             ];
@@ -194,6 +189,6 @@ class ImpactSales extends Component
     }
     protected function getExportFilename(): string
     {
-        return 'impacto_ventas_' . now()->format('Y-m-d_His');
+        return 'vendedor_x_producto_' . now()->format('Y-m-d_His');
     }
 }
