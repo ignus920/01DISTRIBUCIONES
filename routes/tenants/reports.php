@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Livewire\Tenant\Reports\SalesReport;
 use App\Livewire\Tenant\Reports\ProfitabilityReport;
 use App\Livewire\Tenant\Reports\PortfolioReport;
+use App\Http\Controllers\Reports\PriceListController;
 
 /**
  * Rutas para el módulo de Reportes del Tenant
@@ -24,6 +25,10 @@ Route::prefix('/reports')->group(function () {
     // Ruta para reporte de cartera
     Route::get('/portfolio', PortfolioReport::class)
         ->name('tenant.reports.portfolio');
+    
+    // Ruta para descarga directa de lista de precios en PDF
+    Route::get('/price-list', [PriceListController::class, 'downloadPDF'])
+        ->name('tenant.reports.price-list');
     
     // Aquí se pueden agregar más rutas de reportes en el futuro
     // Ejemplo:
