@@ -487,11 +487,11 @@ new class extends Component
                         Ventas x producto
                     </a>
                     <a href="{{ url('/reports/portfolio') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('tenant.reports.portfolio') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Cartera
                     </a>
-                    <a href="{{ route('movements.movements') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                    <a href="{{ route('tenant.reports.price-list') }}"
+                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 hover:text-indigo-600 dark:hover:text-indigo-400">
                         Lista de precios
                     </a>
                     <a href="{{ route('movements.movements') }}" wire:navigate
@@ -532,8 +532,8 @@ new class extends Component
                         class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
                         Cartera
                     </a>
-                      <a href="{{ route('movements.movements') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                      <a href="{{ route('tenant.reports.price-list') }}"
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
                         Lista de precios
                     </a>
                       <a href="{{ route('movements.movements') }}" wire:navigate

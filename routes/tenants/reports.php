@@ -7,6 +7,7 @@ use App\Livewire\Tenant\Reports\ImpactSales;
 use App\Livewire\Tenant\Reports\ProfitabilityReport;
 use App\Livewire\Tenant\Reports\PortfolioReport;
 use App\Livewire\Tenant\Reports\SalesmanXItem;
+use App\Http\Controllers\Reports\PriceListController;
 
 /**
  * Rutas para el módulo de Reportes del Tenant
@@ -37,6 +38,11 @@ Route::prefix('/reports')->group(function () {
 
     Route::get('/salesman-x-item', SalesmanXItem::class)
         ->name('tenant.reports.salesman-x-item');
+
+
+    // Ruta para descarga directa de lista de precios en PDF
+    Route::get('/price-list', [PriceListController::class, 'downloadPDF'])
+        ->name('tenant.reports.price-list');
 
     // Aquí se pueden agregar más rutas de reportes en el futuro
     // Ejemplo:

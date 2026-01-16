@@ -48,7 +48,8 @@ class MovementForm extends Component
         'itemId' => '',
         'quantity' => '',
         'unitMeasurementId' => '',
-        'cost' => 0
+        'cost' => 0,
+        'supplierId' => ''
     ];
     
     // Messages
@@ -63,7 +64,8 @@ class MovementForm extends Component
         'storeSelected',
         'reasonSelected',
         'itemSelected',
-        'unitMeasurementSelected'
+        'unitMeasurementSelected',
+        'supplierSelected'
     ];
 
     public function mount()
@@ -119,6 +121,28 @@ class MovementForm extends Component
     {
         $this->detailForm['unitMeasurementId'] = $value;
     }
+    
+    /**
+     * Handle supplier selection from GenericSelect
+     */
+    public function supplierSelected($value)
+    {
+        $this->detailForm['supplierId'] = $value;
+        
+        // Buscar el nombre del proveedor para guardarlo también
+        if ($value) {
+            $this->ensureTenantConnection();
+            $supplier = \App\Models\Central\VntContact::select('vnt_contacts.firstName')
+                ->join('vnt_companies', 'vnt_contacts.email', '=', 'vnt_companies.billingEmail')
+                ->where('vnt_companies.id', $value)
+                ->where('vnt_companies.type', 'PROVEEDOR')
+                ->first();
+            
+            $this->detailForm['supplierName'] = $supplier ? $supplier->firstName : '';
+        } else {
+            $this->detailForm['supplierName'] = '';
+        }
+    }
 
     /**
      * Show movement details modal
@@ -130,7 +154,8 @@ class MovementForm extends Component
             'details.item',
             'details.unitMeasurement',
             'store',
-            'reason'
+            'reason',
+            'supplierContact'
         ])->find($movementId);
         
         if ($movement) {
@@ -143,6 +168,7 @@ class MovementForm extends Component
                 'store_name' => $movement->store->name ?? 'N/A',
                 'reason_name' => $movement->reason->name ?? 'N/A',
                 'user_name' => $movement->user->name ?? 'N/A',
+                'supplier_name' => ($movement->supplier > 0 && $movement->supplierContact) ? $movement->supplierContact->firstName : '-',
                 'status' => $movement->status,
                 'observations' => $movement->observations,
                 'details' => $movement->details->map(function ($detail) {
@@ -293,6 +319,24 @@ class MovementForm extends Component
     {
         return UnitMeasurements::where('status', 1)->get();
     }
+    
+    /**
+     * Computed property for suppliers (proveedores)
+     * Gets contacts from companies marked as suppliers
+     */
+    #[Computed]
+    public function suppliers()
+    {
+        $this->ensureTenantConnection();
+        
+        return \App\Models\Central\VntContact::select('vnt_companies.id', 'vnt_contacts.firstName')
+            ->join('vnt_companies', 'vnt_contacts.email', '=', 'vnt_companies.billingEmail')
+            ->where('vnt_companies.type', 'PROVEEDOR')
+            ->where('vnt_contacts.status', 1)
+            ->whereNull('vnt_contacts.deleted_at')
+            ->distinct()
+            ->get();
+    }
     /**
      * Open modal to create new movement
      */
@@ -412,6 +456,13 @@ class MovementForm extends Component
                     $this->isProcessing = false;
                     return;
                 }
+                
+                // Validación del proveedor
+                if (empty($this->detailForm['supplierId'])) {
+                    $this->errorMessage = 'El proveedor es requerido para movimientos de compra';
+                    $this->isProcessing = false;
+                    return;
+                }
             }
             
             // Get item and unit measurement info with all relationships
@@ -496,6 +547,8 @@ class MovementForm extends Component
                     'price' => $price,
                     'total' => $price * $quantity,
                     'cost' => $this->detailForm['cost'] ?? 0,
+                    'supplierId' => $this->detailForm['supplierId'] ?? 0,
+                    'supplierName' => $this->detailForm['supplierName'] ?? '-',
                 ];
             }
 
@@ -600,7 +653,8 @@ class MovementForm extends Component
                     'storeId' => $this->selectedStoreId,
                     'reasonId' => $this->movementForm['reasonId'],
                     'consecutive' => $consecutive,
-                    'userId' => Auth::id()
+                    'userId' => Auth::id(),
+                    'supplier' => !empty($this->details[0]['supplierId']) ? (int)$this->details[0]['supplierId'] : 0,
                 ]);
                 
                 // Create details
@@ -715,6 +769,7 @@ class MovementForm extends Component
             'quantity' => '',
             'unitMeasurementId' => '',
             'cost' => 0,
+            'supplierId' => '',
         ];
         $this->setDefaultUnitMeasurement();
     }
