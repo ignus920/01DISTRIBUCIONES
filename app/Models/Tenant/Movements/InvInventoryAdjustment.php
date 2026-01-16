@@ -26,6 +26,7 @@ class InvInventoryAdjustment extends Model
         'reasonId',
         'consecutive',
         'userId',
+        'supplier',
     ];
 
     protected function casts(): array
@@ -38,6 +39,7 @@ class InvInventoryAdjustment extends Model
             'reasonId' => 'integer',
             'consecutive' => 'integer',
             'userId' => 'integer',
+            'supplier' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
@@ -84,6 +86,30 @@ class InvInventoryAdjustment extends Model
     public function store()
     {
         return $this->belongsTo(InvStore::class, 'storeId', 'id');
+    }
+    
+    /**
+     * Get the supplier company for this adjustment
+     */
+    public function supplierCompany()
+    {
+        return $this->belongsTo(\App\Models\Tenant\Customer\VntCompany::class, 'supplier', 'id');
+    }
+    
+    /**
+     * Get the supplier contact name through the company relationship
+     * This uses the billingEmail from vnt_companies to find the contact in vnt_contacts
+     */
+    public function supplierContact()
+    {
+        return $this->hasOneThrough(
+            \App\Models\Tenant\Customer\VntContacts::class,
+            \App\Models\Tenant\Customer\VntCompany::class,
+            'id', // Foreign key on vnt_companies table
+            'email', // Foreign key on vnt_contacts table
+            'supplier', // Local key on inv_inventory_adjustments table
+            'billingEmail' // Local key on vnt_companies table
+        );
     }
 
     // Scopes

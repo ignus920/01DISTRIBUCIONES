@@ -287,6 +287,24 @@
                                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400">
                                         @error('detailForm.cost') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
                                     </div>
+                                      <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Proveedor <span class="text-red-500">*</span></label>
+                                        @livewire('selects.generic-select', [
+                                            'selectedValue' => $detailForm['supplierId'],
+                                            'items' => $this->suppliers,
+                                            'name' => 'detailForm.supplierId',
+                                            'placeholder' => 'Seleccionar proveedor',
+                                            'label' => '',
+                                            'required' => true,
+                                            'showLabel' => false,
+                                            'class' => 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400',
+                                            'eventName' => 'supplierSelected',
+                                            'displayField' => 'firstName',
+                                            'valueField' => 'id',
+                                            'searchFields' => ['firstName']
+                                        ], key('supplier-select-' . now()->timestamp))
+                                        @error('detailForm.supplierId') <span class="text-red-500 text-sm mt-1">{{ $message }}</span> @enderror
+                                    </div>
                                     @endif
                                 </div>
 
@@ -347,6 +365,9 @@
                                                 class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                                 Precio final</th>
                                             <th
+                                                class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                                Provedor</th>
+                                            <th
                                                 class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                                 Acción</th>
                                         </tr>
@@ -377,6 +398,8 @@
                                                 number_format($detail['price'], 0) }}</td>
                                             <td class="px-4 py-2 text-sm text-gray-900 dark:text-white font-semibold">
                                                 ${{ number_format($detail['total'], 0) }}</td>
+                                            <td class="px-4 py-2 text-sm text-gray-900 dark:text-white font-semibold">
+                                                {{ $detail['supplierName'] ?? '-' }}</td>
                                             <td class="px-4 py-2 text-center">
                                                 <button wire:click="removeDetail({{ $index }})"
                                                     class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors">
@@ -491,6 +514,12 @@
                             <p class="text-sm text-gray-500 dark:text-gray-400">Razón</p>
                             <p class="text-sm font-medium text-gray-900 dark:text-white">
                                 {{ $movementDetails['reason_name'] }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Proveedor</p>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">
+                                {{ $movementDetails['supplier_name'] ?? '-' }}
                             </p>
                         </div>
                         <div>
@@ -1213,6 +1242,12 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400">Razón</p>
                         <p class="text-sm font-medium text-gray-900 dark:text-white">
                             {{ $movementDetails['reason_name'] }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Proveedor</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">
+                            {{ $movementDetails['supplier_name'] ?? '-' }}
                         </p>
                     </div>
                     <div>

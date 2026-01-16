@@ -59,6 +59,7 @@ class MovementList extends Component
         $this->ensureTenantConnection();
         return InvInventoryAdjustment::query()
             ->byType($this->type)
+            ->with('supplierContact') // Cargar relación del proveedor
             ->withCount('details') // Conteo de items diferentes
             ->withSum('details', 'quantity') // Suma total de cantidades
             ->when($this->search, function ($query) {
@@ -181,7 +182,7 @@ class MovementList extends Component
         $this->ensureTenantConnection();
         return InvInventoryAdjustment::query()
             ->byType($this->type)
-            ->with(['warehouse', 'user', 'reason'])
+            ->with(['warehouse', 'user', 'reason', 'supplierContact'])
             ->withCount('details')
             ->withSum('details', 'quantity')
             ->when($this->search, function ($query) {
@@ -203,6 +204,7 @@ class MovementList extends Component
             'Sucursal',
             'Usuario',
             'Razón',
+            'Proveedor',
             'Cant. Items',
             'Cantidad Total',
             'Estado',
@@ -219,6 +221,7 @@ class MovementList extends Component
             $movement->warehouse_name ?? 'N/A',
             $movement->user->name ?? 'N/A',
             $movement->reason->name ?? 'N/A',
+            $movement->supplierContact->firstName ?? '-',
             $movement->details_count ?? 0,
             number_format($movement->details_sum_quantity ?? 0, 2),
             $movement->status === 1 ? 'Registrado' : 'Anulado',
