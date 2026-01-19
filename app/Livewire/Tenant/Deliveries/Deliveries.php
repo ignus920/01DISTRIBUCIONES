@@ -19,9 +19,12 @@ class Deliveries extends Component
 
     // Propiedades para el modal
     public $showingOrderModal = false;
+    public $showingFullReturnModal = false;
     public $selectedOrder = null;
+    public $fullReturnObservation = '';
     public $currentItemIndex = 0;
-    public $returnQuantities = []; // [detailId => quantity]
+    public $returnQuantities = []; 
+    public $returnObservations = []; // [detailId => observation]
 
     protected $queryString = ['search', 'status', 'selectedDeliveryId'];
 
@@ -127,6 +130,49 @@ class Deliveries extends Component
         return $remissions;
     }
 
+    public function confirmFullReturn()
+    {
+        if (empty(trim($this->fullReturnObservation))) {
+            $this->dispatch('notificar-error', ['msg' => 'La justificación es obligatoria para la devolución total']);
+            return;
+        }
+
+        try {
+            \DB::transaction(function () {
+                $remission = \App\Models\Tenant\Remissions\InvRemissions::findOrFail($this->selectedOrder->id);
+                
+                // 1. Actualizar Remisión
+                $remission->update([
+                    'status' => 'DEVUELTO',
+                    'observations_return' => $this->fullReturnObservation
+                ]);
+
+                // 2. Actualizar todos los detalles al 100% devueltos
+                foreach ($remission->details as $detail) {
+                    $detail->update([
+                        'cant_return' => $detail->quantity,
+                        'observations_return' => 'Devolución Total: ' . $this->fullReturnObservation
+                    ]);
+                }
+            });
+
+            $this->showingFullReturnModal = false;
+            $this->selectedOrder = null;
+            $this->fullReturnObservation = '';
+            
+            $this->dispatch('pedido-actualizado');
+        } catch (\Exception $e) {
+            $this->dispatch('notificar-error', ['msg' => 'Error al procesar la devolución: ' . $e->getMessage()]);
+        }
+    }
+
+    public function openFullReturnModal($orderId)
+    {
+        $this->selectedOrder = \App\Models\Tenant\Remissions\InvRemissions::with('details')->findOrFail($orderId);
+        $this->fullReturnObservation = '';
+        $this->showingFullReturnModal = true;
+    }
+
     public function render()
     {
         return view('livewire.tenant.deliveries.deliveries', [
@@ -146,8 +192,8 @@ class Deliveries extends Component
             $this->returnQuantities = [];
             // Inicializar devoluciones en 0 o valor actual si existiera
             foreach($this->selectedOrder->details as $detail) {
-                // Inicializar en 0 por defecto como solicitó el usuario
-                $this->returnQuantities[$detail->id] = 0; 
+                $this->returnQuantities[$detail->id] = (int)($detail->cant_return ?? 0);
+                $this->returnObservations[$detail->id] = $detail->observations_return ?? '';
             }
             $this->showingOrderModal = true;
         } else {
@@ -169,14 +215,31 @@ class Deliveries extends Component
         }
     }
 
-    public function updateReturnQuantity($detailId, $value)
+    public function updatedReturnQuantities($value, $key)
     {
-        $value = (int)$value;
+        $detailId = $key;
+        $detail = \App\Models\Tenant\Remissions\InvDetailRemissions::find($detailId);
+        
+        if ($detail) {
+            $max = $detail->quantity;
+            $val = (int)$value;
+            if ($val > $max) {
+                $this->dispatch('notificar-error', ['msg' => "No puedes devolver más de lo pedido ({$max} und)"]);
+                $this->returnQuantities[$detailId] = $max;
+            } else {
+                $this->returnQuantities[$detailId] = max(0, $val);
+            }
+        }
+    }
+
+    public function updateReturnQuantity($detailId, $qty)
+    {
+        $value = (int)$qty;
         if ($value < 0) $value = 0;
         
-        // Validar que no devuelva más de lo pedido
-        $detail = $this->selectedOrder->details->where('id', $detailId)->first();
+        $detail = \App\Models\Tenant\Remissions\InvDetailRemissions::find($detailId);
         if ($detail && $value > $detail->quantity) {
+            $this->dispatch('notificar-error', ['msg' => "Máximo permitido: {$detail->quantity} unidades"]);
             $value = $detail->quantity;
         }
 
@@ -195,6 +258,29 @@ class Deliveries extends Component
         $this->updateReturnQuantity($detailId, $current - 1);
     }
 
+    public function saveReturn($detailId)
+    {
+        // Validar observación obligatoria si hay cantidad de devolución
+        $qty = $this->returnQuantities[$detailId] ?? 0;
+        $obs = trim($this->returnObservations[$detailId] ?? '');
+
+        if ($qty > 0 && empty($obs)) {
+            $this->dispatch('notificar-error', ['msg' => '¡Atención! La observación es obligatoria para devoluciones']);
+            return;
+        }
+
+        $detail = \App\Models\Tenant\Remissions\InvDetailRemissions::find($detailId);
+        if ($detail) {
+            $detail->update([
+                'cant_return' => $qty,
+                'observations_return' => $obs
+            ]);
+            
+            // Dispatch compacto para toast
+            $this->dispatch('pedido-actualizado');
+        }
+    }
+
     public function closeOrderModal()
     {
         $this->showingOrderModal = false;
@@ -206,7 +292,7 @@ class Deliveries extends Component
         // Redirigir al componente de pago existente si es posible
         $remission = InvRemissions::find($id);
         if ($remission && $remission->quoteId) {
-            return redirect()->route('tenant.petty-cash.payment-quote', ['quoteId' => $remission->quoteId, 'from' => 'deliveries']);
+            return redirect()->route('tenant.payment.quote', ['quoteId' => $remission->quoteId, 'from' => 'deliveries']);
         }
     }
 
