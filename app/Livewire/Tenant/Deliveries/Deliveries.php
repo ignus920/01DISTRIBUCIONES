@@ -108,7 +108,9 @@ class Deliveries extends Component
                 $returnValue = 0;
                 foreach ($remission->details as $detail) {
                     $qty = $this->returnQuantities[$detail->id] ?? 0;
-                    $returnValue += $qty * $detail->value;
+                    $lineValue = $qty * $detail->value;
+                    $lineTax = $lineValue * (($detail->tax ?? 0) / 100);
+                    $returnValue += ($lineValue + $lineTax);
                 }
 
                 $remission->total_amount = $remission->quote->total - $returnValue;

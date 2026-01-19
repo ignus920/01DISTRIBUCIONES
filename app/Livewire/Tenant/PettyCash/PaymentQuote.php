@@ -260,6 +260,9 @@ class PaymentQuote extends Component
         $this->quoteSubtotal = round($subtotal, 0);
         $this->quoteTaxes = round($totalTaxes, 0);
         $this->quoteTotal = round($subtotal + $totalTaxes, 0);
+
+        // Ajustar por devoluciones si vienen de entregas
+        $this->adjustForRemissionReturns();
     }
 
     private function calculateQuoteTotalsTAT($quote)
@@ -278,6 +281,44 @@ class PaymentQuote extends Component
         $this->quoteSubtotal = round($subtotal, 0);
         $this->quoteTaxes = round($totalTaxes, 0);
         $this->quoteTotal = round($subtotal + $totalTaxes, 0);
+
+        // Ajustar por devoluciones si vienen de entregas
+        $this->adjustForRemissionReturns();
+    }
+
+    private function adjustForRemissionReturns()
+    {
+        try {
+            $remission = \Illuminate\Support\Facades\DB::table('inv_remissions')
+                ->where('quoteId', (int)$this->quoteId)
+                ->first();
+
+            if ($remission) {
+                $returns = \Illuminate\Support\Facades\DB::table('inv_detail_remissions')
+                    ->where('remissionId', $remission->id)
+                    ->where('cant_return', '>', 0)
+                    ->get();
+
+                $returnedSubtotal = 0;
+                $returnedTaxes = 0;
+
+                foreach ($returns as $ret) {
+                    $lineValue = (float)$ret->cant_return * (float)$ret->value;
+                    $lineTax = $lineValue * ((float)($ret->tax ?? 0) / 100);
+                    
+                    $returnedSubtotal += $lineValue;
+                    $returnedTaxes += $lineTax;
+                }
+
+                $this->quoteSubtotal = max(0, $this->quoteSubtotal - round($returnedSubtotal, 0));
+                $this->quoteTaxes = max(0, $this->quoteTaxes - round($returnedTaxes, 0));
+                $this->quoteTotal = $this->quoteSubtotal + $this->quoteTaxes;
+                
+                \Illuminate\Support\Facades\Log::info("Ajuste por devoluciones en Caja (Quote {$this->quoteId}): Subtotal -{$returnedSubtotal}, Tax -{$returnedTaxes}");
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error al ajustar devoluciones en Caja: " . $e->getMessage());
+        }
     }
 
     private function setDefaultQuoteData()
