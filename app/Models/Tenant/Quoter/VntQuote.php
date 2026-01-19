@@ -64,7 +64,9 @@ class VntQuote extends Model
     public function getTotalAttribute()
     {
         return $this->detalles->sum(function ($detalle) {
-            return $detalle->quantity * $detalle->value;
+            $subtotal = $detalle->quantity * $detalle->value;
+            $tax = $subtotal * (($detalle->tax ?? 0) / 100);
+            return $subtotal + $tax;
         });
     }
 

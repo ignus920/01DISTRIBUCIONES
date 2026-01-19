@@ -59,13 +59,14 @@
                     $ {{ number_format($remissions->sum('total_amount'), 0, ',', '.') }}
                 </div>
                 @if(auth()->user()->profile_id != 13)
-                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
+                <a href="{{ route('tenant.uploads.uploads') }}" wire:navigate class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-1">
+                     <x-heroicon-o-clipboard-document-list class="w-4 h-4" />
                     Cargue
-                </button>
-                <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-1">
+                </a>
+                <a href="{{ route('tenant.quoter.products.desktop') }}" wire:navigate class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-1">
                     <x-heroicon-o-plus class="w-4 h-4" />
                     Nuevo pedido
-                </button>
+                </a>
                 @endif
             </div>
         </div>
@@ -165,10 +166,7 @@
                                         <span class="text-gray-500 dark:text-slate-400 text-xs uppercase font-bold tracking-tighter">Entregar en:</span>
                                         <span class="text-gray-800 dark:text-slate-100 font-semibold">{{ $remission->quote->warehouse->address ?? 'Sin dirección' }}</span>
                                     </p>
-                                    <p class="flex flex-col">
-                                        <span class="text-gray-500 dark:text-slate-400 text-xs uppercase font-bold tracking-tighter">Cliente:</span>
-                                        <span class="text-gray-800 dark:text-slate-100 font-semibold italic">{{ $remission->quote->customer->businessName ?? 'Sin nombre' }}</span>
-                                    </p>
+                                    
                                 </div>
                                 <div class="space-y-2">
                                     <p class="flex flex-col">
@@ -183,8 +181,9 @@
                         </div> <!-- Cierre Area Clickeable -->
                         
                         <div class="pt-4 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                            <div class="text-sm sm:text-base font-black uppercase text-blue-600 dark:text-blue-400 tracking-tighter">
-                                A PAGAR <span class="ml-1 font-bold">$ {{ number_format($remission->balance_amount, 0, ',', '.') }}</span>
+                            <div class="text-sm sm:text-base font-black uppercase tracking-tighter flex gap-3 flex-wrap">
+                                <span class="text-gray-500 dark:text-slate-400">TOTAL : <span class="text-gray-900 dark:text-white">$ {{ number_format($remission->total_amount, 0, ',', '.') }}</span></span>
+                                <span class="text-blue-600 dark:text-blue-400">A PAGAR : <span class="font-bold">$ {{ number_format($remission->balance_amount, 0, ',', '.') }}</span></span>
                             </div>
 
                                 <!-- Botones de Acción (Resposivo) -->
@@ -229,12 +228,12 @@
                                             <button wire:click.stop="payOrder({{ $remission->id }})" 
                                                     class="w-full flex items-center gap-3 px-4 py-3 bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-xl transition-colors text-xs font-black uppercase tracking-widest">
                                                 <x-heroicon-s-currency-dollar class="w-5 h-5" />
-                                                Pagar Pedido
+                                                Pagar 
                                             </button>
                                             <button wire:click.stop="openFullReturnModal({{ $remission->id }})" 
                                                      class="w-full flex items-center gap-3 px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 rounded-xl transition-colors text-xs font-black uppercase tracking-widest">
                                                  <x-heroicon-s-arrow-uturn-left class="w-5 h-5" />
-                                                 Devolver / Reportar
+                                                 Devolver 
                                              </button>
                                         @else
                                             <div class="w-full flex items-center gap-3 px-4 py-3 bg-gray-100 dark:bg-slate-800 text-gray-400 rounded-xl text-xs font-black uppercase tracking-widest">
@@ -245,7 +244,7 @@
                                         <button wire:click.stop="printOrder({{ $remission->id }})" 
                                                 class="w-full flex items-center gap-3 px-4 py-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl transition-colors text-xs font-black uppercase tracking-widest">
                                             <x-heroicon-s-printer class="w-5 h-5" />
-                                            Imprimir Recibo
+                                            Imprimir
                                         </button>
                                     </div>
                                 </div>
