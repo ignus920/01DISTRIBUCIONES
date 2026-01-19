@@ -20,6 +20,8 @@ class InvDetailRemissions extends Model
         'remissionId',
         'itemId',
         'invoiceId',
+        'cant_return',
+        'observations_return',
         'created_at',
         'updated_at'
     ];

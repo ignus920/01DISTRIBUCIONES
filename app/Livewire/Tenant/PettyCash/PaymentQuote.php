@@ -12,6 +12,7 @@ use App\Traits\HasCompanyConfiguration; // Adding trait
 use Illuminate\Support\Facades\Log;
 use App\Models\Auth\Tenant;
 use App\Services\Tenant\TenantManager;
+use Livewire\Attributes\Url;
 use App\Models\Tenant\Quoter\VntQuote;
 
 class PaymentQuote extends Component
@@ -26,7 +27,12 @@ class PaymentQuote extends Component
     public $quoteTaxes;
     public $quoteTotal;
 
+    protected $queryString = [
+        'fromPage' => ['as' => 'from']
+    ];
+
     // Parámetro para saber desde dónde se abrió el componente
+    #[Url(as: 'from')]
     public $fromPage = null;
 
     // Datos de anticipos
@@ -128,6 +134,14 @@ class PaymentQuote extends Component
 
         // Capturar desde dónde se abrió (URL parameter)
         $this->fromPage = $from ?: request('from');
+        
+        // Log para depuración
+        Log::info("PaymentQuote MOUNT - fromPage: " . ($this->fromPage ?? 'NULL') . " | request('from'): " . (request('from') ?? 'NULL'));
+
+        if ($this->fromPage) {
+            session(['last_from_page' => $this->fromPage]);
+            Log::info("Session 'last_from_page' guardada: " . $this->fromPage);
+        }
 
         // Cargar datos de la cotización
         $this->loadQuoteData();
@@ -562,7 +576,7 @@ class PaymentQuote extends Component
             return;
         }
 
-        if ($this->remainingBalance > 0.01) {
+        if ($this->remainingBalance > 500) {
             $this->dispatch('showAlert', 'Advertencia: Queda un saldo pendiente de $' . number_format($this->remainingBalance, 0, ',', '.'));
             return;
         }
@@ -583,7 +597,8 @@ class PaymentQuote extends Component
             
             // Verificar caja activa nuevamente por seguridad
             if (!$this->checkActivePettyCash()) {
-                 return;
+                Log::warning("Abortando pago: No se encontró caja activa para el usuario " . auth()->id());
+                return;
             }
 
             $currentDate = \Carbon\Carbon::now();
@@ -614,23 +629,66 @@ class PaymentQuote extends Component
                 }
             }
 
-            // Actualizar estado de la cotización a 'Pagado'
-            if (auth()->user()->profile_id == 17) {
-                // TAT
-                \App\Models\TAT\Quoter\Quote::where('id', $this->quoteId)->update(['status' => 'Pagado']);
+            // Determinar si es una entrega
+            $isDelivery = ($this->fromPage === 'deliveries' || session('last_from_page') === 'deliveries');
+
+            // Solo actualizar el estado de la cotización si NO viene de entregas
+            // (El usuario indica que para entregas no se debe tocar vnt_quotes)
+            if (!$isDelivery) {
+                Log::info("Actualizando estado de cotización {$this->quoteId} (No es entrega)...");
+                if (auth()->user()->profile_id == 17) {
+                    \App\Models\TAT\Quoter\Quote::where('id', $this->quoteId)->update(['status' => 'Pagado']);
+                } else {
+                    VntQuote::where('id', $this->quoteId)->update(['status' => 'Pagado']);
+                }
             } else {
-                // VNT
-                VntQuote::where('id', $this->quoteId)->update(['status' => 'Pagado']);
+                Log::info("Omitiendo actualización de vnt_quotes/tat_quotes por ser una Entrega.");
             }
 
-            Log::info('Pago procesado y cotización actualizada a Pagado:', [
-                'quote_id' => $this->quoteId,
-                'petty_cash_id' => $this->activePettyCash['id'],
-                'records' => $recordsCreated
-            ]);
+            Log::info("Confirmando pago para quote {$this->quoteId}. From: {$this->fromPage}. Session: " . session('last_from_page'));
+
+            // --- INTEGRACIÓN ENTREGAS ---
+            try {
+                Log::info("Iniciando actualización de Remisión para quote {$this->quoteId}...");
+                // Actualización DIRECTA por DB para asegurar el cambio
+                // Según SQL dump proporcionado, el valor correcto es 'ENTREGADO' (ENUM)
+                $count = \Illuminate\Support\Facades\DB::table('inv_remissions')
+                    ->where('quoteId', (int)$this->quoteId)
+                    ->update(['status' => 'ENTREGADO']);
+                
+                if ($count > 0) {
+                    Log::info("ÉXITO DB: Remisión marcada como ENTREGADO.");
+                } else {
+                    Log::warning("AVISO DB: No se encontró remisión para la cotización ID: {$this->quoteId}.");
+                }
+            } catch (\Exception $e) {
+                Log::error("ERROR DB (Remisión): " . $e->getMessage());
+                // No lanzamos excepción aquí para no romper el flujo principal de pago si falla la remisión
+            }
+            // ----------------------------
             
-            // Redirigir según desde dónde se abrió
-            if ($this->fromPage === 'sales-list') {
+            // Determinar a dónde redirigir de forma segura
+            $target = session('last_from_page', $this->fromPage);
+            
+            // FALLBACK: Si no hay target, verificar si esta venta tiene una remisión (es una entrega)
+            if (!$target) {
+                $hasRemission = \Illuminate\Support\Facades\DB::table('inv_remissions')
+                    ->where('quoteId', (int)$this->quoteId)
+                    ->exists();
+                if ($hasRemission) {
+                    $target = 'deliveries';
+                    Log::info("Fallback activado: Se detectó remisión para quote {$this->quoteId}. Target seteado a 'deliveries'.");
+                }
+            }
+
+            Log::info("Finalizando confirmPayment. Destino detectado: " . ($target ?? 'DEFAULT (quoter)'));
+
+            if ($target === 'deliveries') {
+                session()->forget('last_from_page');
+                session()->flash('success', 'Pedido entregado y pagado correctamente.');
+                return redirect()->route('tenant.deliveries');
+            } elseif ($target === 'sales-list') {
+                session()->forget('last_from_page');
                 session()->flash('success', 'Pago registrado correctamente.');
                 return redirect()->route('tenant.tat.sales.list');
             } else {
@@ -677,8 +735,20 @@ class PaymentQuote extends Component
 
             if (!$quote) {
                 session()->flash('error', 'No se pudo encontrar la cotización.');
-                // Redirigir según desde dónde se abrió
-                if ($this->fromPage === 'sales-list') {
+                
+                $target = session('last_from_page', $this->fromPage);
+                
+                // Fallback si no hay rastro del origen
+                if (!$target) {
+                    $hasRemission = \Illuminate\Support\Facades\DB::table('inv_remissions')
+                        ->where('quoteId', (int)$this->quoteId)
+                        ->exists();
+                    if ($hasRemission) $target = 'deliveries';
+                }
+
+                if ($target === 'deliveries') {
+                    return redirect()->route('tenant.deliveries');
+                } elseif ($target === 'sales-list') {
                     return redirect()->route('tenant.tat.sales.list');
                 } else {
                     return redirect()->route('tenant.tat.quoter.index');
@@ -730,12 +800,27 @@ class PaymentQuote extends Component
             ]);
 
             // Redirigir según desde dónde se abrió
-            if ($this->fromPage === 'sales-list') {
-                // Si vino de la lista de ventas, regresar allí
+            $target = session('last_from_page', $this->fromPage);
+            
+            // FALLBACK INTERNO
+            if (!$target) {
+                $hasRemission = \Illuminate\Support\Facades\DB::table('inv_remissions')
+                    ->where('quoteId', (int)$this->quoteId)
+                    ->exists();
+                if ($hasRemission) {
+                    $target = 'deliveries';
+                }
+            }
+
+            if ($target === 'deliveries') {
+                session()->forget('last_from_page');
+                return redirect()->route('tenant.deliveries')
+                                ->with('info', 'Pago cancelado. Regresando a Entregas.');
+            } elseif ($target === 'sales-list') {
+                session()->forget('last_from_page');
                 return redirect()->route('tenant.tat.sales.list')
                                 ->with('info', 'Pago cancelado. Regresando a la lista de ventas.');
             } else {
-                // Si vino del flujo normal, regresar al quoter con datos restaurados
                 return redirect()->route('tenant.tat.quoter.index')
                                 ->with('success', 'Venta restaurada. Puede continuar agregando productos.');
             }
@@ -747,8 +832,19 @@ class PaymentQuote extends Component
             ]);
 
             session()->flash('error', 'Error al restaurar la venta: ' . $e->getMessage());
-            // Redirigir según desde dónde se abrió
-            if ($this->fromPage === 'sales-list') {
+            
+            $target = session('last_from_page', $this->fromPage);
+            
+            if (!$target) {
+                $hasRemission = \Illuminate\Support\Facades\DB::table('inv_remissions')
+                    ->where('quoteId', (int)$this->quoteId)
+                    ->exists();
+                if ($hasRemission) $target = 'deliveries';
+            }
+
+            if ($target === 'deliveries') {
+                return redirect()->route('tenant.deliveries');
+            } elseif ($target === 'sales-list') {
                 return redirect()->route('tenant.tat.sales.list');
             } else {
                 return redirect()->route('tenant.tat.quoter.index');

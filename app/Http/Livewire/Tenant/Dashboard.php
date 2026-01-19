@@ -46,6 +46,12 @@ class Dashboard extends Component
             return;
         }
 
+        // Redirigir transportadores (profile_id = 13) a entregas
+        if ($this->user->profile_id == 13) {
+            $this->redirect(route('tenant.deliveries'), navigate: true);
+            return;
+        }
+
         // Tenant desde sesión
         $tenantId = Session::get('tenant_id');
 

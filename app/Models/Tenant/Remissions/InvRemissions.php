@@ -26,7 +26,8 @@ class InvRemissions extends Model
         'deliveryDate',
         'delivery_id',
         'expiration',
-        'modify'
+        'modify',
+        'observations_return'
     ];
 
     protected $casts = [
@@ -44,5 +45,10 @@ class InvRemissions extends Model
     public function details()
     {
         return $this->hasMany(InvDetailRemissions::class, 'remissionId', 'id');
+    }
+
+    public function delivery()
+    {
+        return $this->belongsTo(\App\Models\Tenant\DeliveriesList\DisDeliveries::class, 'delivery_id');
     }
 }
