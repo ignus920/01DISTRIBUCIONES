@@ -170,12 +170,9 @@ require __DIR__.'/auth.php';
 // ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
 // ->name('tenant.items');
 
-// Incluir rutas del módulo de parámetros del tenant
 require __DIR__.'/tenants/parameters.php';
 // Incluir rutas del módulo de pagos de cotizacion
 require __DIR__.'/tenants/payments.php';
-
-
 // Incluir rutas del módulo TAT Items
 require __DIR__.'/TAT/tatItems.php';
 // Incluir rutas del módulo TAT Categories
@@ -193,3 +190,7 @@ require __DIR__.'/tenants/customers.php';
 
 // Incluir rutas del módulo de reportes del tenant
 require __DIR__.'/tenants/reports.php';
+
+// Rutas de entregas
+require __DIR__.'/tenants/deliveries.php';
+

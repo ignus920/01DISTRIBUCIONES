@@ -42,9 +42,9 @@ new #[Layout('layouts.guest')] class extends Component
                 return;
             }
 
-            // Verificar si el usuario es TAT (profile_id = 17)
-            if (auth()->user()->profile_id == 17) {
-                $this->redirect(route('petty-cash.petty-cash'), navigate: true);
+            // Verificar si el usuario es Transportador (profile_id = 13)
+            if (auth()->user()->profile_id == 13) {
+                $this->redirect(route('tenant.deliveries'), navigate: true);
                 return;
             }
 

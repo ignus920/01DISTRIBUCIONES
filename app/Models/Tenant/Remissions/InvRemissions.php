@@ -45,4 +45,9 @@ class InvRemissions extends Model
     {
         return $this->hasMany(InvDetailRemissions::class, 'remissionId', 'id');
     }
+
+    public function delivery()
+    {
+        return $this->belongsTo(\App\Models\Tenant\DeliveriesList\DisDeliveries::class, 'delivery_id');
+    }
 }
