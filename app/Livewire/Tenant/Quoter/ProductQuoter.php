@@ -903,6 +903,25 @@ class ProductQuoter extends Component
         return 0;
     }
 
+    /**
+     * Obtener el precio seleccionado para un producto en el cotizador
+     * 
+     * @param int $productId
+     * @return array|null
+     */
+    public function getSelectedPriceInfo($productId)
+    {
+        foreach ($this->quoterItems as $item) {
+            if ($item['id'] == $productId) {
+                return [
+                    'price' => $item['price'],
+                    'label' => $item['price_label']
+                ];
+            }
+        }
+        return null;
+    }
+
     public function increaseQuantity($productId)
     {
         $this->ensureTenantConnection();

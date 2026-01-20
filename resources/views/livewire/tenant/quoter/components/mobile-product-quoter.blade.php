@@ -19,7 +19,7 @@ $header = 'Seleccionar productos';
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                     </svg>
 
-                    <span>Regresar a Solicitudes</span>
+                    <span class="text-sm">Regresar</span>
                 </a>
                 @else
                 <a
@@ -31,16 +31,35 @@ $header = 'Seleccionar productos';
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                     </svg>
 
-                    <span>Regresar cotizaciones</span>
+                    <span class="text-sm font-medium">Regresar</span>
                 </a>
                 @endif
 
-                <!-- Mobile menu button (Hamburger) -->
-                <button type="button" class="-m-2.5 p-2.5 text-gray-700 dark:text-gray-300 lg:hidden" @click="sidebarOpen = true">
-                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-2">
+                    <!-- Botón del Carrito en Header (Más Visible) -->
+                    <button
+                        @click="$wire.toggleCartModal()"
+                        class="relative p-3 text-white bg-indigo-600 dark:bg-indigo-500 rounded-2xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all duration-200 shadow-md active:scale-95">
+                        
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 16a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+
+                        @if($this->quoterCount > 0)
+                        <span class="absolute -top-2 -right-1.5 bg-red-600 text-white text-[11px] font-black rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm animate-pulse">
+                            {{ $this->quoterCount }}
+                        </span>
+                        @endif
+                    </button>
+
+                    <!-- Mobile menu button (Hamburger) -->
+                    <button type="button" class="p-2.5 text-gray-700 dark:text-gray-300 lg:hidden" @click="sidebarOpen = true">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Contenedor principal con elementos verticales -->
@@ -144,6 +163,22 @@ $header = 'Seleccionar productos';
                 <!-- Precios/Botón o Selector de cantidad -->
                 <div class="mt-auto pt-2">
                     @if($isSelected)
+                        @php
+                            $priceInfo = $this->getSelectedPriceInfo($product->id);
+                        @endphp
+                        
+                        <!-- Información del Precio Seleccionado -->
+                        @if($priceInfo)
+                        <div class="mb-2 px-2 py-1 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-lg flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
+                            <span class="text-[8px] uppercase font-bold text-green-700 dark:text-green-400 opacity-70">
+                                {{ $priceInfo['label'] }}
+                            </span>
+                            <span class="text-[11px] font-black text-green-700 dark:text-green-400 tracking-tight">
+                                ${{ number_format($priceInfo['price']) }}
+                            </span>
+                        </div>
+                        @endif
+
                         <!-- Selector de cantidad Inline -->
                         <div class="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-1 border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <!-- Botón Menos -->
@@ -772,26 +807,6 @@ $header = 'Seleccionar productos';
 
     </div>
     @endif
-    @endif
-    <!-- Carrito flotante fijo siempre visible -->
-    @if(!$showCartModal && $this->quoterCount > 0)
-    <div class="fixed bottom-6 right-6 z-50">
-        <button
-            @click="$wire.toggleCartModal()"
-            class="relative bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110">
-
-            <!-- Icono del carrito -->
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 16a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-
-            <!-- Badge de cantidad -->
-            <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
-                {{ $this->quoterCount }}
-            </span>
-        </button>
-    </div>
     @endif
 </div>
 
