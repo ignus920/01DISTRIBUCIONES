@@ -25,8 +25,10 @@ class Deliveries extends Component
     public $currentItemIndex = 0;
     public $returnQuantities = []; 
     public $returnObservations = []; // [detailId => observation]
+    public $showReturnsTable = false;
+    public $showCollectionsTable = false;
 
-    protected $queryString = ['search', 'status', 'selectedDeliveryId'];
+    protected $queryString = ['search', 'status', 'selectedDeliveryId', 'showReturnsTable', 'showCollectionsTable'];
 
     public function mount()
     {
@@ -306,5 +308,89 @@ class Deliveries extends Component
     public function printOrder($id)
     {
         session()->flash('info', 'Imprimir pedido ' . $id);
+    }
+
+    public function toggleReturns()
+    {
+        $this->showReturnsTable = !$this->showReturnsTable;
+    }
+
+    public function toggleCollections()
+    {
+        $this->showCollectionsTable = !$this->showCollectionsTable;
+    }
+
+    public function getReturnedItemsProperty()
+    {
+        if (!$this->selectedDeliveryId) {
+            return collect();
+        }
+
+        return \App\Models\Tenant\Remissions\InvDetailRemissions::whereHas('remission', function($q) {
+                $q->where('delivery_id', $this->selectedDeliveryId);
+            })
+            ->where('cant_return', '>', 0)
+            ->with(['item', 'remission'])
+            ->get();
+    }
+
+    public function getCollectionsProperty()
+    {
+        if (!$this->selectedDeliveryId) {
+            return collect();
+        }
+
+        // Obtener IDs de cotizaciones asociadas a las remisiones del cargue
+        $quoteIds = InvRemissions::where('delivery_id', $this->selectedDeliveryId)
+            ->pluck('quoteId');
+
+        return \App\Models\Tenant\PettyCash\VntDetailPettyCash::whereIn('invoiceId', $quoteIds)
+            ->where('status', 1)
+            ->with('methodPayment')
+            ->select('methodPaymentId', DB::raw('SUM(value) as system_total'), DB::raw('0 as discount_total'))
+            ->groupBy('methodPaymentId')
+            ->get();
+    }
+
+    public function getCreditsProperty()
+    {
+        if (!$this->selectedDeliveryId) {
+            return collect();
+        }
+
+        $remissions = InvRemissions::where('delivery_id', $this->selectedDeliveryId)
+            ->with(['quote.customer'])
+            ->get();
+
+        $credits = [];
+        foreach ($remissions as $remission) {
+            if ($remission->quote) {
+                // Calcular valor neto después de devoluciones (usando lógica similar a getRemissionsProperty)
+                $returnValue = 0;
+                foreach ($remission->details as $detail) {
+                    $qty = $detail->cant_return ?? 0;
+                    $lineValue = $qty * $detail->value;
+                    $lineTax = $lineValue * (($detail->tax ?? 0) / 100);
+                    $returnValue += ($lineValue + $lineTax);
+                }
+
+                $total = $remission->quote->total - $returnValue;
+                
+                $paid = \App\Models\Tenant\PettyCash\VntDetailPettyCash::where('invoiceId', $remission->quoteId)
+                    ->where('status', 1)
+                    ->sum('value');
+                
+                $balance = $total - $paid;
+
+                if ($balance > 1) { // Evitar redondeos mínimos
+                    $credits[] = (object)[
+                        'customer' => ($remission->quote->customer->businessName ?? '') ?: ($remission->quote->customer->firstName . ' ' . $remission->quote->customer->lastName),
+                        'balance' => $balance
+                    ];
+                }
+            }
+        }
+
+        return collect($credits);
     }
 }
