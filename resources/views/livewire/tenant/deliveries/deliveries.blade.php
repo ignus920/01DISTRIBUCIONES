@@ -63,7 +63,7 @@
                      <x-heroicon-o-clipboard-document-list class="w-4 h-4" />
                     Cargue
                 </a>
-                <a href="{{ route('tenant.quoter.products.desktop') }}" wire:navigate class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-1">
+                <a href="{{ route('tenant.quoter.products') }}" wire:navigate class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-1">
                     <x-heroicon-o-plus class="w-4 h-4" />
                     Nuevo pedido
                 </a>
@@ -72,9 +72,9 @@
         </div>
     </div>
 
-    <div class="flex flex-col lg:flex-row gap-6 w-full">
+    <div class="flex flex-col lg:grid lg:grid-cols-2 gap-8 w-full items-start">
         <!-- Sidebar de Filtros -->
-        <aside class="w-full lg:w-1/4 lg:flex-shrink-0 space-y-6">
+        <aside class="w-full lg:flex-shrink-0 space-y-6">
             <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-4 sticky lg:top-32">
                 @if(auth()->user()->profile_id != 13)
                 <div class="space-y-4">
@@ -99,21 +99,19 @@
                         </select>
                     </div>
 
-                    <div class="pt-4 border-t border-gray-100 dark:border-slate-800 flex flex-col gap-2">
-                        <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-2">
-                            <x-heroicon-o-check-circle class="w-5 h-5" />
+                    <div class="pt-4 border-t border-gray-100 dark:border-slate-800 grid grid-cols-3 gap-2">
+                        <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg text-[10px] flex flex-col items-center justify-center transition-all">
+                            <x-heroicon-o-check-circle class="w-5 h-5 mb-1" />
                             Cierre
                         </button>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg text-xs flex flex-col items-center">
-                                <span class="text-lg">$</span>
-                                Recaudado
-                            </button>
-                            <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-xs flex flex-col items-center">
-                                <x-heroicon-o-arrow-path class="w-5 h-5" />
-                                Devoluciones
-                            </button>
-                        </div>
+                        <button wire:click="toggleCollections" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg text-[10px] flex flex-col items-center justify-center transition-all {{ $showCollectionsTable ? 'ring-2 ring-white ring-offset-2 ring-offset-yellow-500' : '' }}">
+                            <span class="text-base leading-none mb-1">$</span>
+                            Recaudado
+                        </button>
+                        <button wire:click="toggleReturns" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-[10px] flex flex-col items-center justify-center transition-all {{ $showReturnsTable ? 'ring-2 ring-white ring-offset-2 ring-offset-green-600' : '' }}">
+                            <x-heroicon-o-arrow-path class="w-5 h-5 mb-1" />
+                            Devoluciones
+                        </button>
                     </div>
                 </div>
                 @else
@@ -128,11 +126,165 @@
                     <div class="mt-4 w-full h-px bg-gray-100 dark:bg-slate-800"></div>
                 </div>
                 @endif
+                
+                @if($showReturnsTable)
+                <!-- Tabla de Devoluciones (Debajo de Filtros) -->
+                <div class="mt-6 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                    <div class="bg-green-600 px-4 py-3">
+                        <h3 class="text-white font-bold text-sm flex items-center gap-2">
+                            <x-heroicon-o-arrow-path class="w-4 h-4 text-white" />
+                            Devoluciones del cargue #{{ $selectedDeliveryId }}
+                        </h3>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-black uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-4 py-3"># PEDIDO</th>
+                                    <th class="px-4 py-3">ITEMS</th>
+                                    <th class="px-4 py-3 text-center">CANT</th>
+                                    <th class="px-4 py-3 text-right">VALOR</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                                @forelse($this->returnedItems as $return)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <span class="bg-green-500 text-white px-2 py-1 rounded text-[10px] font-bold">
+                                            {{ $return->remission->consecutive ?? $return->remission->id }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-700 dark:text-gray-300 font-bold uppercase truncate max-w-[140px]">
+                                        {{ $return->item->name ?? 'N/A' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-center font-bold text-gray-600 dark:text-gray-400">
+                                        {{ $return->cant_return }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-black text-gray-900 dark:text-white">
+                                        ${{ number_format($return->cant_return * $return->value, 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400 dark:text-slate-500">
+                                        <p class="text-[10px] font-bold uppercase">No hay devoluciones registradas</p>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                            @if($this->returnedItems->count() > 0)
+                            <tfoot class="bg-gray-50 dark:bg-slate-800/80 font-black text-gray-900 dark:text-white border-t-2 border-blue-100 dark:border-blue-900">
+                                <tr>
+                                    <td colspan="2" class="px-4 py-3 uppercase text-[10px] tracking-widest opacity-60">TOTALES</td>
+                                    <td class="px-4 py-3 text-center font-bold">{{ $this->returnedItems->sum('cant_return') }}</td>
+                                    <td class="px-4 py-3 text-right text-xs text-green-600 dark:text-green-500">
+                                        ${{ number_format($this->returnedItems->sum(fn($r) => $r->cant_return * $r->value), 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                            @endif
+                        </table>
+                    </div>
+                </div>
+                @endif
+
+                @if($showCollectionsTable)
+                <!-- Tablas de Recaudos (Debajo de Filtros) -->
+                <div class="space-y-6 mt-6">
+                    <!-- Tabla Recaudo de Dinero -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-blue-600 px-4 py-3">
+                            <h3 class="text-white font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                Recaudo de dinero
+                            </h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-[11px]">
+                                <thead class="bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-black uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-3 py-2">Forma pago</th>
+                                        <th class="px-3 py-2">Sistema</th>
+                                        <th class="px-3 py-2 text-right">Descuento</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                                    @forelse($this->collections as $col)
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <td class="px-3 py-2 font-bold uppercase text-gray-700 dark:text-gray-300">
+                                            {{ $col->methodPayment->description ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-3 py-2 font-black text-gray-900 dark:text-white">
+                                            ${{ number_format($col->system_total, 0, ',', '.') }}
+                                        </td>
+                                        <td class="px-3 py-2 text-right font-black text-gray-900 dark:text-white">
+                                            ${{ number_format($col->discount_total, 0, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="3" class="px-3 py-4 text-center text-gray-400 dark:text-slate-500 uppercase font-bold text-[10px]">Sin recaudos</td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                                <tfoot class="bg-gray-50 dark:bg-slate-800/80 font-black text-gray-900 dark:text-white border-t-2 border-blue-100 dark:border-blue-900">
+                                    <tr>
+                                        <td class="px-3 py-2 uppercase text-[10px] tracking-widest opacity-60">TOTALES</td>
+                                        <td class="px-3 py-2 font-bold">${{ number_format($this->collections->sum('system_total'), 0, ',', '.') }}</td>
+                                        <td class="px-3 py-2 text-right font-bold">${{ number_format($this->collections->sum('discount_total'), 0, ',', '.') }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tabla Creditos -->
+                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-red-600 px-4 py-3">
+                            <h3 class="text-white font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                Credito
+                            </h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-[11px]">
+                                <thead class="bg-red-50 dark:bg-slate-800 text-red-600 dark:text-red-400 font-black uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-3 py-2">Credito</th>
+                                        <th class="px-3 py-2 text-right">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                                    @forelse($this->credits as $credit)
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <td class="px-3 py-2 font-bold uppercase text-gray-700 dark:text-gray-300 truncate max-w-[150px]">
+                                            {{ $credit->customer }}
+                                        </td>
+                                        <td class="px-3 py-2 text-right font-black text-gray-900 dark:text-white">
+                                            ${{ number_format($credit->balance, 0, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="2" class="px-3 py-4 text-center text-gray-400 dark:text-slate-500 uppercase font-bold text-[10px]">Sin créditos</td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                                <tfoot class="bg-gray-50 dark:bg-slate-800/80 font-black text-gray-900 dark:text-white border-t-2 border-red-100 dark:border-red-900">
+                                    <tr>
+                                        <td class="px-3 py-2 uppercase text-[10px] tracking-widest opacity-60">TOTAL CRÉDITOS</td>
+                                        <td class="px-3 py-2 text-right font-bold">${{ number_format($this->credits->sum('balance'), 0, ',', '.') }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                @endif
             </div>
         </aside>
 
         <!-- Lista de Pedidos -->
-        <main class="flex-grow space-y-6 w-full">
+        <main class="w-full space-y-6">
             <!-- Barra de Búsqueda -->
             <div class="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800">
                 <div class="relative">
