@@ -4,12 +4,14 @@ namespace App\Models\Tenant\Remissions;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Auth\User;
 
 
 class InvRemissions extends Model
 {
     use HasFactory;
 
+    protected $connection = 'tenant';
     protected $table = 'inv_remissions';
 
     protected $fillable = [
@@ -50,5 +52,23 @@ class InvRemissions extends Model
     public function delivery()
     {
         return $this->belongsTo(\App\Models\Tenant\DeliveriesList\DisDeliveries::class, 'delivery_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'userId');
+    }
+
+    /**
+     * Getters para compatibilidad con las vistas de impresión del cotizador
+     */
+    public function getDetallesAttribute()
+    {
+        return $this->details;
+    }
+
+    public function getObservationsAttribute()
+    {
+        return $this->observations_return;
     }
 }

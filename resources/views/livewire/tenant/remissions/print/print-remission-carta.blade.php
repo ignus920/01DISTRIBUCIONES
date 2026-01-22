@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotización {{ $quote->consecutive }}</title>
+    <title>Remisión {{ $quote->consecutive }}</title>
     <style>
         @page {
             size: letter;
@@ -58,6 +58,7 @@
             font-size: 16pt;
             font-weight: bold;
             margin-bottom: 8px;
+            text-transform: uppercase;
         }
 
         .quote-details {
@@ -247,7 +248,7 @@
             </div>
         </div>
         <div class="quote-info">
-            <div class="quote-title">COTIZACIÓN</div>
+            <div class="quote-title">{{ $documentTitle ?? 'REMISIÓN' }}</div>
             <div><strong>No. {{ $quote->consecutive }}</strong></div>
             <div>Página 1 de 1</div>
         </div>
@@ -292,7 +293,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($quote->detalles as $index => $detalle)
+            @foreach($quote->details as $index => $detalle)
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td class="code">{{ $detalle->item ? ($detalle->item->sku ?? 'N/A') : 'N/A' }}</td>
@@ -319,7 +320,7 @@
         <div class="observations">
             <div class="section-title">Observaciones:</div>
             <div class="observations-content">
-                @if($quote->observations)
+                @if(isset($quote->observations))
                     {{ $quote->observations }}
                 @else
                     <p>{{ $defaultObservations ?? 'Sin observaciones especiales.' }}</p>
@@ -329,7 +330,7 @@
 
         <div class="totals">
             @php
-                $subtotal = $quote->detalles->sum(function($detalle) {
+                $subtotal = $quote->details->sum(function($detalle) {
                     return $detalle->value * $detalle->quantity;
                 });
                 $iva = 0;
@@ -359,10 +360,10 @@
     <div class="footer">
         <div class="footer-contact">
             <strong>PARA PEDIDOS:</strong>
-            @if($company->billingEmail)
+            @if(isset($company->billingEmail))
                 {{ $company->billingEmail }}
             @endif
-            @if($company->phone)
+            @if(isset($company->phone))
                 - {{ $company->phone }}
             @endif
         </div>
@@ -383,6 +384,7 @@
         </div>
     </div>
     @endif
+
     <script>
         window.onload = function() {
             window.print();

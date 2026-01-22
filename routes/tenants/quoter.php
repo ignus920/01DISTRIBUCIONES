@@ -58,6 +58,17 @@ Route::get('/tenant/quoter/products/mobile/edit/{quoteId}', ProductQuoter::class
     ->name('tenant.quoter.products.mobile.edit')         // Nombre de la ruta para vista móvil
     ->defaults('viewType', 'mobile');                    // Establece vista como móvil por defecto
 
+// Rutas para editar REMISIONES (usando el mismo ProductQuoter pero con parámetro remissionId)
+Route::get('/tenant/quoter/products/desktop/remission/{remissionId}', ProductQuoter::class)
+    ->middleware(['auth', 'verified', 'tenant'])
+    ->name('tenant.quoter.products.desktop.remission')
+    ->defaults('viewType', 'desktop');
+
+Route::get('/tenant/quoter/products/mobile/remission/{remissionId}', ProductQuoter::class)
+    ->middleware(['auth', 'verified', 'tenant'])
+    ->name('tenant.quoter.products.mobile.remission')
+    ->defaults('viewType', 'mobile');
+
 // Ruta para servir archivos temporales de impresión
 Route::get('/quoter/print/temp/{file}', [QuoterPrintController::class, 'showTempPrint'])
     ->middleware(['auth', 'verified', 'tenant'])
