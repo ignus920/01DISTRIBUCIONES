@@ -370,6 +370,54 @@ class Remissions extends Component
         ];
     }
 
+    /**
+     * Anula una remisión y regresa la cotización a estado REGISTRADO
+     * 
+     * @param int $id ID de la remisión
+     */
+    public function anularRemision($id)
+    {
+        $this->ensureTenantConnection();
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function() use ($id) {
+                // 1. Buscar la remisión
+                $remission = InvRemissions::findOrFail($id);
+                
+                // 2. Anular la remisión
+                $remission->status = 'ANULADO';
+                $remission->save();
+
+                // 3. Si tiene cotización asociada, regresarla a REGISTRADO
+                if ($remission->quoteId) {
+                    $quote = \App\Models\Tenant\Quoter\VntQuote::find($remission->quoteId);
+                    if ($quote) {
+                        $quote->status = 'REGISTRADO';
+                        $quote->save();
+                    }
+                }
+
+                Log::info('🚫 Remisión anulada correctamente', [
+                    'remission_id' => $id,
+                    'consecutive' => $remission->consecutive,
+                    'quote_id' => $remission->quoteId
+                ]);
+            });
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Remisión anulada correctamente. La cotización vuelve a estar disponible.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Error al anular remisión: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al anular la remisión: ' . $e->getMessage()
+            ]);
+        }
+    }
+
     public function render()
     {
         $this->ensureTenantConnection();

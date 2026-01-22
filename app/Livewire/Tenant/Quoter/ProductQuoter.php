@@ -108,14 +108,12 @@ class ProductQuoter extends Component
         // Inicializar quoteHasRemission como false por defecto
         $this->quoteHasRemission = false;
 
-        // 📝 LOG DEBUG: Inicio del Mount
-        Log::info('ProductQuoter Mount', [
+        // 📝 LOG DEBUG: Parámetros del Mount
+        Log::info('ProductQuoter Mount DEBUG', [
             'quoteId' => $quoteId,
             'remissionId' => $remissionId,
-            'restockOrder_param' => $restockOrder,
-            'restockOrder_query' => request()->query('restockOrder'),
-            'editPreliminary_query' => request()->query('editPreliminary'),
-            'user_id' => Auth::id()
+            'restockOrder' => $restockOrder,
+            'viewType' => $this->viewType
         ]);
 
         // Si se pasa un quoteId, estamos editando una cotización
@@ -134,9 +132,11 @@ class ProductQuoter extends Component
             $this->loadPreliminaryRestockForEditing();
         } else {
             $this->quoterItems = session('quoter_items', []);
+            Log::info('Cargando items desde sesión', ['count' => count($this->quoterItems)]);
         }
 
         $this->calculateTotal();
+        Log::info('Mount fin - Total calculado', ['total' => $this->totalAmount]);
     }
 
     /**
@@ -1149,16 +1149,24 @@ class ProductQuoter extends Component
 
     public function loadQuoteForEditing($quoteId)
     {
+        Log::info('🔍 INICIO loadQuoteForEditing', ['quoteId' => $quoteId]);
         $this->ensureTenantConnection();
 
         try {
-            $quote = VntQuote::with('detalles')->findOrFail($quoteId);
+            // Carga ávida de detalles e items para mayor eficiencia
+            $quote = VntQuote::with('detalles.item')->findOrFail($quoteId);
+            Log::info('📄 Cotización encontrada', [
+                'consecutive' => $quote->consecutive,
+                'detalles_count' => $quote->detalles->count()
+            ]);
 
             $this->editingQuoteId = $quoteId;
             $this->isEditing = true;
 
             // Verificar si la cotización tiene remisión
-            $this->quoteHasRemission = InvRemissions::where('quoteId', $quoteId)->exists();
+            $this->quoteHasRemission = InvRemissions::where('quoteId', $quoteId)
+                ->where('status', '!=', 'ANULADO')
+                ->exists();
 
             // Cargar observaciones de la cotización
             $this->observaciones = $quote->observations;
@@ -1178,37 +1186,39 @@ class ProductQuoter extends Component
                         'identification' => $customer->identification,
                         'billingEmail' => $customer->billingEmail,
                     ];
+                    Log::info('👤 Cliente cargado', ['customer_id' => $customer->id]);
                 }
             }
 
             // Cargar productos de la cotización
             $this->quoterItems = [];
             foreach ($quote->detalles as $detalle) {
-                $product = Items::find($detalle->itemId);
-                if ($product) {
-                    $this->quoterItems[] = [
-                        'id' => $product->id,
-                        'name' => $product->display_name,
-                        'sku' => $product->sku,
-                        'price' => $detalle->value,
-                        'price_label' => 'Precio seleccionado', // Podrías mejorarlo para detectar el label correcto
-                        'quantity' => $detalle->quantity,
-                        'description' => $product->description,
-                    ];
-                }
+                $item = $detalle->item;
+                $this->quoterItems[] = [
+                    'id' => $detalle->itemId,
+                    'name' => $detalle->description ?: ($item ? $item->display_name : 'Producto sin nombre'),
+                    'sku' => $item ? $item->sku : '',
+                    'price' => $detalle->price,
+                    'price_label' => 'Precio Registrado',
+                    'quantity' => $detalle->quantity,
+                    'description' => $detalle->description ?: ($item ? $item->description : ''),
+                ];
+                Log::info('📦 Item agregado', ['id' => $detalle->itemId, 'qty' => $detalle->quantity]);
             }
 
-            // Guardar en sesión
             session(['quoter_items' => $this->quoterItems]);
-
-            // Resetear bandera de cambios al cargar una cotización
             $this->cartHasChanges = false;
+
+            Log::info('✅ FIN loadQuoteForEditing', ['final_count' => count($this->quoterItems)]);
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
                 'message' => 'Cotización #' . $quote->consecutive . ' cargada para edición'
             ]);
         } catch (\Exception $e) {
+            Log::error('❌ ERROR en loadQuoteForEditing: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             $this->dispatch('show-toast', [
                 'type' => 'error',
                 'message' => 'Error al cargar la cotización: ' . $e->getMessage()

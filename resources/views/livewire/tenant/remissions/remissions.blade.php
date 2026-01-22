@@ -163,7 +163,7 @@
                     @forelse($remissions as $remission)
                         <tr class="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                             <td class="px-4 py-4 text-center">
-                                @if($remission->status === 'REGISTRADO')
+                                @if(!in_array($remission->status, ['DEVUELTO', 'ANULADO', 'VENCIDO']))
                                     <input type="checkbox" wire:model.live="selectedRemissions" value="{{ $remission->id }}"
                                         class="rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
                                 @endif
@@ -238,10 +238,18 @@
                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 Editar
                                             </button>
-                                            <button wire:click="printRemission({{ $remission->id }}); open=false" class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
+                                            <button wire:click="printRemission({{ $remission->id }}); open=false" class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center border-b border-gray-100 dark:border-gray-700">
                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                                 Imprimir
                                             </button>
+
+                                            @if(!in_array($remission->status, ['ANULADO', 'ENTREGADO']))
+                                                <button @click="open = false; confirmAnnul({{ $remission->id }}, '{{ $remission->consecutive }}')" 
+                                                    class="w-full text-left px-4 py-2 text-sm text-red-800 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
+                                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    Anular
+                                                </button>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -257,6 +265,27 @@
                 </tbody>
             </table>
         </div>
+
+        <script>
+            function confirmAnnul(id, consecutive) {
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: `La remisión No. ${consecutive} será anulada y la cotización volverá a estar disponible para facturar o remisionar.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Sí, anular remisión',
+                    cancelButtonText: 'No, cancelar',
+                    background: document.documentElement.className.includes('dark') ? '#1e293b' : '#fff',
+                    color: document.documentElement.className.includes('dark') ? '#f8fafc' : '#1e293b'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        @this.anularRemision(id);
+                    }
+                });
+            }
+        </script>
 
         <!-- Paginación -->
         @if($remissions->hasPages())
