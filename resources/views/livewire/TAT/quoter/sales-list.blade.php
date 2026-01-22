@@ -330,72 +330,43 @@
 
 </div>
 <script>
-    // Prevenir múltiples configuraciones de listeners
-    if (typeof window.quoterPrintListenerConfigured === 'undefined') {
-        window.quoterPrintListenerConfigured = true;
+    // Listener universal de impresión para evitar duplicados en toda la app
+    if (typeof window.universalPrintListenerConfigured === 'undefined') {
+        window.universalPrintListenerConfigured = true;
 
-        // Función de impresión inline para producción
         function openPrintWindow(eventData) {
-            console.log('🖨️ openPrintWindow ejecutada (inline):', eventData);
+            console.log('🖨️ openPrintWindow ejecutada:', eventData);
 
             const data = Array.isArray(eventData) ? eventData[0] : eventData;
             const url = data.url;
             const format = data.format;
-
-            console.log('🔗 URL a imprimir:', url, '📄 Formato:', format);
 
             // Tamaño de ventana según formato
             const features = format === 'pos' ?
                 'width=400,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no' :
                 'width=800,height=900,scrollbars=yes,resizable=yes,menubar=no,toolbar=no';
 
-            // Abrir ventana
+            // Abrir ventana con nombre único basado en timestamp para evitar bloqueos
             const win = window.open(url, 'printWindow_' + Date.now(), features);
 
             if (!win) {
-                alert('⚠️ No se pudo abrir la ventana. Verifica que las ventanas emergentes estén permitidas.');
+                alert('⚠️ No se pudo abrir la ventana de impresión. Por favor, permite las ventanas emergentes en tu navegador.');
                 return;
             }
 
-            console.log('✅ Ventana abierta correctamente');
             win.focus();
-
-            // Auto impresión cuando la página cargue
-            win.onload = function() {
-                setTimeout(() => {
-                    console.log('🖨️ Iniciando impresión automática...');
-                    win.print();
-                }, 800);
-            };
         }
 
-        // Función para configurar listener una sola vez
-        function configurePrintListener() {
-            if (window.Livewire && !window.quoterPrintListenerRegistered) {
-                window.quoterPrintListenerRegistered = true;
+        function configureUniversalPrintListener() {
+            if (window.Livewire && !window.universalPrintListenerRegistered) {
+                window.universalPrintListenerRegistered = true;
                 Livewire.on('open-print-window', openPrintWindow);
-                console.log('✅ Listener Livewire configurado una sola vez');
+                console.log('✅ Listener de impresión universal configurado');
             }
         }
 
-        // Configurar listeners cuando el documento esté listo
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔧 Configurando listeners de impresión inline...');
-            configurePrintListener();
-        });
-
-        // También configurar cuando Livewire se inicialice
-        document.addEventListener('livewire:initialized', function() {
-            console.log('🔧 Livewire inicializado, verificando configuración...');
-            configurePrintListener();
-        });
-
-        // Para Livewire 3 también
-        document.addEventListener('livewire:navigated', function() {
-            console.log('🔧 Livewire navegado, verificando configuración...');
-            configurePrintListener();
-        });
-
-        console.log('🛡️ Sistema de impresión protegido contra duplicados');
+        document.addEventListener('DOMContentLoaded', configureUniversalPrintListener);
+        document.addEventListener('livewire:initialized', configureUniversalPrintListener);
+        document.addEventListener('livewire:navigated', configureUniversalPrintListener);
     }
 </script>

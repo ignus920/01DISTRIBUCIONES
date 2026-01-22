@@ -41,6 +41,7 @@ class ProductQuoter extends Component
     public $showCreateCustomerButton = false;
     public $editingCustomerId = null;
     public $editingQuoteId = null;
+    public $editingRemissionId = null;
     public $isEditing = false;
     public $showObservations = false;
     // Nueva propiedad para la categoría seleccionada
@@ -98,7 +99,7 @@ class ProductQuoter extends Component
         $this->resetPage();
     }
 
-    public function mount($quoteId = null, $restockOrder = null)
+    public function mount($quoteId = null, $restockOrder = null, $remissionId = null)
     {
         // Obtener viewType de la ruta o usar desktop por defecto
         $this->viewType = request()->route('viewType', 'desktop');
@@ -110,16 +111,23 @@ class ProductQuoter extends Component
         // 📝 LOG DEBUG: Inicio del Mount
         Log::info('ProductQuoter Mount', [
             'quoteId' => $quoteId,
+            'remissionId' => $remissionId,
             'restockOrder_param' => $restockOrder,
             'restockOrder_query' => request()->query('restockOrder'),
             'editPreliminary_query' => request()->query('editPreliminary'),
             'user_id' => Auth::id()
         ]);
 
-        // Si se pasa un quoteId, estamos editando
+        // Si se pasa un quoteId, estamos editando una cotización
         if ($quoteId) {
             $this->loadQuoteForEditing($quoteId);
-        } elseif ($restockOrder || request()->query('restockOrder')) {
+        }
+        // Si se pasa un remissionId, estamos editando una remisión
+        elseif ($remissionId || request()->route('remissionId')) {
+             $id = $remissionId ?: request()->route('remissionId');
+             $this->loadRemissionForEditing($id);
+        }
+        elseif ($restockOrder || request()->query('restockOrder')) {
             $orderToLoad = $restockOrder ?: request()->query('restockOrder');
             $this->loadRestockForEditing($orderToLoad);
         } elseif (request()->query('editPreliminary') === 'true') {
@@ -129,6 +137,69 @@ class ProductQuoter extends Component
         }
 
         $this->calculateTotal();
+    }
+
+    /**
+     * Carga una remisión existente para su edición en el cotizador
+     */
+    public function loadRemissionForEditing($remissionId)
+    {
+        Log::info('🔄 Cargando remisión para edición', ['remissionId' => $remissionId]);
+
+        $this->ensureTenantConnection();
+        
+        try {
+            $remission = InvRemissions::with(['quote.customer', 'details.item'])->findOrFail($remissionId);
+            
+            // 1. Cargar Cliente
+            if ($remission->quote && $remission->quote->customer) {
+                $customer = $remission->quote->customer;
+                $this->selectedCustomer = [
+                    'id' => $customer->id,
+                    'businessName' => $customer->businessName,
+                    'firstName' => $customer->firstName,
+                    'lastName' => $customer->lastName,
+                    'identification' => $customer->identification,
+                    'billingEmail' => $customer->billingEmail,
+                ];
+                $this->customerSearch = $customer->identification;
+            }
+
+            // 2. Cargar Items
+            $this->quoterItems = [];
+            foreach ($remission->details as $detail) {
+                if ($detail->item) {
+                    $this->quoterItems[] = [
+                        'id' => $detail->item->id,
+                        'name' => $detail->item->name ?? $detail->description,
+                        'sku' => $detail->item->sku ?? '',
+                        'price' => $detail->value, // Precio unitario guardado en el detalle
+                        'price_label' => 'Precio Registrado',
+                        'quantity' => $detail->quantity,
+                        'description' => $detail->description,
+                    ];
+                }
+            }
+
+            // 3. Configurar estado de edición
+            $this->editingRemissionId = $remissionId;
+            $this->isEditing = true;
+
+            session(['quoter_items' => $this->quoterItems]);
+            $this->cartHasChanges = false;
+            
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Remisión #' . $remission->consecutive . ' cargada para edición'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Error cargando remisión: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al cargar la remisión: ' . $e->getMessage()
+            ]);
+        }
     }
 
     private function ensureTenantConnection()
@@ -406,8 +477,23 @@ class ProductQuoter extends Component
      * Esto permite que los vendedores creen múltiples cotizaciones sin
      * afectar el inventario disponible.
      */
-    public function saveQuote()
+    public function updateQuote()
     {
+        // Si estamos editando una REMISIÓN
+        if ($this->editingRemissionId) {
+            $this->updateRemission();
+            return;
+        }
+
+        // Si estamos editando una COTIZACIÓN normal (Lógica previa)
+        if (!$this->editingQuoteId) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No se está editando ninguna cotización'
+            ]);
+            return;
+        }
+
         if (empty($this->quoterItems)) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
@@ -416,85 +502,137 @@ class ProductQuoter extends Component
             return;
         }
 
-        if (!$this->selectedCustomer) {
+        $this->ensureTenantConnection();
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Actualizar la cotización
+            $quote = VntQuote::findOrFail($this->editingQuoteId);
+            $quote->update([
+                'customerId' => $this->selectedCustomer['id'],
+                'observations' => $this->observaciones,
+                // Otros campos si es necesario
+            ]);
+
+            // 2. Eliminar detalles anteriores
+            VntDetailQuote::where('quoteId', $quote->id)->delete();
+
+            // 3. Crear nuevos detalles
+            foreach ($this->quoterItems as $item) {
+                VntDetailQuote::create([
+                    'quantity' => $item['quantity'],
+                    'tax_percentage' => 0,
+                    'price' => $item['price'],
+                    'quoteId' => $quote->id,
+                    'itemId' => $item['id'],
+                    'description' => $item['name'],
+                    'priceList' => $item['price']
+                ]);
+            }
+
+            DB::commit();
+
+            // Limpiar
+            $this->clearQuoter();
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Cotización #' . $quote->consecutive . ' actualizada exitosamente'
+            ]);
+
+            // Redirigir
+            $routeName = $this->viewType === 'mobile'
+                ? 'tenant.quoter.mobile'
+                : 'tenant.quoter.desktop';
+
+            return redirect()->route($routeName);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error actualizando cotización: ' . $e->getMessage());
             $this->dispatch('show-toast', [
                 'type' => 'error',
-                'message' => 'Debe seleccionar un cliente para la cotización'
+                'message' => 'Error al actualizar: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Actualiza una remisión existente y su cotización base
+     */
+    public function updateRemission()
+    {
+        if (empty($this->quoterItems)) {
+            $this->dispatch('show-toast', ['type' => 'error', 'message' => 'El carrito no puede estar vacío']);
             return;
         }
 
         $this->ensureTenantConnection();
 
         try {
-            // Obtener el siguiente consecutivo
-            $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
-            $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
+            DB::beginTransaction();
 
-            // Crear la cotización
-            $quote = VntQuote::create([
-                'consecutive' => $nextConsecutive,
-                'status' => 'REGISTRADO',
-                'typeQuote' => 'POS',
-                'customerId' => $this->selectedCustomer['id'],
-                'warehouseId' => session('warehouse_id', 1), // Si tienes warehouse en sesión
-                'userId' => auth()->id(),
-                'observations' => $this->observaciones,
-                'branchId' => session('branch_id', 1) // Si tienes branch en sesión
-            ]);
+            $remission = InvRemissions::findOrFail($this->editingRemissionId);
+            
+            // 1. Actualizar Remisión (Cabecera)
+            // Si hay campos en la remisión que dependen de la edición (ej. observaciones, cliente si se permite cambiar)
+            // Nota: El usuario no especificó si se puede cambiar el cliente de la remisión, pero si se cambió en la UI, debería guardarse.
+            // Sin embargo, inv_remissions tiene quoteId. Si cambiamos customerId, ¿afecta?
+            // La tabla inv_remissions NO tiene customerId directo (lo tiene via quoteId -> VntQuote).
+            // Pero el usuario dijo "no esto et mal porque modifica eso".
+            // Asumo que el cliente NO cambia, o si cambia, el usuario entiende que no se refleja en la cotización original.
+            // Para evitar conflictos, SOLO actualizaré los detalles de la remisión por ahora.
+            
+            /* 
+            // Si quisiéramos actualizar observaciones de remisión (si tuviera campo directo, q lo tiene 'observations_return' pero es para devoluciones?)
+            // No veo campo de observaciones generales en inv_remissions en el esquema dado, solo observations_return.
+            // Así que solo actualizamos los ITEMS.
+            */
 
-            // Crear los detalles de la cotización
+             // 2. Actualizar Detalles de Remisión (inv_detail_remissions)
+            // Eliminamos los detalles anteriores de la remisión
+            InvDetailRemissions::where('remissionId', $remission->id)->delete();
+
+            // Creamos los nuevos detalles de la remisión
             foreach ($this->quoterItems as $item) {
-                VntDetailQuote::create([
+                InvDetailRemissions::create([
                     'quantity' => $item['quantity'],
-                    'tax_percentage' => 0, // Puedes ajustar esto según tus necesidades
-                    'price' => $item['price'],
-                    'quoteId' => $quote->id,
+                    'value' => $item['price'],
+                    'remissionId' => $remission->id,
                     'itemId' => $item['id'],
-                    'description' => $item['name'],
-                    'priceList' => $item['price'] // O el ID de la lista de precios si lo tienes
+                    'tax' => 0, // Ajustar según lógica de impuestos
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ]);
             }
-
-            // ⚠️ IMPORTANTE: NO crear remisiones aquí
-            // Las remisiones se crean SOLO en confirmarPedido() cuando el usuario confirma la orden
-
-            // Log para confirmar que NO se crean remisiones
-            Log::info('✅ Cotización guardada SIN crear remisiones', [
-                'quote_id' => $quote->id,
-                'consecutive' => $nextConsecutive,
-                'customer_id' => $this->selectedCustomer['id']
+            
+            // Log de auditoría
+            Log::info('🔄 Remisión actualizada (Solo detalles)', [
+                'remission_id' => $remission->id,
+                'user_id' => auth()->id()
             ]);
 
-            // Limpiar el cotizador y campos del formulario
-            $this->quoterItems = [];
-            $this->selectedCustomer = null;              // Limpiar cliente seleccionado
-            $this->customerSearch = '';                  // Limpiar campo de búsqueda de cliente
-            $this->showCreateCustomerForm = false;      // Ocultar formulario de creación
-            $this->showCreateCustomerButton = false;    // Ocultar botón de creación
-            $this->quoteHasRemission = false;           // Resetear estado de remisión
-            $this->editingQuoteId = null;               // Limpiar ID de cotización en edición
-            $this->isEditing = false;                   // Limpiar estado de edición
-            $this->cartHasChanges = false;              // Resetear bandera de cambios
-            session()->forget('quoter_items');
-            $this->calculateTotal();
-            $this->showCartModal = false;
+            DB::commit();
+
+            // Limpiar y Redirigir
+            $this->editingRemissionId = null;
+            $this->clearQuoter();
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
-                'message' => 'Cotización #' . $nextConsecutive . ' guardada exitosamente'
+                'message' => 'Remisión #' . $remission->consecutive . ' actualizada correctamente'
             ]);
 
-            // Redirigir a la página de cotizaciones según el tipo de vista
-            $routeName = $this->viewType === 'mobile'
-                ? 'tenant.quoter.mobile'
-                : 'tenant.quoter.desktop';
+            // Redirigir al listado de remisiones
+            return redirect()->route('tenant.remissions');
 
-            return redirect()->route($routeName);
         } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Error actualizando remisión: ' . $e->getMessage());
             $this->dispatch('show-toast', [
                 'type' => 'error',
-                'message' => 'Error al guardar la cotización: ' . $e->getMessage()
+                'message' => 'Error al actualizar remisión: ' . $e->getMessage()
             ]);
         }
     }
@@ -1078,80 +1216,7 @@ class ProductQuoter extends Component
         }
     }
 
-    public function updateQuote()
-    {
-        if (!$this->isEditing || !$this->editingQuoteId) {
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'No hay cotización en modo edición'
-            ]);
-            return;
-        }
 
-        if (empty($this->quoterItems)) {
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'No hay productos en el cotizador'
-            ]);
-            return;
-        }
-
-        if (!$this->selectedCustomer) {
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'Debe seleccionar un cliente para la cotización'
-            ]);
-            return;
-        }
-
-        $this->ensureTenantConnection();
-
-        try {
-            $quote = VntQuote::findOrFail($this->editingQuoteId);
-
-            // Actualizar la cotización
-            $quote->update([
-                'customerId' => $this->selectedCustomer['id'],
-                'observations' => $this->observaciones,
-            ]);
-
-            // Eliminar detalles existentes
-            VntDetailQuote::where('quoteId', $quote->id)->delete();
-
-            // Crear los nuevos detalles
-            foreach ($this->quoterItems as $item) {
-                VntDetailQuote::create([
-                    'quantity' => $item['quantity'],
-                    'tax_percentage' => 0,
-                    'price' => $item['price'],
-                    'quoteId' => $quote->id,
-                    'itemId' => $item['id'],
-                    'description' => $item['name'],
-                    'priceList' => $item['price']
-                ]);
-            }
-
-            $this->dispatch('show-toast', [
-                'type' => 'success',
-                'message' => 'Cotización #' . $quote->consecutive . ' actualizada exitosamente'
-            ]);
-
-            // Resetear bandera de cambios
-            $this->cartHasChanges = false;
-
-            // Redirigir a la página de cotizaciones según el tipo de vista
-            $routeName = $this->viewType === 'mobile'
-                ? 'tenant.quoter.mobile'
-                : 'tenant.quoter.desktop';
-
-            return redirect()->route($routeName);
-        } catch (\Exception $e) {
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'Error al actualizar la cotización: ' . $e->getMessage()
-            ]);
-        }
-    }
 
 
 

@@ -644,7 +644,13 @@ $header = 'Seleccionar productos';
                                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
 
-                                <span wire:loading.remove wire:target="updateQuote">Actualizar</span>
+                                <span wire:loading.remove wire:target="updateQuote">
+                                    @if($editingRemissionId)
+                                        Editar Remisión
+                                    @else
+                                        Actualizar
+                                    @endif
+                                </span>
                                 <span wire:loading wire:target="updateQuote">Actualizando...</span>
                             </button>
 
@@ -663,35 +669,39 @@ $header = 'Seleccionar productos';
                             </button>
                         </div>
 
+                        </div>
+
                         <!-- Botón inferior: Confirmar pedido -->
-                        @if($quoteHasRemission)
-                             <div class="w-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium py-3 px-4 rounded-lg flex items-center justify-center text-sm border border-gray-300 dark:border-gray-600">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Remisión ya generada
-                            </div>
-                        @else
-                            <button wire:click="confirmarPedido"
-                                @if($cartHasChanges) disabled @endif
-                                class="w-full font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center text-sm
-                                       @if($cartHasChanges)
-                                           bg-gray-400 text-gray-200 cursor-not-allowed
-                                       @else
-                                           bg-blue-600 hover:bg-blue-700 text-white
-                                       @endif">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12l2 2 4-4" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                                </svg>
-                                @if($cartHasChanges)
-                                    Guarde los cambios primero
-                                @else
-                                    Confirmar pedido
-                                @endif
-                            </button>
+                        @if(!$isEditing)
+                            @if($quoteHasRemission)
+                                 <div class="w-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium py-3 px-4 rounded-lg flex items-center justify-center text-sm border border-gray-300 dark:border-gray-600">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Remisión ya generada
+                                </div>
+                            @else
+                                <button wire:click="confirmarPedido"
+                                    @if($cartHasChanges) disabled @endif
+                                    class="w-full font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center text-sm
+                                           @if($cartHasChanges)
+                                               bg-gray-400 text-gray-200 cursor-not-allowed
+                                           @else
+                                               bg-blue-600 hover:bg-blue-700 text-white
+                                           @endif">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                                    </svg>
+                                    @if($cartHasChanges)
+                                        Guarde los cambios primero
+                                    @else
+                                        Confirmar pedido
+                                    @endif
+                                </button>
+                            @endif
                         @endif
                     </div>
 

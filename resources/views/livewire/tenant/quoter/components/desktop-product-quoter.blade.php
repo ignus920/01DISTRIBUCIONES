@@ -540,7 +540,11 @@ $header = 'Seleccionar productos';
                                 class="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap">
 
                                 <!-- SVGs y texto -->
-                                Actualizar Cotización
+                                @if($editingRemissionId)
+                                    Editar Remisión
+                                @else
+                                    Actualizar Cotización
+                                @endif
                             </button>
 
                             <button type="button" wire:click="cancelEditing"
@@ -552,38 +556,42 @@ $header = 'Seleccionar productos';
                             </button>
                         </div>
 
+                        </div>
+
                         <!-- Fila inferior: acción final -->
-                        @if($quoteHasRemission)
-                            <div class="w-full px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400
-                                       border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800
-                                       rounded-lg flex items-center justify-center cursor-not-allowed">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Remisión ya generada
-                            </div>
-                        @else
-                            <button type="button" wire:click.prevent="confirmarPedido"
-                                @if($cartHasChanges) disabled @endif
-                                class="w-full px-4 py-3 text-sm font-medium 
-                                       @if($cartHasChanges)
-                                           bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed
-                                       @else
-                                           text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20
-                                       @endif
-                                       rounded-lg transition-colors flex items-center justify-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12l2 2 4-4" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                                </svg>
-                                @if($cartHasChanges)
-                                    Guarde los cambios primero
-                                @else
-                                    Confirmar pedido
-                                @endif
-                            </button>
+                        @if(!$isEditing)
+                            @if($quoteHasRemission)
+                                <div class="w-full px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400
+                                        border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800
+                                        rounded-lg flex items-center justify-center cursor-not-allowed">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Remisión ya generada
+                                </div>
+                            @else
+                                <button type="button" wire:click.prevent="confirmarPedido"
+                                    @if($cartHasChanges) disabled @endif
+                                    class="w-full px-4 py-3 text-sm font-medium 
+                                        @if($cartHasChanges)
+                                            bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed
+                                        @else
+                                            text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20
+                                        @endif
+                                        rounded-lg transition-colors flex items-center justify-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                                    </svg>
+                                    @if($cartHasChanges)
+                                        Guarde los cambios primero
+                                    @else
+                                        Confirmar pedido
+                                    @endif
+                                </button>
+                            @endif
                         @endif
 
                     </div>

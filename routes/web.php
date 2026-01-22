@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Auth\Livewire\Verify2FA;
 use App\Auth\Livewire\SelectTenant;
 use App\Auth\Livewire\Enable2FA;
-use App\Http\Livewire\Tenant\Dashboard as TenantDashboard;
+use App\Livewire\Tenant\Dashboard\Dashboard as TenantDashboard;
 use App\Http\Controllers\WorldController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TestController;
@@ -144,31 +144,11 @@ Route::prefix('api/permissions')->middleware(['auth', 'company.complete'])->grou
 
 
 
+
+
+
+
 require __DIR__.'/auth.php';
-
-// // Rutas separadas para Items según el perfil del usuario
-// Route::get('/tenant/items/tienda', \App\Livewire\Tenant\Items\TatItemsManager::class)
-//     ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
-//     ->name('tenant.items.tienda');
-
-// Route::get('/tenant/items/inventario', \App\Livewire\Tenant\Items\ManageItems::class)
-//     ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
-//     ->name('tenant.items.inventario');
-
-// // Ruta condicional que redirige según el perfil
-// Route::get('/tenant/items', function () {
-//     $user = auth()->user();
-
-//     // Si el perfil es 17, redirigir al CRUD de tienda
-//     if ($user && $user->profile_id == 17) {
-//         return redirect()->route('tenant.items.tienda');
-//     }
-
-//     // Para cualquier otro perfil, redirigir al CRUD original
-//     return redirect()->route('tenant.items.inventario');
-// })
-// ->middleware(['auth', 'company.complete', \App\Auth\Middleware\SetTenantConnection::class])
-// ->name('tenant.items');
 
 require __DIR__.'/tenants/parameters.php';
 // Incluir rutas del módulo de pagos de cotizacion
@@ -193,4 +173,7 @@ require __DIR__.'/tenants/reports.php';
 
 // Rutas de entregas
 require __DIR__.'/tenants/deliveries.php';
+
+// Incluir rutas del módulo de remisiones 
+require __DIR__.'/tenants/remissions.php';
 

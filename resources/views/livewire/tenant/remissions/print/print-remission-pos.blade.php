@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotización {{ $quote->consecutive }}</title>
+    <title>Remisión {{ $quote->consecutive }}</title>
     <style>
         @page {
             size: 80mm 100%; /* Ancho fijo 80mm, alto automático */
@@ -227,15 +227,15 @@
     <div class="header">
         <div class="company-name">{{ Str::limit($company->businessName ?? $company->firstName . ' ' . $company->lastName, 30) }}</div>
         <div class="company-info">
-            @if($company->businessName)
+            @if(isset($company->businessName))
                 NIT: {{ $company->identification }}<br>
             @else
                 CC: {{ $company->identification }}<br>
             @endif
-            @if($company->phone)
+            @if(isset($company->phone))
                 Tel: {{ $company->phone }}<br>
             @endif
-            @if($company->billingEmail)
+            @if(isset($company->billingEmail))
                 {{ Str::limit($company->billingEmail, 25) }}
             @endif
         </div>
@@ -245,7 +245,7 @@
 
     <!-- Quote Info -->
     <div class="quote-header">
-        <div class="bold large">COTIZACIÓN</div>
+        <div class="bold large">{{ $documentTitle ?? 'REMISIÓN' }}</div>
         <div class="quote-number">No. {{ $quote->consecutive }}</div>
         <div class="small">FECHA: {{ $quote->created_at->format('Y-m-d H:i') }}</div>
     </div>
@@ -256,10 +256,10 @@
     <div class="customer-section">
         <div class="customer-line bold">Cliente: {{ Str::limit($customer->businessName ?: $customer->firstName . ' ' . $customer->lastName, 35) }}</div>
         <div class="customer-line">{{ $customer->identification }}</div>
-        @if($customer->phone)
+        @if(isset($customer->phone))
             <div class="customer-line">Tel: {{ $customer->phone }}</div>
         @endif
-        @if($customer->billingEmail)
+        @if(isset($customer->billingEmail))
             <div class="customer-line">{{ Str::limit($customer->billingEmail, 30) }}</div>
         @endif
     </div>
@@ -272,14 +272,14 @@
             $totalGeneral = 0;
         @endphp
 
-        @foreach($quote->detalles as $index => $detalle)
+        @foreach($quote->details as $index => $detalle)
             @php
                 $subtotalItem = $detalle->value * $detalle->quantity;
                 $totalGeneral += $subtotalItem;
             @endphp
 
             <div class="product-item">
-                @if($detalle->item->sku)
+                @if($detalle->item && $detalle->item->sku)
                     <div class="product-code">{{ $detalle->item->sku }}</div>
                 @endif
 
@@ -288,7 +288,7 @@
                 </div>
 
                 <div class="quantity-price">
-                    <span>{{ $detalle->quantity }} x ${{ number_format($detalle->value, 0) }}</span>
+                    <span>{{ number_format($detalle->quantity, 0) }} x ${{ number_format($detalle->value, 0) }}</span>
                     <span class="bold">${{ number_format($subtotalItem, 0) }}</span>
                 </div>
             </div>
@@ -314,7 +314,7 @@
     </div>
 
     <!-- Observations -->
-    @if($quote->observations)
+    @if(isset($quote->observations))
         <div class="separator"></div>
         <div class="observations-section">
             <div class="observations-title">Observaciones:</div>
@@ -335,13 +335,13 @@
 
     <!-- Footer -->
     <div class="footer">
-        @if($company->billingEmail || $company->phone)
+        @if(isset($company->billingEmail) || isset($company->phone))
             <div class="contact-info">
                 <div class="bold small">CONTACTO:</div>
-                @if($company->billingEmail)
+                @if(isset($company->billingEmail))
                     <div>{{ $company->billingEmail }}</div>
                 @endif
-                @if($company->phone)
+                @if(isset($company->phone))
                     <div>{{ $company->phone }}</div>
                 @endif
             </div>
@@ -350,13 +350,10 @@
         <div class="thank-you">
             ¡Gracias por su preferencia!
         </div>
-
-        <div class="mt-2 small">
-            Cotización válida por 15 días
-        </div>
     </div>
 
     <div style="margin-top: 10mm;"></div> <!-- Espacio final para corte -->
+
     <script>
         window.onload = function() {
             window.print();

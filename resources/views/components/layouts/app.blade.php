@@ -31,44 +31,59 @@
           :class="darkMode ? 'dark' : ''">
 
         <!-- Mobile sidebar overlay -->
+        @if(auth()->user()->profile_id != 13)
         <div x-show="sidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 z-40 lg:hidden">
             <div class="fixed inset-0 bg-gray-600 dark:bg-gray-900 bg-opacity-75 dark:bg-opacity-80" @click="sidebarOpen = false"></div>
         </div>
+        @endif
 
         <!-- Mobile sidebar -->
+        @if(auth()->user()->profile_id != 13)
         <div x-show="sidebarOpen" x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full" class="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-900 shadow-xl lg:hidden border-r border-gray-200 dark:border-gray-700">
             <div class="flex h-full flex-col">
                 <livewire:layout.sidebar-navigation />
             </div>
         </div>
+        @endif
 
         <!-- Desktop sidebar -->
+        @if(auth()->user()->profile_id != 13)
         <div class="hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300"
              :class="sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'">
             <div class="flex min-h-0 flex-1 flex-col bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700">
                 <livewire:layout.sidebar-navigation />
             </div>
         </div>
+        @endif
 
         <!-- Main content -->
         <div class="flex flex-1 flex-col min-h-screen transition-all duration-300 bg-gray-50 dark:bg-gray-900"
-             :class="sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'">
+             @if(auth()->user()->profile_id == 13)
+                 :class="'lg:pl-0'"
+             @else
+                 :class="sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'"
+             @endif
+        >
             <!-- Top bar -->
             <div class="sticky top-0 z-10 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
                 <div class="flex h-16 items-center gap-x-4 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
                     <!-- Desktop sidebar toggle -->
+                    @if(auth()->user()->profile_id != 13)
                     <button type="button" class="hidden lg:block -m-2.5 p-2.5 text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400" @click="sidebarCollapsed = !sidebarCollapsed">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                         </svg>
                     </button>
+                    @endif
 
                     <!-- Mobile menu button -->
+                    @if(auth()->user()->profile_id != 13)
                     <button type="button" class="-m-2.5 p-2.5 text-gray-700 dark:text-gray-300 lg:hidden" @click="sidebarOpen = true">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                         </svg>
                     </button>
+                    @endif
 
                     <!-- Page title -->
                     <div class="flex flex-1">
@@ -93,7 +108,7 @@
             </div>
 
             <!-- Page content -->
-            <main class="flex-1 py-8">
+            <main class="flex-1 {{ auth()->user()->profile_id == 13 ? 'py-0' : 'py-8' }}">
                 {{ $slot }}
             </main>
         </div>
