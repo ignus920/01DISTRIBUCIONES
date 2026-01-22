@@ -45,6 +45,11 @@ class Dashboard extends Component
 
         // Cargar estadísticas reales
         $this->loadStats();
+
+        // Redirigir perfil 17 si accede manualmente al dashboard
+        if ($this->user->profile_id == 17) {
+            return redirect()->route('tenant.tat.quoter.index');
+        }
     }
 
     /**

@@ -48,6 +48,12 @@ new #[Layout('layouts.guest')] class extends Component
                 return;
             }
 
+            // Verificar si el usuario es Tienda (profile_id = 17)
+            if (auth()->user()->profile_id == 17) {
+                $this->redirect(route('tenant.tat.quoter.index'), navigate: true);
+                return;
+            }
+
             // Redirigir a selección de tenant para usuarios normales
             $this->redirect(route('tenant.select'), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {

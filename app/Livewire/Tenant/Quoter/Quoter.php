@@ -110,6 +110,9 @@ class Quoter extends Component
 
     public function nuevaCotizacion()
     {
+        // Limpiar items del cotizador de la sesión para que entre limpio
+        session()->forget('quoter_items');
+        
         return redirect('/tenant/quoter/products');
     }
 
@@ -616,16 +619,25 @@ class Quoter extends Component
 
     public function validateRemision($quoteId)
     {
-        $hasRemission = InvRemissions::where('quoteId', $quoteId)->exists();
-        if ($hasRemission) {
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'La cotización tiene una remisión asignada'
+        // Obtener todas las remisiones de esta cotización para depurar
+        $allRemissions = InvRemissions::where('quoteId', $quoteId)->get();
+        
+        // Filtramos las que NO están anuladas (asegurando el string exacto)
+        $activeRemissions = $allRemissions->filter(function($rem) {
+            return trim(strtoupper($rem->status)) !== 'ANULADO';
+        });
+
+        if ($activeRemissions->isNotEmpty()) {
+            Log::info("🚫 Cotización {$quoteId} bloqueada por remisiones activas", [
+                'total_found' => $allRemissions->count(),
+                'active_count' => $activeRemissions->count(),
+                'active_statuses' => $activeRemissions->pluck('status')->toArray()
             ]);
             return false;
-        } else {
-            return true;
         }
+
+        Log::info("✅ Cotización {$quoteId} permitida (remisiones anuladas o inexistentes)");
+        return true;
     }
 
     /**

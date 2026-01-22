@@ -27,8 +27,13 @@ class SelectTenant extends Component
         // MODO SINGLE-TENANT: Limpiar sesión y permitir que el middleware determine el tenant
         Session::forget('tenant_id');
 
-        // Redirigir directamente al dashboard para que el middleware configure el tenant correcto
+        // Redirigir al dashboard del tenant (o cotizador TAT para perfil 17)
+        if (Auth::user()->profile_id == 17) {
+            return redirect()->route('tenant.tat.quoter.index');
+        }
+
         return redirect()->route('tenant.dashboard');
+    }
 
         // CÓDIGO ORIGINAL COMENTADO - Para restaurar multitenant
         // // Obtener tenants activos del usuario
@@ -43,7 +48,8 @@ class SelectTenant extends Component
         // if ($this->tenants->count() === 0) {
         //     session()->flash('error', 'No tiene acceso a ninguna empresa. Contacte al administrador.');
         // }
-    }
+
+
 
     /**
      * Seleccionar automáticamente el tenant por defecto (modo single-tenant)
