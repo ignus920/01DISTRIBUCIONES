@@ -250,9 +250,107 @@ class ProductQuoter extends Component
             ? 'livewire.tenant.quoter.components.mobile-product-quoter'
             : 'livewire.tenant.quoter.components.desktop-product-quoter';
 
+        // Despachar evento con datos preparados para la vista unificada de Alpine.js
+        $this->dispatch('products-updated', [
+            'products' => collect($products->items())->map(function($p) {
+                $allPrices = $p->all_prices;
+                // Filtrar precios si el perfil es 17 (Vendedor TAT / Preventa)
+                if (auth()->user()->profile_id == 17) {
+                    $allPrices = collect($allPrices)->filter(fn($val, $label) => $label === 'Precio Regular')->toArray();
+                }
+
+                return [
+                    'id' => $p->id,
+                    'name' => $p->display_name,
+                    'sku' => $p->sku,
+                    'display_name' => $p->display_name,
+                    'category_id' => $p->categoryId,
+                    'price' => $p->price,
+                    'all_prices' => $allPrices,
+                    'image_url' => $p->principalImage ? $p->principalImage->getImageUrl() : null,
+                    'quantity' => $this->getProductQuantity($p->id),
+                    'isSelected' => $this->getProductQuantity($p->id) > 0
+                ];
+            })->toArray()
+        ]);
+
         return view($viewName, [
             'products' => $products
         ])->layout('layouts.app');
+    }
+
+    /**
+     * Sincroniza TODO el catálogo de productos y clientes para uso Offline.
+     * Envía los datos en paquetes (chunks) para asegurar la descarga completa de los 1000+ items.
+     */
+    public function syncFullCatalog()
+    {
+        $this->ensureTenantConnection();
+        Log::info('📦 Iniciando sincronización segmentada de catálogo');
+
+        try {
+            // 1. Obtener todos los productos activos
+            $allProducts = Items::query()
+                ->active()
+                ->with(['principalImage', 'invValues'])
+                ->get()
+                ->map(fn($p) => [
+                    'id' => $p->id,
+                    'name' => $p->display_name,
+                    'sku' => $p->sku,
+                    'display_name' => $p->display_name,
+                    'category_id' => $p->categoryId,
+                    'price' => $p->price,
+                    'all_prices' => $p->all_prices,
+                    'image_url' => $p->principalImage ? $p->principalImage->getImageUrl() : null
+                ]);
+
+            // 2. Obtener lista de clientes
+            $allCustomers = VntCompany::query()
+                ->select('id', 'businessName', 'firstName', 'lastName', 'identification', 'billingEmail')
+                ->get();
+
+            $totalProducts = $allProducts->count();
+            
+            // 3. SECUENCIA DE SINCRONIZACIÓN POR PAQUETES
+            // A. Inicio: Avisar al celular que limpie su base de datos local
+            $this->dispatch('sync-started', [
+                'total' => $totalProducts,
+                'customersCount' => $allCustomers->count()
+            ]);
+
+            // B. Enviar Clientes (en un paquete único)
+            $this->dispatch('sync-customers-chunk', [
+                'customers' => $allCustomers
+            ]);
+
+            // C. Enviar Productos en paquetes de 300
+            $chunks = $allProducts->chunk(300);
+            foreach ($chunks as $index => $chunk) {
+                $this->dispatch('sync-products-chunk', [
+                    'products' => $chunk->values()->toArray(),
+                    'chunkIndex' => $index + 1,
+                    'totalChunks' => $chunks->count()
+                ]);
+            }
+
+            // D. Fin: Avisar que todo terminó correctamente
+            $this->dispatch('sync-finished', [
+                'total' => $totalProducts
+            ]);
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Catálogo de ' . $totalProducts . ' productos sincronizado'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Error en sincronización segmentada: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Fallo al sincronizar: ' . $e->getMessage()
+            ]);
+        }
     }
 
     // Método para obtener las categorías (con caché)
@@ -378,6 +476,9 @@ class ProductQuoter extends Component
             'cartHasChanges' => $this->cartHasChanges
         ]);
 
+        // Emitir evento para mirroring offline
+        $this->dispatch('cart-updated', items: $this->quoterItems);
+
         // Toast más rápido sin información innecesaria
         $this->dispatch('show-toast', [
             'type' => 'success',
@@ -402,6 +503,9 @@ class ProductQuoter extends Component
 
         // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
         $this->checkAndDisableIfHasRemission();
+
+        // Emitir evento para mirroring offline
+        $this->dispatch('cart-updated', items: $this->quoterItems);
     }
 
     public function removeFromQuoter($index)
@@ -417,6 +521,9 @@ class ProductQuoter extends Component
 
         // Si estamos editando una cotización que tiene remisión, deshabilitar el botón
         $this->checkAndDisableIfHasRemission();
+
+        // Emitir evento para mirroring offline
+        $this->dispatch('cart-updated', items: $this->quoterItems);
 
         $this->dispatch('show-toast', [
             'type' => 'info',

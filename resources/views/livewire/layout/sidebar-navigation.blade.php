@@ -38,28 +38,38 @@ new class extends Component
 <div class="flex h-full flex-col overflow-y-auto">
     <!-- Logo -->
     <div class="flex shrink-0 items-center px-4 py-4 border-b border-gray-200 dark:border-gray-700"
-        :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
-        <div class="flex items-center">
-            <div class="flex items-center justify-center rounded-lg bg-indigo-600 transition-all duration-200"
-                 :class="sidebarCollapsed ? 'h-10 w-10' : 'h-8 w-8'">
-                <svg class="text-white transition-all duration-200"
-                     :class="sidebarCollapsed ? 'h-6 w-6' : 'h-5 w-5'"
-                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-            </div>
-            <div x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95">
-                <span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">{{ config('app.name', 'Laravel')
-                    }}</span>
-            </div>
+     :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
+
+    <div class="flex items-center">
+
+        <!-- LOGO -->
+        <div class="flex items-center justify-center transition-all duration-200"
+             :class="sidebarCollapsed ? 'h-12 w-12' : 'h-20 w-20'">
+
+            <img 
+                src="{{ asset('Logo_DosilERPFinal.png') }}"
+                alt="Logo Dosil ERP"
+                class="h-full w-full object-contain transition-all duration-200"
+            >
         </div>
+
+        <!-- NOMBRE APP -->
+        <div x-show="!sidebarCollapsed"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 transform scale-95"
+             x-transition:enter-end="opacity-100 transform scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 transform scale-100"
+             x-transition:leave-end="opacity-0 transform scale-95">
+
+            <span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">
+                {{ config('app.name', 'Laravel') }}
+            </span>
+        </div>
+
     </div>
+</div>
+
 
     <!-- Navigation -->
     <nav class="flex flex-1 flex-col p-4 space-y-1">
