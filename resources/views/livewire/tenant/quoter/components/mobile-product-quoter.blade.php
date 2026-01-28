@@ -1261,7 +1261,7 @@
     }
 
     // Keyboard navigation for mobile customer search
-    let selectedCustomerIndexMobile = -1;
+    var selectedCustomerIndexMobile = -1;
 
     function handleCustomerSearchKeydownMobile(event) {
         const resultsContainer = document.getElementById('customerSearchResultsMobile');

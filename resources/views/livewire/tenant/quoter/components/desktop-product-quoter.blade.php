@@ -795,8 +795,8 @@ $header = 'Seleccionar productos';
     });
 
     // Variables para navegación por teclado en búsqueda de clientes (Desktop)
-    let selectedCustomerIndexDesktop = -1;
-    let customerResultsDesktop = [];
+    var selectedCustomerIndexDesktop = -1;
+    var customerResultsDesktop = [];
 
     // Función para manejar navegación por teclado en búsqueda de clientes (Desktop)
     function handleCustomerSearchKeydownDesktop(event) {

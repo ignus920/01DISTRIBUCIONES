@@ -8,7 +8,7 @@
         <!-- PWA Meta Tags -->
         <meta name="theme-color" content="#ffffff">
         <link rel="manifest" href="{{ asset('build/manifest.webmanifest') }}" crossorigin="use-credentials">
-        <link rel="apple-touch-icon" href="{{ asset('icons/icon-192x192.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('pwa-icons/icon-192x192.png') }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
