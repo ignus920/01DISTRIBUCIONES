@@ -37,38 +37,17 @@ new class extends Component
 
 <div class="flex h-full flex-col overflow-y-auto">
     <!-- Logo -->
-    <div class="flex shrink-0 items-center px-4 py-4 border-b border-gray-200 dark:border-gray-700"
-     :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
-
-    <div class="flex items-center">
-
+    <div class="flex shrink-0 items-center justify-center px-4 py-6 border-b border-gray-200 dark:border-gray-700">
         <!-- LOGO -->
-        <div class="flex items-center justify-center transition-all duration-200"
-             :class="sidebarCollapsed ? 'h-12 w-12' : 'h-20 w-20'">
-
+        <div class="flex items-center justify-center transition-all duration-300" 
+             :class="sidebarCollapsed ? 'h-10 w-10' : 'h-16 w-full max-w-[160px]'">
             <img 
                 src="{{ asset('Logo_DosilERPFinal.png') }}"
                 alt="Logo Dosil ERP"
-                class="h-full w-full object-contain transition-all duration-200"
+                class="h-full w-full object-contain transition-all duration-300"
             >
         </div>
-
-        <!-- NOMBRE APP -->
-        <div x-show="!sidebarCollapsed"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 transform scale-95"
-             x-transition:enter-end="opacity-100 transform scale-100"
-             x-transition:leave="transition ease-in duration-150"
-             x-transition:leave-start="opacity-100 transform scale-100"
-             x-transition:leave-end="opacity-0 transform scale-95">
-
-            <span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">
-                {{ config('app.name', 'Laravel') }}
-            </span>
-        </div>
-
     </div>
-</div>
 
 
     <!-- Navigation -->

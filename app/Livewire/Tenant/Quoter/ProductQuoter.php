@@ -584,8 +584,87 @@ class ProductQuoter extends Component
      * Esto permite que los vendedores creen múltiples cotizaciones sin
      * afectar el inventario disponible.
      */
-    public function updateQuote()
+    public function saveQuote()
     {
+        if (empty($this->quoterItems)) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'No hay productos en el cotizador'
+            ]);
+            return;
+        }
+
+        if (!$this->selectedCustomer) {
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Debe seleccionar un cliente para crear la cotización'
+            ]);
+            return;
+        }
+
+        $this->ensureTenantConnection();
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Obtener consecutivo
+            $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
+            $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
+
+            // 2. Crear la cotización
+            $quote = VntQuote::create([
+                'consecutive' => $nextConsecutive,
+                'status' => 'REGISTRADO',
+                'typeQuote' => 'POS', // Valor por defecto para este flujo
+                'customerId' => $this->selectedCustomer['id'],
+                'warehouseId' => session('warehouse_id', 1),
+                'userId' => auth()->id(),
+                'observations' => $this->observaciones,
+                'branchId' => session('branch_id', 1)
+            ]);
+
+            // 3. Crear detalles
+            foreach ($this->quoterItems as $item) {
+                VntDetailQuote::create([
+                    'quantity' => $item['quantity'],
+                    'tax_percentage' => 0,
+                    'price' => $item['price'],
+                    'quoteId' => $quote->id,
+                    'itemId' => $item['id'],
+                    'description' => $item['name'],
+                    'priceList' => $item['price']
+                ]);
+            }
+
+            DB::commit();
+
+            // Limpiar
+            $this->clearQuoter();
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Cotización #' . $quote->consecutive . ' creada exitosamente'
+            ]);
+
+            // Redirigir
+            $routeName = $this->viewType === 'mobile'
+                ? 'tenant.quoter.mobile'
+                : 'tenant.quoter.desktop';
+
+            return redirect()->to(route($routeName));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creando cotización: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al crear la cotización: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Actualiza una cotización existente
         // Si estamos editando una REMISIÓN
         if ($this->editingRemissionId) {
             $this->updateRemission();

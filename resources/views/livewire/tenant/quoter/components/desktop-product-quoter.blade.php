@@ -539,12 +539,26 @@ $header = 'Seleccionar productos';
                                 wire:target="updateQuote"
                                 class="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap">
 
-                                <!-- SVGs y texto -->
-                                @if($editingRemissionId)
-                                    Editar Remisión
-                                @else
-                                    Actualizar Cotización
-                                @endif
+                                <!-- Ícono normal (se oculta durante la carga) -->
+                                <svg wire:loading.remove wire:target="updateQuote" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+
+                                <!-- Ícono de carga (se muestra durante la carga) -->
+                                <svg wire:loading wire:target="updateQuote" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+
+                                <!-- Texto del botón -->
+                                <span wire:loading.remove wire:target="updateQuote">
+                                    @if($editingRemissionId)
+                                        Editar Remisión
+                                    @else
+                                        Actualizar Cotización
+                                    @endif
+                                </span>
+                                <span wire:loading wire:target="updateQuote">Actualizando...</span>
                             </button>
 
                             <button type="button" wire:click="cancelEditing"
@@ -558,8 +572,8 @@ $header = 'Seleccionar productos';
 
                         </div>
 
-                        <!-- Fila inferior: acción final -->
-                        @if(!$isEditing)
+                        <!-- Fila inferior: acción final (Solo para Distribuidores durante edición) -->
+                        @if(auth()->user()->profile_id != 17)
                             @if($quoteHasRemission)
                                 <div class="w-full px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400
                                         border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800
@@ -571,24 +585,37 @@ $header = 'Seleccionar productos';
                                 </div>
                             @else
                                 <button type="button" wire:click.prevent="confirmarPedido"
+                                    wire:loading.attr="disabled"
+                                    wire:target="confirmarPedido"
                                     @if($cartHasChanges) disabled @endif
                                     class="w-full px-4 py-3 text-sm font-medium 
                                         @if($cartHasChanges)
                                             bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed
                                         @else
-                                            text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20
+                                            bg-indigo-600 hover:bg-indigo-700 text-white shadow-md
                                         @endif
-                                        rounded-lg transition-colors flex items-center justify-center">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                    
+                                    <!-- Ícono normal -->
+                                    <svg wire:loading.remove wire:target="confirmarPedido" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 12l2 2 4-4" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                                     </svg>
+
+                                    <!-- Ícono de carga -->
+                                    <svg wire:loading wire:target="confirmarPedido" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+
+                                    <!-- Texto -->
                                     @if($cartHasChanges)
                                         Guarde los cambios primero
                                     @else
-                                        Confirmar pedido
+                                        <span wire:loading.remove wire:target="confirmarPedido">Confirmar pedido</span>
+                                        <span wire:loading wire:target="confirmarPedido">Confirmando...</span>
                                     @endif
                                 </button>
                             @endif
@@ -633,47 +660,49 @@ $header = 'Seleccionar productos';
                     </button>
                     @endif
 
-                    @if(auth()->user()->profile_id == 17 && !$isEditingRestock)
-                    <!-- Botón para agregar productos a lista preliminar (SIN order_number) - Solo cuando NO se está editando -->
-                    <button wire:click="saveRestockRequest(false)"
-                        wire:loading.attr="disabled"
-                        wire:target="saveRestockRequest"
-                        class="w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-
-                        <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-
-                        <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-
-                        <span wire:loading.remove wire:target="saveRestockRequest">Agregar al carrito</span>
-                        <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
-                    </button>
-                    @endif
                     @if(auth()->user()->profile_id == 17)
-                    <!-- Botón Confirmar Lista Preliminar (convierte Registrado a Confirmado) -->
-                    <button wire:click="saveRestockRequest(true)"
-                        wire:loading.attr="disabled"
-                        wire:target="saveRestockRequest"
-                        class="mt-2 w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    <!-- Botones TAT para Perfil 17 (Siempre visibles) -->
+                    <div class="flex flex-col gap-2 w-full">
+                        <!-- Botón para agregar a lista preliminar -->
+                        @if(!$isEditingRestock)
+                        <button wire:click="saveRestockRequest(false)"
+                            wire:loading.attr="disabled"
+                            wire:target="saveRestockRequest"
+                            class="w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
 
-                        <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                            <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
 
-                        <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 818-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                            <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
 
+                            <span wire:loading.remove wire:target="saveRestockRequest">Agregar al carrito</span>
+                            <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
+                        </button>
+                        @endif
 
-                        <span wire:loading.remove wire:target="saveRestockRequest">Confirmar pedido</span>
+                        <!-- Botón Confirmar Lista Preliminar -->
+                        <button wire:click="saveRestockRequest(true)"
+                            wire:loading.attr="disabled"
+                            wire:target="saveRestockRequest"
+                            class="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
 
-                        <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
-                    </button>
+                            <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+
+                            <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+
+                            <span wire:loading.remove wire:target="saveRestockRequest">Confirmar pedido</span>
+                            <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
+                        </button>
+                    </div>
                     @endif
                     @endif
 
@@ -685,6 +714,11 @@ $header = 'Seleccionar productos';
 
                         <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        
+                        <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
 
                         <span wire:loading.remove wire:target="saveRestockRequest">Actualizar Carrito</span>
