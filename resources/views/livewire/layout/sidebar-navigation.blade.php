@@ -35,31 +35,20 @@ new class extends Component
     }
 }; ?>
 
-<div class="flex h-full flex-col overflow-y-auto">
+<div class="flex h-full flex-col" :class="sidebarCollapsed ? 'overflow-visible' : 'overflow-y-auto'">
     <!-- Logo -->
-    <div class="flex shrink-0 items-center px-4 py-4 border-b border-gray-200 dark:border-gray-700"
-        :class="sidebarCollapsed ? 'justify-center' : 'justify-start'">
-        <div class="flex items-center">
-            <div class="flex items-center justify-center rounded-lg bg-indigo-600 transition-all duration-200"
-                 :class="sidebarCollapsed ? 'h-10 w-10' : 'h-8 w-8'">
-                <svg class="text-white transition-all duration-200"
-                     :class="sidebarCollapsed ? 'h-6 w-6' : 'h-5 w-5'"
-                     fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-            </div>
-            <div x-show="!sidebarCollapsed" x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 transform scale-95"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-95">
-                <span class="ml-3 text-lg font-semibold text-gray-900 dark:text-white">{{ config('app.name', 'Laravel')
-                    }}</span>
-            </div>
+    <div class="flex shrink-0 items-center justify-center px-4 py-6 border-b border-gray-200 dark:border-gray-700">
+        <!-- LOGO -->
+        <div class="flex items-center justify-center transition-all duration-300" 
+             :class="sidebarCollapsed ? 'h-10 w-10' : 'h-16 w-full max-w-[160px]'">
+            <img 
+                src="{{ asset('Logo_DosilERPFinal.png') }}"
+                alt="Logo Dosil ERP"
+                class="h-full w-full object-contain transition-all duration-300"
+            >
         </div>
     </div>
+
 
     <!-- Navigation -->
     <nav class="flex flex-1 flex-col p-4 space-y-1">
@@ -172,8 +161,8 @@ new class extends Component
     </div>
 
     <!-- Submenú -->
-    <div x-show="open && !sidebarCollapsed" x-transition
-        class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+     <div x-show="open && !sidebarCollapsed" x-transition
+                class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
 
         <a href="{{ route('tenant.quoter.products') }}" wire:navigate class="block px-2 py-1 hover:text-indigo-600">
             Ventas
@@ -186,6 +175,19 @@ new class extends Component
         <a href="{{ route('tenant.remissions') }}" wire:navigate class="block px-2 py-1 hover:text-indigo-600">
             Remisiones
         </a>
+    </div>
+
+    <!-- Submenú desplegable (para sidebar colapsado) -->
+    <div x-show="sidebarCollapsed && tooltip" x-transition
+        class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
+        @mouseenter="tooltip = true" @mouseleave="tooltip = false">
+        
+        <a href="{{ route('tenant.quoter.products') }}" wire:navigate
+            class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Ventas</a>
+        <a href="{{ route('tenant.quoter') }}" wire:navigate
+            class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Cotizaciones</a>
+        <a href="{{ route('tenant.remissions') }}" wire:navigate
+            class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Remisiones</a>
     </div>
 </div>
 @endif
@@ -262,22 +264,19 @@ new class extends Component
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
                 
                 <a href="{{ route('tenant.tat.quoter.index') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Nueva Venta</a>
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Nueva Venta</a>
                 <a href="{{ route('tenant.tat.sales.list') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Listar Ventas</a>
-                    <a href="{{ route('petty-cash.petty-cash') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Caja Menor</a>
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Listar Ventas</a>
+                <a href="{{ route('petty-cash.petty-cash') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Caja Menor</a>
                 <a href="{{ route('tenant.tat.restock.list') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Reabastecimiento</a>
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Solicitudes Reabastecimiento</a>
                 <a href="{{ route('tenant.customers') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes</a>
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Clientes</a>
                 <a href="{{ route('tenant.items') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
-                    Ítems
-                </a>
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Ítems</a>
                 <a href="{{ route('tenant.categories') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
-
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Categorías</a>
             </div>
         </div>
         @endif
@@ -336,12 +335,9 @@ new class extends Component
                 class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
                 <a href="{{ route('customers.customers') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Clientes</a>
-                <a href="{{ route('users.users') }}"
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Gestión Usuarios</a>
-
-                    <!-- <a href="{{ route('tenant.vnt-customers') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Clientes Distribuidor (TAT)</a> -->
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Gestión Contactos</a>
+                <a href="{{ route('users.users') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Gestión Usuarios</a>
             </div>
         </div>
         @endif
@@ -417,13 +413,20 @@ new class extends Component
             <div x-show="sidebarCollapsed && tooltip" x-transition
                 class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                 @mouseenter="tooltip = true" @mouseleave="tooltip = false">
-                <!-- <a href="{{ route('tenant.parameters.pricelists') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Listas de Precios</a>
-                <a href="#" class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Impuestos</a> -->
                 <a href="{{ route('tenant.parameters.zones') }}" wire:navigate
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Zonas</a>
-                <a href="{{ route('tenant.parameters.routes') }}"
-                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Rutas</a>
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Zonas</a>
+                <a href="{{ route('tenant.parameters.routes') }}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Rutas</a>
+                <a href="{{url('/inventory/categories')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Categorías</a>
+                <a href="{{url('/inventory/commands')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Comandas</a>
+                <a href="{{url('/inventory/brands')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Marcas</a>
+                <a href="{{url('/inventory/houses')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Casas</a>
+                <a href="{{url('/inventory/units')}}" wire:navigate
+                    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Unidades de Medida</a>
             </div>
             @endif
 
@@ -484,16 +487,14 @@ new class extends Component
                 <div x-show="sidebarCollapsed && tooltip" x-transition
                     class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                     @mouseenter="tooltip = true" @mouseleave="tooltip = false">
-                    <a href="{{url('/inventory/categories')}}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
                     
-                    <a href="{{ route('tenant.items') }}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
+                    <a href="{{ url('/items/items') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">
                         Ítems
                     </a>
                     
                     <a href="{{ route('movements.movements') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">
                         Gestión movimientos
                     </a>
                 </div>
@@ -575,42 +576,30 @@ new class extends Component
                 <div x-show="sidebarCollapsed && tooltip" x-transition
                     class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
                     @mouseenter="tooltip = true" @mouseleave="tooltip = false">
-                    <a href="{{url('/inventory/categories')}}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">Categorías</a>
                     
-                    <a href="{{ route('tenant.items') }}" wire:navigate
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
-                        vendedor x vendedor
-                    </a>
+                    <a href="{{ url('/reports/sales') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Vendedor x vendedor</a>
+                    
+                    <a href="{{ url('/reports/profitability') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Rentabilidad</a>
+                    
+                    <a href="{{ route('tenant.reports.sales-x-items') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Ventas x producto</a>
+                    
+                    <a href="{{ url('/reports/portfolio') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Cartera</a>
+                    
+                    <a href="{{ route('tenant.reports.price-list') }}"
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Lista de precios</a>
                     
                     <a href="{{ route('movements.movements') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Rentabilidad
-                    </a>
-                      <a href="{{ route('movements.movements') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Ventas x producto
-                    </a>
-                      <a href="{{ route('movements.movements') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Cartera
-                    </a>
-                      <a href="{{ route('tenant.reports.price-list') }}"
-                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600">
-                        Lista de precios
-                    </a>
-                      <a href="{{ route('movements.movements') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Comisiones
-                    </a>
-                      <a href="{{ route('tenant.reports.salesman-x-item') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Vendedor x Producto
-                    </a>
-                      <a href="{{ route('tenant.reports.impact-sales') }}" wire:navigate
-                        class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('movements.*') ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300' : 'hover:text-indigo-600 dark:hover:text-indigo-400' }}">
-                        Informe de impacto de ventas
-                    </a>
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Comisiones</a>
+                    
+                    <a href="{{ route('tenant.reports.salesman-x-item') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Vendedor x Producto</a>
+                    
+                    <a href="{{ route('tenant.reports.impact-sales') }}" wire:navigate
+                        class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Informe impacto de ventas</a>
                 </div>
             </div>
             @endif

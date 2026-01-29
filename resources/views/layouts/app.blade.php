@@ -5,6 +5,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
+        <!-- PWA Meta Tags -->
+        <meta name="theme-color" content="#ffffff">
+        <link rel="manifest" href="{{ asset('build/manifest.webmanifest') }}" crossorigin="use-credentials">
+        <link rel="apple-touch-icon" href="{{ asset('pwa-icons/icon-192x192.png') }}">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="DOSIL ERP">
+
         <title>{{ config('app.name', 'Laravel') }}</title>
 
         <!-- Fonts -->
@@ -15,10 +23,41 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
 
+        <!-- Dexie.js para base de datos local (Soporte Offline) -->
+        <script src="https://cdn.jsdelivr.net/npm/dexie@4.0.1/dist/dexie.min.js"></script>
+        <script>
+            /**
+             * Inicialización global de la base de datos IndexedDB
+             */
+            try {
+                const db = new Dexie('01DistribucionesDB');
+                db.version(2).stores({
+                    pedidos: '++id, cliente_nombre, fecha, sincronizado',
+                    productos: 'id, name, sku, category_id, display_name',
+                    categorias: 'id, name',
+                    clientes: 'id, full_name, identification'
+                });
+                window.db = db;
+                console.log('✅ IndexedDB: Base de datos inicializada globalmente.');
+            } catch (e) {
+                console.error('❌ Error inicializando IndexedDB:', e);
+            }
+        </script>
+
+        <!-- Registro del Service Worker para PWA -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register("/sw.js");
+                });
+            }
+        </script>
+
         <!-- SweetAlert2 CDN fallback -->
         <script>
-            // Check if SweetAlert2 is loaded via Vite, if not load from CDN
+            // Verifica si SweetAlert2 se cargó vía Vite, si no, lo carga desde el CDN
             document.addEventListener('DOMContentLoaded', function() {
+
                 if (typeof window.Swal === 'undefined') {
                     console.log('Loading SweetAlert2 from CDN as fallback');
                     const script = document.createElement('script');

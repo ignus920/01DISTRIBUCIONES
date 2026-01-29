@@ -4,6 +4,11 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        <!-- PWA Meta Tags -->
+        <meta name="theme-color" content="#ffffff">
+        <link rel="manifest" href="{{ asset('build/manifest.webmanifest') }}" crossorigin="use-credentials">
+        <link rel="apple-touch-icon" href="{{ asset('icons/icon-192x192.png') }}">
+
         <title>Tienda Multitenancy</title>
 
         <!-- Fonts -->
@@ -15,6 +20,15 @@
 
         <!-- SweetAlert2 -->
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+        <!-- Registro del Service Worker para PWA -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register("{{ asset('build/sw.js') }}");
+                });
+            }
+        </script>
 
     </head>
     <body class="antialiased font-sans">
