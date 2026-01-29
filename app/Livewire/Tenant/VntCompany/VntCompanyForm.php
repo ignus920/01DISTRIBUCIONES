@@ -239,9 +239,9 @@ class VntCompanyForm extends Component
         if ($this->reusable && $this->companyId && !$this->editingId) {
             $this->edit($this->companyId);
         }
-        // Si es reusable y no hay companyId, abrir modal de creación
+        // Si es reusable y no hay companyId, inicializar formulario y abrir modal
         elseif ($this->reusable && !$this->companyId && !$this->showModal) {
-            $this->showModal = true;
+            $this->create();
         }
 
         return view('livewire.tenant.vnt-company.components.vnt-company-form', [
@@ -755,6 +755,7 @@ class VntCompanyForm extends Component
         $this->secondName = '';
         $this->typeIdentificationId = '';
         $this->typePerson = '';
+        $this->type = $this->reusable ? 'CLIENTE' : '';
         $this->code_ciiu = '';
         $this->regimeId = '';
         // Asignar por defecto la responsabilidad fiscal 'Ninguna' si existe
@@ -832,6 +833,7 @@ class VntCompanyForm extends Component
         $this->secondName = '';
         $this->typeIdentificationId = '';
         $this->typePerson = '';
+        $this->type = $this->reusable ? 'CLIENTE' : '';
         $this->code_ciiu = '';
         $this->regimeId = '';
         // Asignar por defecto la responsabilidad fiscal 'Ninguna' si existe

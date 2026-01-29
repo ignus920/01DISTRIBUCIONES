@@ -664,28 +664,13 @@ class ProductQuoter extends Component
     }
 
     /**
-     * Actualiza una cotización existente
-        // Si estamos editando una REMISIÓN
-        if ($this->editingRemissionId) {
-            $this->updateRemission();
-            return;
-        }
-
-        // Si estamos editando una COTIZACIÓN normal (Lógica previa)
-        if (!$this->editingQuoteId) {
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'No se está editando ninguna cotización'
-            ]);
-            return;
-        }
-
+     * Lógica interna para guardar cambios sin redireccionar ni limpiar el estado
+     * Útil para autoguardado antes de confirmar un pedido
+     */
+    private function saveChangesInternal()
+    {
         if (empty($this->quoterItems)) {
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'No hay productos en el cotizador'
-            ]);
-            return;
+            throw new \Exception('No hay productos en el cotizador');
         }
 
         $this->ensureTenantConnection();
@@ -693,50 +678,80 @@ class ProductQuoter extends Component
         try {
             DB::beginTransaction();
 
-            // 1. Actualizar la cotización
-            $quote = VntQuote::findOrFail($this->editingQuoteId);
-            $quote->update([
-                'customerId' => $this->selectedCustomer['id'],
-                'observations' => $this->observaciones,
-                // Otros campos si es necesario
-            ]);
+            if ($this->editingRemissionId) {
+                // Lógica de actualización de Remisión
+                $remission = InvRemissions::findOrFail($this->editingRemissionId);
+                InvDetailRemissions::where('remissionId', $remission->id)->delete();
 
-            // 2. Eliminar detalles anteriores
-            VntDetailQuote::where('quoteId', $quote->id)->delete();
-
-            // 3. Crear nuevos detalles
-            foreach ($this->quoterItems as $item) {
-                VntDetailQuote::create([
-                    'quantity' => $item['quantity'],
-                    'tax_percentage' => 0,
-                    'price' => $item['price'],
-                    'quoteId' => $quote->id,
-                    'itemId' => $item['id'],
-                    'description' => $item['name'],
-                    'priceList' => $item['price']
+                foreach ($this->quoterItems as $item) {
+                    InvDetailRemissions::create([
+                        'quantity' => $item['quantity'],
+                        'value' => $item['price'],
+                        'remissionId' => $remission->id,
+                        'itemId' => $item['id'],
+                        'tax' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+                
+                Log::info('🔄 Remisión guardada internamente (Autoguardado)', ['remission_id' => $remission->id]);
+                
+            } elseif ($this->editingQuoteId) {
+                // Lógica de actualización de Cotización
+                $quote = VntQuote::findOrFail($this->editingQuoteId);
+                $quote->update([
+                    'customerId' => $this->selectedCustomer['id'],
+                    'observations' => $this->observaciones,
                 ]);
+
+                VntDetailQuote::where('quoteId', $quote->id)->delete();
+
+                foreach ($this->quoterItems as $item) {
+                    VntDetailQuote::create([
+                        'quantity' => $item['quantity'],
+                        'tax_percentage' => 0,
+                        'price' => $item['price'],
+                        'quoteId' => $quote->id,
+                        'itemId' => $item['id'],
+                        'description' => $item['name'],
+                        'priceList' => $item['price']
+                    ]);
+                }
+                Log::info('🔄 Cotización guardada internamente (Autoguardado)', ['quote_id' => $quote->id]);
             }
 
             DB::commit();
+            $this->cartHasChanges = false;
+            return true;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Error en saveChangesInternal: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Actualiza una cotización existente
+     */
+    public function updateQuote()
+    {
+        try {
+            $this->saveChangesInternal();
 
             // Limpiar
             $this->clearQuoter();
 
             $this->dispatch('show-toast', [
                 'type' => 'success',
-                'message' => 'Cotización #' . $quote->consecutive . ' actualizada exitosamente'
+                'message' => 'Cambios guardados exitosamente'
             ]);
 
             // Redirigir
-            $routeName = $this->viewType === 'mobile'
-                ? 'tenant.quoter.mobile'
-                : 'tenant.quoter.desktop';
-
+            $routeName = $this->viewType === 'mobile' ? 'tenant.quoter.mobile' : 'tenant.quoter.desktop';
             return redirect()->route($routeName);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error actualizando cotización: ' . $e->getMessage());
             $this->dispatch('show-toast', [
                 'type' => 'error',
                 'message' => 'Error al actualizar: ' . $e->getMessage()
@@ -749,78 +764,7 @@ class ProductQuoter extends Component
      */
     public function updateRemission()
     {
-        if (empty($this->quoterItems)) {
-            $this->dispatch('show-toast', ['type' => 'error', 'message' => 'El carrito no puede estar vacío']);
-            return;
-        }
-
-        $this->ensureTenantConnection();
-
-        try {
-            DB::beginTransaction();
-
-            $remission = InvRemissions::findOrFail($this->editingRemissionId);
-            
-            // 1. Actualizar Remisión (Cabecera)
-            // Si hay campos en la remisión que dependen de la edición (ej. observaciones, cliente si se permite cambiar)
-            // Nota: El usuario no especificó si se puede cambiar el cliente de la remisión, pero si se cambió en la UI, debería guardarse.
-            // Sin embargo, inv_remissions tiene quoteId. Si cambiamos customerId, ¿afecta?
-            // La tabla inv_remissions NO tiene customerId directo (lo tiene via quoteId -> VntQuote).
-            // Pero el usuario dijo "no esto et mal porque modifica eso".
-            // Asumo que el cliente NO cambia, o si cambia, el usuario entiende que no se refleja en la cotización original.
-            // Para evitar conflictos, SOLO actualizaré los detalles de la remisión por ahora.
-            
-            /* 
-            // Si quisiéramos actualizar observaciones de remisión (si tuviera campo directo, q lo tiene 'observations_return' pero es para devoluciones?)
-            // No veo campo de observaciones generales en inv_remissions en el esquema dado, solo observations_return.
-            // Así que solo actualizamos los ITEMS.
-            */
-
-             // 2. Actualizar Detalles de Remisión (inv_detail_remissions)
-            // Eliminamos los detalles anteriores de la remisión
-            InvDetailRemissions::where('remissionId', $remission->id)->delete();
-
-            // Creamos los nuevos detalles de la remisión
-            foreach ($this->quoterItems as $item) {
-                InvDetailRemissions::create([
-                    'quantity' => $item['quantity'],
-                    'value' => $item['price'],
-                    'remissionId' => $remission->id,
-                    'itemId' => $item['id'],
-                    'tax' => 0, // Ajustar según lógica de impuestos
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
-            
-            // Log de auditoría
-            Log::info('🔄 Remisión actualizada (Solo detalles)', [
-                'remission_id' => $remission->id,
-                'user_id' => auth()->id()
-            ]);
-
-            DB::commit();
-
-            // Limpiar y Redirigir
-            $this->editingRemissionId = null;
-            $this->clearQuoter();
-
-            $this->dispatch('show-toast', [
-                'type' => 'success',
-                'message' => 'Remisión #' . $remission->consecutive . ' actualizada correctamente'
-            ]);
-
-            // Redirigir al listado de remisiones
-            return redirect()->route('tenant.remissions');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('❌ Error actualizando remisión: ' . $e->getMessage());
-            $this->dispatch('show-toast', [
-                'type' => 'error',
-                'message' => 'Error al actualizar remisión: ' . $e->getMessage()
-            ]);
-        }
+        $this->updateQuote(); // Reutiliza la lógica de redirección y limpieza
     }
 
 
@@ -2423,14 +2367,11 @@ class ProductQuoter extends Component
         $this->confirmationLoading = true;
 
         try {
-            // Validar si hay cambios sin guardar en el carrito
-            if ($this->cartHasChanges) {
-                $this->confirmationLoading = false;
-                $this->dispatch('show-toast', [
-                    'type' => 'error',
-                    'message' => 'Debe guardar los cambios del carrito antes de confirmar el pedido'
-                ]);
-                return;
+            // --- AUTOGUARDADO AUTOMÁTICO ANTES DE CONFIRMAR ---
+            // Si hay cambios sin guardar, los guardamos primero de forma silenciosa
+            if ($this->cartHasChanges && ($this->editingQuoteId || $this->editingRemissionId)) {
+                Log::info('🚀 Autoguardado activado en confirmarPedido');
+                $this->saveChangesInternal();
             }
 
             // Fix: Usar editingQuoteId si no se pasa quoteId explícitamente y estamos editando

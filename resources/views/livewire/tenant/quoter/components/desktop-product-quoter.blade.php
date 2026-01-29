@@ -587,14 +587,7 @@ $header = 'Seleccionar productos';
                                 <button type="button" wire:click.prevent="confirmarPedido"
                                     wire:loading.attr="disabled"
                                     wire:target="confirmarPedido"
-                                    @if($cartHasChanges) disabled @endif
-                                    class="w-full px-4 py-3 text-sm font-medium 
-                                        @if($cartHasChanges)
-                                            bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 cursor-not-allowed
-                                        @else
-                                            bg-indigo-600 hover:bg-indigo-700 text-white shadow-md
-                                        @endif
-                                        rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                    class="w-full px-4 py-3 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-md rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                                     
                                     <!-- Ícono normal -->
                                     <svg wire:loading.remove wire:target="confirmarPedido" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -611,12 +604,8 @@ $header = 'Seleccionar productos';
                                     </svg>
 
                                     <!-- Texto -->
-                                    @if($cartHasChanges)
-                                        Guarde los cambios primero
-                                    @else
-                                        <span wire:loading.remove wire:target="confirmarPedido">Confirmar pedido</span>
-                                        <span wire:loading wire:target="confirmarPedido">Confirmando...</span>
-                                    @endif
+                                    <span wire:loading.remove wire:target="confirmarPedido">Confirmar pedido</span>
+                                    <span wire:loading wire:target="confirmarPedido">Confirmando...</span>
                                 </button>
                             @endif
                         @endif
