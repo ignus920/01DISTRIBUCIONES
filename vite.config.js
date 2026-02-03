@@ -60,6 +60,9 @@ export default defineConfig({
             }
         })
     ],
+    build: {
+        rollupOptions: {
+            external: ['sweetalert2'],
+        },
+    },
 });
-
-
