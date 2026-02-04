@@ -1,4 +1,4 @@
-const CACHE_NAME = 'quoter-cache-v13';
+const CACHE_NAME = 'quoter-cache-v14';
 // Lista de recursos críticos para precargar
 const PRECACHE_ASSETS = [
     '/build/assets/app-OdaYl3l1.css',
@@ -57,7 +57,19 @@ self.addEventListener('fetch', (event) => {
                     }
                     return response;
                 })
-                .catch(() => caches.match(event.request) || caches.match('/tenant/quoter/mobile'))
+                .catch(async () => {
+                    // Intentar encontrar la URL exacta o fallback a la lista móvil
+                    // Usamos ignoreSearch: true para ignorar parámetros GET (?search=...)
+                    const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
+                    if (cachedResponse) return cachedResponse;
+
+                    // Si no está la página específica, devolver la lista móvil (si estamos en ruta de quoter)
+                    if (url.pathname.includes('/tenant/quoter')) {
+                        return caches.match('/tenant/quoter/mobile', { ignoreSearch: true });
+                    }
+
+                    return null;
+                })
         );
         return;
     }

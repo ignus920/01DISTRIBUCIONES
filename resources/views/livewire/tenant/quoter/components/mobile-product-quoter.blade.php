@@ -460,16 +460,19 @@
 
             /**
              * Carga productos desde IndexedDB aplicando filtros
+             * Ordenamiento: ID Descendente (para coincidir con el servidor)
              */
             async loadLocalProducts() {
                 const db = await this.getDb();
                 if (!db) return;
 
                 try {
-                    let query = db.productos;
+                    // Usar orderBy('id').reverse() para emular 'id desc' del servidor
+                    let collection = db.productos.orderBy('id').reverse();
+                    
                     if (this.localSearch) {
                         const searchLower = this.localSearch.toLowerCase();
-                        this.displayProducts = await query
+                        this.displayProducts = await collection
                             .filter(p => {
                                 const name = (p.name || '').toLowerCase();
                                 const dispName = (p.display_name || '').toLowerCase();
@@ -478,10 +481,11 @@
                                        dispName.includes(searchLower) || 
                                        sku.includes(searchLower);
                             })
+                            .limit(50) // Limitar después filtrar
                             .toArray();
                     } else {
-                        // Cargar una muestra inicial (por defecto los primeros 50 para rendimiento)
-                        this.displayProducts = await query.limit(50).toArray();
+                        // Cargar una muestra inicial
+                        this.displayProducts = await collection.limit(50).toArray();
                     }
                 } catch (error) {
                     console.error('❌ Error al cargar productos locales:', error);

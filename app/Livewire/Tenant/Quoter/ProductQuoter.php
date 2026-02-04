@@ -105,6 +105,11 @@ class ProductQuoter extends Component
         $this->viewType = request()->route('viewType', 'desktop');
         $this->ensureTenantConnection();
 
+        // Si se solicita limpiar explícitamente (desde botón '+' nueva cotización)
+        if (request()->query('clear')) {
+            session()->forget('quoter_items');
+        }
+
         // Inicializar quoteHasRemission como false por defecto
         $this->quoteHasRemission = false;
 
@@ -113,7 +118,8 @@ class ProductQuoter extends Component
             'quoteId' => $quoteId,
             'remissionId' => $remissionId,
             'restockOrder' => $restockOrder,
-            'viewType' => $this->viewType
+            'viewType' => $this->viewType,
+            'clear_param' => request()->query('clear')
         ]);
 
         // Si se pasa un quoteId, estamos editando una cotización

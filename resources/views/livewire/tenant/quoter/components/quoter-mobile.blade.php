@@ -407,7 +407,8 @@
                 await this.clearLocalState();
                 
                 // 2. Redirigir a ruta móvil directamente (Offline Safe)
-                window.location.href = "{{ route('tenant.quoter.products.mobile') }}";
+                // ?clear=1 fuerza al servidor a limpiar la sesión si hay internet
+                window.location.href = "{{ route('tenant.quoter.products.mobile') }}?clear=1";
             },
 
             async editOfflineQuote(quote) {
