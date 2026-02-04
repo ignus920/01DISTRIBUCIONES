@@ -53,15 +53,12 @@ class ProcessOfflineOrderJob implements ShouldQueue
             
             DB::beginTransaction();
 
-            // PREVENCIÓN DE DUPLICADOS: 
+            // PREVENCIÓN DE DUPLICADOS / EDICIÓN: 
             // Buscamos si ya existe una cotización que contenga este UUID en sus observaciones.
-            // Esto evita crear el mismo pedido varias veces si la sincronización falla a mitad de camino.
             $existingQuote = VntQuote::where('observations', 'LIKE', "%[UUID: {$uuid}]%")->first();
-            if ($existingQuote) {
-                Log::warning("⚠️ [Job] El pedido con UUID {$uuid} ya fue procesado anteriormente (Quote ID: {$existingQuote->id}). Omitiendo.");
-                DB::rollBack();
-                return;
-            }
+            
+            // Si existe, preparamos para actualizar en lugar de salir
+            $quote = null;
 
             $isRestock = $this->orderData['is_restock'] ?? false;
             $customerId = null;
@@ -139,24 +136,45 @@ class ProcessOfflineOrderJob implements ShouldQueue
                 throw new \Exception("No se pudo determinar el ID del cliente para el pedido offline.");
             }
 
-            // 2. Crear la Cotización (Cabecera)
-            $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
-            $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
-
-            // Adjuntamos el UUID en las observaciones para control de duplicados futuro.
-            $observations = ($this->orderData['observaciones'] ?? 'Sincronizado Offline') . " [UUID: {$uuid}]";
+            // 2. Crear o Actualizar la Cotización (Cabecera)
             
-            $quote = VntQuote::create([
-                'consecutive' => $nextConsecutive,
-                'status' => 'REGISTRADO',
-                'typeQuote' => $isRestock ? 'RESTOCK' : 'POS',
-                'customerId' => $customerId,
-                'warehouseId' => $this->warehouseId,
-                'userId' => $this->userId,
-                'observations' => $observations,
-                'branchId' => $this->branchId,
-                'created_at' => $this->orderData['fecha'] ?? now()
-            ]);
+            // Adjuntamos el UUID en las observaciones si no está
+            $observations = ($this->orderData['observaciones'] ?? 'Sincronizado Offline');
+            if (!str_contains($observations, "[UUID: {$uuid}]")) {
+                $observations .= " [UUID: {$uuid}]";
+            }
+
+            if ($existingQuote) {
+                Log::info("🔄 [Job] Actualizando pedido existente con UUID {$uuid} (Quote ID: {$existingQuote->id})");
+                $quote = $existingQuote;
+                $quote->update([
+                    'status' => 'REGISTRADO', // Resetear estado si es necesario
+                    'customerId' => $customerId,
+                    'observations' => $observations,
+                    'updated_at' => now(),
+                    // Mantener otros campos originales si se desea
+                ]);
+
+                // Borrar detalles anteriores para re-insertar los nuevos (manera más limpia de actualizar items)
+                $quote->details()->delete();
+                
+            } else {
+                Log::info("🆕 [Job] Creando nuevo pedido offline con UUID {$uuid}");
+                $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
+                $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
+
+                $quote = VntQuote::create([
+                    'consecutive' => $nextConsecutive,
+                    'status' => 'REGISTRADO',
+                    'typeQuote' => $isRestock ? 'RESTOCK' : 'POS',
+                    'customerId' => $customerId,
+                    'warehouseId' => $this->warehouseId,
+                    'userId' => $this->userId,
+                    'observations' => $observations,
+                    'branchId' => $this->branchId,
+                    'created_at' => $this->orderData['fecha'] ?? now()
+                ]);
+            }
 
             // 3. Crear los Detalles del Pedido
             foreach ($this->orderData['items'] as $item) {

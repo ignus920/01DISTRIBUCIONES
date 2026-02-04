@@ -25,6 +25,7 @@
             localCart: @json(array_values($quoterItems)), // Inicializar con datos del servidor
             localCustomers: [], // Caché de clientes
             selectedLocalCustomer: null,
+            currentQuoteUuid: null, // UUID de la cotización actual (para edición)
             
             // Estados para el swipe de los items del carrito
             swipeStates: {}, 
@@ -260,8 +261,10 @@
                         // Solo restaurar cliente si hay carrito activo, para evitar clientes "fantasmas"
                         if (this.localCart.length > 0) {
                             this.selectedLocalCustomer = state.customer || null;
+                            this.currentQuoteUuid = state.uuid || null;
                         } else {
                             this.selectedLocalCustomer = null; 
+                            this.currentQuoteUuid = null;
                         }
                     }
                 } catch (e) {
@@ -277,6 +280,7 @@
                         id: 'actual',
                         cart: JSON.parse(JSON.stringify(this.localCart)),
                         customer: JSON.parse(JSON.stringify(this.selectedLocalCustomer)),
+                        uuid: this.currentQuoteUuid,
                         timestamp: new Date().toISOString()
                     });
                 } catch (e) {
@@ -344,34 +348,40 @@
                 const db = await this.getDb();
                 if (!db) return;
 
-                // Generar UUID único para evitar duplicados en la sincronización
-                const orderUuid = 'local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                // Generar UUID único o usar el existente
+                const orderUuid = this.currentQuoteUuid || ('local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
                 
                 // Estructura del pedido para guardar en IndexedDB
                 const orderData = {
-                    uuid: orderUuid,
+                    uuid: orderUuid, // Clave primaria
                     fecha: new Date().toISOString(),
                     items: JSON.parse(JSON.stringify(this.localCart)),
                     customer: this.selectedLocalCustomer ? JSON.parse(JSON.stringify(this.selectedLocalCustomer)) : null,
                     total: this.localCart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
                     sincronizado: 0, // Flag para saber si falta enviar al servidor
-                    observaciones: @this.get('observaciones') || ''
+                    observaciones: @this.get('observaciones') || '',
+                    estado: 'edited' // Flag para saber que es una edición
                 };
 
                 try {
-                    // Guardar en la tabla 'pedidos' de IndexedDB
-                    await db.pedidos.add(orderData);
+                    // Guardar en la tabla 'pedidos' de IndexedDB (put = upsert)
+                    await db.pedidos.put(orderData);
                     
-                    Swal.fire({
+                    await Swal.fire({
                         icon: 'success',
                         title: '¡Pedido Guardado!',
-                        text: 'Se sincronizará automáticamente al detectar internet.',
-                        timer: 3000
+                        text: 'Redirigiendo a la lista...',
+                        timer: 1500,
+                        showConfirmButton: false
                     });
+
+                    // Redirigir a la lista de cotizaciones (Ruta directa móvil para evitar redirección de servidor offline)
+                    window.location.href = "{{ route('tenant.quoter.mobile') }}";
 
                     // Limpiar carrito local y persistir cambio (evitar pedidos dobles)
                     this.localCart = [];
                     this.selectedLocalCustomer = null; // Limpiar cliente seleccionado
+                    this.currentQuoteUuid = null; // Limpiar UUID de edición
                     await this.persistState();
                     this.showCart = false;
                     this.showCartModal = false;

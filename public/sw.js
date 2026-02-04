@@ -1,11 +1,13 @@
-const CACHE_NAME = 'quoter-cache-v11';
+const CACHE_NAME = 'quoter-cache-v13';
 // Lista de recursos críticos para precargar
 const PRECACHE_ASSETS = [
-    '/build/assets/app-D0Ki5TkE.css',
+    '/build/assets/app-OdaYl3l1.css',
     '/build/assets/app-Cp30cTxS.js',
     '/Logo_DosilERPFinal.png',
     '/logo.png',
-    '/build/manifest.webmanifest'
+    '/build/manifest.webmanifest',
+    '/tenant/quoter/mobile', // Lista de cotizaciones
+    '/tenant/quoter/products/mobile' // Editor de cotizaciones (CRÍTICO para offline)
 ];
 
 self.addEventListener('install', (event) => {
