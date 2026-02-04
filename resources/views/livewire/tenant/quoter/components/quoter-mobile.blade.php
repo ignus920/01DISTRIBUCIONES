@@ -6,6 +6,16 @@
             
         </div>
 
+        <!-- Banner de estado Offline -->
+        <div x-show="!isOnline" 
+             style="display: none;"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="-translate-y-full"
+             x-transition:enter-end="translate-y-0"
+             class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0 z-[60] flex items-center justify-center gap-2">
+            <span>⚠️ MODO OFFLINE ACTIVADO</span>
+        </div>
+
         <!-- Search Input and Add Button - Sticky -->
         <div class="sticky top-0  bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
             <div class="px-4 py-4">
@@ -305,25 +315,25 @@
                         </p>
                         @if(!$search)
                             <button
-                                wire:click="nuevaCotizacion"
-                                wire:loading.attr="disabled"
-                                wire:target="nuevaCotizacion"
-                                class="bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
-                            >
-                                <!-- Spinner de loading -->
-                                <div wire:loading wire:target="nuevaCotizacion" class="flex items-center gap-2">
-                                    <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <span>Creando...</span>
-                                </div>
+                    @click="startNewQuote"
+                    :disabled="loadingNewQuote"
+                    :class="loadingNewQuote ? 'opacity-75 cursor-wait' : ''"
+                    class="bg-[#2CBF64] hover:bg-green-600 text-white rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 w-12 h-12"
+                    title="Nueva Cotización"
+                >
+                    <!-- Spinner de loading -->
+                    <svg x-show="loadingNewQuote" class="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
 
-                                <!-- Texto normal -->
-                                <span wire:loading.remove wire:target="nuevaCotizacion">Crear Primera Cotización</span>
-                            </button>
-                        @endif
-                    </div>
+                    <!-- Ícono normal -->
+                    <svg x-show="!loadingNewQuote" class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </button>
+                    @endif
+                </div>
                 </div>
             @endforelse
         </div>
@@ -344,6 +354,7 @@
             offlineQuotes: [],
             isOnline: navigator.onLine,
             filteredQuotes: [], // Para búsqueda local
+            loadingNewQuote: false, // Estado de carga para nueva cotización
 
             async init() {
                 // Escuchar cambios de conexión
@@ -403,6 +414,9 @@
             },
 
             async startNewQuote() {
+                if (this.loadingNewQuote) return;
+                this.loadingNewQuote = true;
+                
                 // 1. Limpiar estado local
                 await this.clearLocalState();
                 

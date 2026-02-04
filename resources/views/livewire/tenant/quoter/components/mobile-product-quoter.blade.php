@@ -94,11 +94,25 @@
                 });
 
                 // Manejar evento de pérdida de conexión (Offline)
+                // Manejar evento de pérdida de conexión (Offline)
                 window.addEventListener('offline', () => {
-                    this.isOnline = false;
-                    // Forzar carga de productos guardados en memoria IndexedDB
-                    this.loadLocalProducts(); 
+                   this.handleOffline();
                 });
+
+                // Polling de seguridad: Verificar conexión cada 3 segundos
+                // Algunas tablets no disparan el evento offline correctamente
+                setInterval(() => {
+                    // Si el navegador dice que estamos offline pero la app piensa que está online
+                    if (!navigator.onLine && this.isOnline) {
+                        this.handleOffline();
+                    }
+                    // Si el navegador dice online pero app offline (y no está forzado)
+                    else if (navigator.onLine && !this.isOnline && !this.forceOffline) {
+                        this.isOnline = true; // El evento 'online' trigger se encargará del resto si es necesario, pero actualizamos estado
+                    }
+                }, 3000);
+
+
 
                 // --- NUEVA SINCRONIZACIÓN SEGMENTADA ---
                 
@@ -248,6 +262,26 @@
                 // Observar cambios para persistir
                 this.$watch('localCart', async () => { await this.persistState(); });
                 this.$watch('selectedLocalCustomer', async () => { await this.persistState(); });
+            },
+
+            handleOffline() {
+                this.isOnline = false;
+                this.loadLocalProducts();
+                console.log('🔌 Modo Offline activado');
+            },
+
+            toggleForceOffline() {
+                this.forceOffline = !this.forceOffline;
+                if (this.forceOffline) {
+                    this.handleOffline();
+                    this.isOnline = false; // Asegurar visualmente
+                } else {
+                    // Intentar volver online
+                    if (navigator.onLine) {
+                         this.isOnline = true;
+                         window.dispatchEvent(new Event('online')); // Disparar lógica de reconexión
+                    }
+                }
             },
 
             async loadPersistedState() {
@@ -470,9 +504,10 @@
                     // Usar orderBy('id').reverse() para emular 'id desc' del servidor
                     let collection = db.productos.orderBy('id').reverse();
                     
+                    let result = [];
                     if (this.localSearch) {
                         const searchLower = this.localSearch.toLowerCase();
-                        this.displayProducts = await collection
+                        result = await collection
                             .filter(p => {
                                 const name = (p.name || '').toLowerCase();
                                 const dispName = (p.display_name || '').toLowerCase();
@@ -481,12 +516,17 @@
                                        dispName.includes(searchLower) || 
                                        sku.includes(searchLower);
                             })
-                            .limit(50) // Limitar después filtrar
+                            .limit(50) 
                             .toArray();
                     } else {
                         // Cargar una muestra inicial
-                        this.displayProducts = await collection.limit(50).toArray();
+                        result = await collection.limit(50).toArray();
                     }
+
+                    // LIMPIEZA CRÍTICA: Asegurar que los productos cargados del caché 
+                    // NO tengan cantidad visual asignada (eso depende del carrito actual)
+                    this.displayProducts = result.map(p => ({ ...p, quantity: 0, selected_price: null }));
+
                 } catch (error) {
                     console.error('❌ Error al cargar productos locales:', error);
                 }
@@ -501,8 +541,18 @@
                 if (!db) return;
 
                 try {
+                    // LIMPIAR ESTADO ANTES DE GUARDAR
+                    // No queremos guardar check de "agregado" en la base de datos de productos
+                    const cleanProducts = products.map(p => {
+                        const clean = { ...p };
+                        delete clean.quantity;
+                        delete clean.selected_price;
+                        delete clean.price_label;
+                        return clean;
+                    });
+
                     // bulkPut actualiza si existe el ID o lo crea si no. NO borra lo anterior.
-                    await db.productos.bulkPut(products);
+                    await db.productos.bulkPut(cleanProducts);
                 } catch (error) {
                     console.error('❌ Error al guardar en caché incremental:', error);
                 }
@@ -730,6 +780,16 @@
                 </div>
             </div>
 
+            <!-- Banner Offline -->
+            <div x-show="!isOnline" 
+                 style="display: none;"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="-translate-y-full"
+                 x-transition:enter-end="translate-y-0"
+                 class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0 z-[60] flex items-center justify-center gap-2 mb-2 rounded shadow-sm">
+                <span>⚠️ MODO OFFLINE ACTIVADO</span>
+            </div>
+
             <!-- Contenedor principal con elementos en grid de 2 columnas -->
             <div class="grid grid-cols-2 gap-2">
                 <!-- Búsqueda -->
@@ -776,15 +836,23 @@
     </div>
             
             <!-- Toggle Offline (Debajo del buscador) -->
-            <!-- <div class="px-4 pb-2">
-                <button @click="forceOffline = !forceOffline" 
-                        :class="forceOffline ? 'bg-red-100 text-red-600 border-red-200' : 'bg-green-100 text-green-600 border-green-200'"
-                        class="w-full py-1.5 px-3 rounded-lg text-xs font-bold uppercase flex items-center justify-center gap-2 border transition-colors shadow-sm">
-                    <span :class="forceOffline ? 'bg-red-500' : 'bg-green-500'" class="w-2 h-2 rounded-full animate-pulse"></span>
-                    <span x-text="forceOffline ? 'MODO OFFLINE (Celular)' : 'MODO ONLINE (Servidor)'"></span>
-                    <span x-text="forceOffline ? '(No sincroniza)' : '(Sincronizado)'" class="opacity-70 font-medium ml-1 text-[10px]"></span>
+            <!-- Toggle Offline (Visible siempre para control manual) -->
+            <div class="px-3 pb-2">
+                <button @click="toggleForceOffline()" 
+                        :class="forceOffline ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100/50 text-gray-500 border-gray-200'"
+                        class="w-full py-2 px-3 rounded-xl text-xs font-bold uppercase flex items-center justify-between border transition-all shadow-sm active:scale-95">
+                    
+                    <div class="flex items-center gap-2">
+                        <span :class="forceOffline ? 'bg-red-500 animate-pulse' : 'bg-green-500'" class="w-2.5 h-2.5 rounded-full"></span>
+                        <span x-text="forceOffline ? 'FORZADO OFFLINE' : 'CONEXIÓN AUTOMÁTICA'"></span>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <span x-show="!forceOffline" class="text-[10px] bg-green-200 text-green-800 px-1.5 py-0.5 rounded">Auto</span>
+                        <svg x-show="forceOffline" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                    </div>
                 </button>
-            </div> -->
+            </div>
 
 
     <!-- Lista de productos UNIFICADA -->
