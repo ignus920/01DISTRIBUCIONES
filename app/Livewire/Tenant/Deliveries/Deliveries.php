@@ -115,7 +115,7 @@ class Deliveries extends Component
                 // Calcular valor de devoluciones actuales en sesión
                 $returnValue = 0;
                 foreach ($remission->details as $detail) {
-                    $qty = $this->returnQuantities[$detail->id] ?? 0;
+                    $qty = $detail->cant_return ?? 0;
                     $lineValue = $qty * $detail->value;
                     $lineTax = $lineValue * (($detail->tax ?? 0) / 100);
                     $returnValue += ($lineValue + $lineTax);
@@ -381,31 +381,54 @@ class Deliveries extends Component
 
     public function getReturnedItemsProperty()
     {
-        if (!$this->selectedDeliveryId) {
-            return collect();
+        $query = \App\Models\Tenant\Remissions\InvDetailRemissions::where('cant_return', '>', 0)
+            ->with(['item', 'remission']);
+
+        if ($this->selectedDeliveryId) {
+            $query->whereHas('remission', function($q) {
+                $q->where('delivery_id', $this->selectedDeliveryId);
+            });
+        } else {
+            // Si no hay seleccionado, mostrar de todos los cargues visibles para el usuario
+            $deliveryIds = $this->deliveries->pluck('id');
+            if ($deliveryIds->isEmpty()) {
+                return collect();
+            }
+            $query->whereHas('remission', function($q) use ($deliveryIds) {
+                $q->whereIn('delivery_id', $deliveryIds);
+            });
         }
 
-        return \App\Models\Tenant\Remissions\InvDetailRemissions::whereHas('remission', function($q) {
-                $q->where('delivery_id', $this->selectedDeliveryId);
-            })
-            ->where('cant_return', '>', 0)
-            ->with(['item', 'remission'])
-            ->get();
+        return $query->get();
     }
 
     public function getCollectionsProperty()
     {
-        if (!$this->selectedDeliveryId) {
+        // 1. Obtener IDs de remisiones relevantes
+        $remissionQuery = InvRemissions::query();
+        
+        if ($this->selectedDeliveryId) {
+            $remissionQuery->where('delivery_id', $this->selectedDeliveryId);
+        } else {
+             $deliveryIds = $this->deliveries->pluck('id');
+             if ($deliveryIds->isEmpty()) {
+                 return collect();
+             }
+             $remissionQuery->whereIn('delivery_id', $deliveryIds);
+        }
+
+        // 2. Obtener IDs de cotizaciones vinculadas a esas remisiones
+        $quoteIds = $remissionQuery->pluck('quoteId');
+
+        if ($quoteIds->isEmpty()) {
             return collect();
         }
 
-        // Obtener IDs de cotizaciones asociadas a las remisiones del cargue
-        $quoteIds = InvRemissions::where('delivery_id', $this->selectedDeliveryId)
-            ->pluck('quoteId');
-
+        // 3. Consultar VntDetailPettyCash usando esos quoteIds (invoiceId en tabla petty cash?)
+        // Revisando el código original: invoiceId se compara con quoteId.
         return \App\Models\Tenant\PettyCash\VntDetailPettyCash::whereIn('invoiceId', $quoteIds)
             ->where('status', 1)
-            ->with('methodPayment')
+            ->with('methodPayments')
             ->select('methodPaymentId', DB::raw('SUM(value) as system_total'), DB::raw('0 as discount_total'))
             ->groupBy('methodPaymentId')
             ->get();
@@ -481,5 +504,103 @@ class Deliveries extends Component
             'serverTime' => now()->toIso8601String(),
             'userId' => $user->id
         ];
+    }
+    public function syncPendingPayments($payments)
+    {
+        $user = auth()->user();
+        
+        // Buscar caja menor activa del usuario
+        $activePettyCash = \App\Models\Tenant\PettyCash\PettyCash::where('status', 'ABIERTA')
+            ->where('userIdOpen', $user->id)
+            ->first();
+
+        // Mapeo simple de métodos de pago (ajustar IDs según tu BD)
+        // Se asume: 1=Efectivo, 2=Transferencia, etc. Lo ideal es buscar por nombre.
+        $methodsDB = \App\Models\Tenant\MethodPayments\VntMethodPayMents::all();
+        
+        $count = 0;
+
+        foreach ($payments as $payment) {
+            $remission = InvRemissions::find($payment['remissionId']);
+            
+            if ($remission && $remission->quoteId) {
+                // Registrar Pagos
+                foreach ($payment['methods'] as $key => $data) {
+                    $val = (float)($data['value'] ?? 0);
+                    if ($val > 0) {
+                        // Buscar ID del método
+                        $methodId = 1; // Default Efectivo
+                        $searchKey = strtolower($key);
+                        
+                        // Intentar mapear
+                        $found = $methodsDB->filter(function($m) use ($searchKey) {
+                            return str_contains(strtolower($m->name), $searchKey); 
+                        })->first();
+
+                        if ($found) {
+                            $methodId = $found->id;
+                        } else {
+                           // Fallback manual si no coinciden nombres
+                           if ($searchKey == 'nequi') $methodId = 11; // Ejemplo
+                           if ($searchKey == 'daviplata') $methodId = 12; // Ejemplo
+                           if ($searchKey == 'tarjeta') $methodId = 4; // Ejemplo
+                        }
+
+                        VntDetailPettyCash::create([
+                            'value' => $val,
+                            'status' => 1,
+                            'pettyCashId' => $activePettyCash ? $activePettyCash->id : null, 
+                            'reasonPettyCashId' => 1, // 1 = Venta/Ingreso (Asumido)
+                            'methodPaymentId' => $methodId,
+                            'invoiceId' => $remission->quoteId,
+                            'observations' => ($payment['observation'] ?? '') . ' (Offline Sync)',
+                            'created_at' => \Carbon\Carbon::parse($payment['timestamp']),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+
+                // Actualizar estado del pedido a ENTREGADO
+                $remission->update(['status' => 'ENTREGADO']);
+                $count++;
+            }
+        }
+
+        if ($count > 0) {
+            $this->dispatch('pedido-actualizado');
+            $this->dispatch('notificar-error', ['msg' => "Se sincronizaron $count pagos offline correctamente."]);
+        }
+        
+        return true;
+    }
+
+    public function syncStatusUpdates($updates)
+    {
+        try {
+            foreach ($updates as $update) {
+                $remission = InvRemissions::find($update['remission_id']);
+                if ($remission) {
+                    $remission->update([
+                        'status' => $update['status'],
+                        'observations_return' => $update['observation']
+                    ]);
+                    
+                    // Si es devolución total, asegurar que todos los detalles se marquen como devueltos
+                    if ($update['status'] === 'DEVUELTO') {
+                        foreach ($remission->details as $detail) {
+                            $detail->update([
+                                'cant_return' => $detail->quantity,
+                                'observations_return' => 'Devolución Total (Offline): ' . $update['observation']
+                            ]);
+                        }
+                    }
+                }
+            }
+            $this->dispatch('pedido-actualizado');
+            return true;
+        } catch (\Exception $e) {
+            \Log::error("Error sincronizando estados (offline): " . $e->getMessage());
+            return false;
+        }
     }
 }
