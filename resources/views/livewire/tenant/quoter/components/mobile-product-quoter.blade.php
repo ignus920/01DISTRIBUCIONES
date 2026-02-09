@@ -781,14 +781,14 @@
             </div>
 
             <!-- Banner Offline -->
-            <div x-show="!isOnline" 
+            <!-- <div x-show="!isOnline" 
                  style="display: none;"
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="-translate-y-full"
                  x-transition:enter-end="translate-y-0"
                  class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0 z-[60] flex items-center justify-center gap-2 mb-2 rounded shadow-sm">
                 <span>⚠️ MODO OFFLINE ACTIVADO</span>
-            </div>
+            </div> -->
 
             <!-- Contenedor principal con elementos en grid de 2 columnas -->
             <div class="grid grid-cols-2 gap-2">
@@ -837,7 +837,7 @@
             
             <!-- Toggle Offline (Debajo del buscador) -->
             <!-- Toggle Offline (Visible siempre para control manual) -->
-            <div class="px-3 pb-2">
+            <!-- <div class="px-3 pb-2">
                 <button @click="toggleForceOffline()" 
                         :class="forceOffline ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100/50 text-gray-500 border-gray-200'"
                         class="w-full py-2 px-3 rounded-xl text-xs font-bold uppercase flex items-center justify-between border transition-all shadow-sm active:scale-95">
@@ -852,7 +852,7 @@
                         <svg x-show="forceOffline" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                     </div>
                 </button>
-            </div>
+            </div> -->
 
 
     <!-- Lista de productos UNIFICADA -->

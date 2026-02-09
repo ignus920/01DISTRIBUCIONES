@@ -78,6 +78,12 @@ class Deliveries extends Component
         
         $query = InvRemissions::query();
 
+        // Por defecto en esta vista de logística, solo mostramos lo que ya tiene un cargue asignado
+        // A menos que estemos buscando algo específico.
+        if (!$this->selectedDeliveryId && !$this->search) {
+            $query->whereNotNull('delivery_id');
+        }
+
         // Filtrar por cargue si hay uno seleccionado
         if ($this->selectedDeliveryId) {
             $query->where('delivery_id', $this->selectedDeliveryId);
@@ -173,6 +179,13 @@ class Deliveries extends Component
     public function openFullReturnModal($orderId)
     {
         $this->selectedOrder = \App\Models\Tenant\Remissions\InvRemissions::with('details')->findOrFail($orderId);
+        
+        if (!$this->selectedOrder->delivery_id) {
+            $this->dispatch('notificar-error', ['msg' => 'No se puede devolver un pedido que no ha sido cargado oficialmente']);
+            $this->selectedOrder = null;
+            return;
+        }
+
         $this->fullReturnObservation = '';
         $this->showingFullReturnModal = true;
     }
@@ -186,15 +199,40 @@ class Deliveries extends Component
     }
 
 
+    public $selectedOrderData = null;
+
     public function viewOrder($id)
     {
-        $this->selectedOrder = InvRemissions::with(['quote.customer', 'quote.warehouse', 'details.item'])
+        $this->selectedOrder = InvRemissions::with(['quote.customer', 'quote.warehouse', 'quote.branch', 'details.item'])
             ->find($id);
         
         if ($this->selectedOrder) {
             $this->currentItemIndex = 0;
             $this->returnQuantities = [];
-            // Inicializar devoluciones en 0 o valor actual si existiera
+            $this->returnObservations = [];
+            
+            // Preparar data serializable para Alpine (Modo híbrido)
+            $this->selectedOrderData = [
+                'id' => $this->selectedOrder->id,
+                'consecutive' => $this->selectedOrder->consecutive ?? $this->selectedOrder->id,
+                'status' => $this->selectedOrder->status,
+                'customer_name' => $this->selectedOrder->quote->customer->businessName ?? ($this->selectedOrder->quote->customer->firstName . ' ' . $this->selectedOrder->quote->customer->lastName),
+                'branch_name' => $this->selectedOrder->quote->branch->name ?? 'N/A',
+                'delivery_id' => $this->selectedOrder->delivery_id,
+                'total_amount' => $this->selectedOrder->total_amount,
+                'balance_amount' => $this->selectedOrder->balance_amount,
+                'details' => $this->selectedOrder->details->map(function($d) {
+                    return [
+                        'id' => $d->id,
+                        'name' => $d->item->name ?? 'N/A',
+                        'quantity' => $d->quantity,
+                        'cant_return' => $d->cant_return ?? 0,
+                        'value' => $d->value,
+                        'observations_return' => $d->observations_return ?? ''
+                    ];
+                })->toArray()
+            ];
+
             foreach($this->selectedOrder->details as $detail) {
                 $this->returnQuantities[$detail->id] = (int)($detail->cant_return ?? 0);
                 $this->returnObservations[$detail->id] = $detail->observations_return ?? '';
@@ -285,6 +323,21 @@ class Deliveries extends Component
         }
     }
 
+    public function syncPendingReturns($pendingReturns)
+    {
+        foreach ($pendingReturns as $ret) {
+            $detail = \App\Models\Tenant\Remissions\InvDetailRemissions::find($ret['detail_id']);
+            if ($detail) {
+                $detail->update([
+                    'cant_return' => $ret['quantity'],
+                    'observations_return' => $ret['observation']
+                ]);
+            }
+        }
+        $this->dispatch('pedido-actualizado');
+        return true;
+    }
+
     public function closeOrderModal()
     {
         $this->showingOrderModal = false;
@@ -293,8 +346,14 @@ class Deliveries extends Component
 
     public function payOrder($id)
     {
-        // Redirigir al componente de pago existente si es posible
         $remission = InvRemissions::find($id);
+
+        if ($remission && !$remission->delivery_id) {
+            $this->dispatch('notificar-error', ['msg' => 'Debe confirmar el cargue antes de registrar pagos']);
+            return;
+        }
+
+        // Redirigir al componente de pago existente si es posible
         if ($remission && $remission->quoteId) {
             return redirect()->route('tenant.payment.quote', ['quoteId' => $remission->quoteId, 'from' => 'deliveries']);
         }
@@ -392,5 +451,35 @@ class Deliveries extends Component
         }
 
         return collect($credits);
+    }
+
+    public function getSyncData()
+    {
+        $user = auth()->user();
+        
+        // 1. Obtener Cargues
+        $deliveriesQuery = DisDeliveries::orderBy('id', 'desc');
+        if ($user->profile_id == 13) {
+            $deliveriesQuery->where('deliveryman_id', $user->id);
+        }
+        $deliveries = $deliveriesQuery->get();
+
+        $deliveryIds = $deliveries->pluck('id');
+
+        // 2. Obtener Remisiones
+        $remissions = InvRemissions::whereIn('delivery_id', $deliveryIds)
+            ->with(['quote.customer', 'quote.warehouse', 'quote.branch', 'details.item'])
+            ->get();
+
+        // 3. Formas de pago y otros datos de configuración
+        $paymentMethods = \App\Models\Tenant\MethodPayments\VntMethodPayMents::all();
+
+        return [
+            'deliveries' => $deliveries,
+            'remissions' => $remissions,
+            'paymentMethods' => $paymentMethods,
+            'serverTime' => now()->toIso8601String(),
+            'userId' => $user->id
+        ];
     }
 }
