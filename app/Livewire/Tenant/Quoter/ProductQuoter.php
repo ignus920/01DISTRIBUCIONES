@@ -61,6 +61,7 @@ class ProductQuoter extends Component
 
     public $quoteHasRemission = false;
     public $cartHasChanges = false; // Nueva propiedad para rastrear cambios en el carrito
+    public $mappedProducts = []; // Lista de productos mapeada para la vista
     protected $listeners = [
         'customer-created' => 'onCustomerCreated',
         'vnt-company-saved' => 'onCustomerCreated',
@@ -252,7 +253,7 @@ class ProductQuoter extends Component
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
 
-        $mappedProducts = collect($products->items())->map(function($p) {
+        $this->mappedProducts = collect($products->items())->map(function($p) {
             $allPrices = $p->all_prices;
             if (auth()->user()->profile_id == 17) {
                 $allPrices = collect($allPrices)->filter(fn($val, $label) => $label === 'Precio Regular')->toArray();
@@ -292,12 +293,12 @@ class ProductQuoter extends Component
 
         // Despachar evento para actualizaciones reactivas
         $this->dispatch('products-updated', [
-            'products' => $mappedProducts
+            'products' => $this->mappedProducts
         ]);
 
         return view($viewName, [
             'products' => $products,
-            'mappedProducts' => $mappedProducts
+            'mappedProducts' => $this->mappedProducts
         ])->layout('layouts.app');
     }
 
@@ -524,7 +525,9 @@ class ProductQuoter extends Component
         ]);
 
         // Emitir evento para mirroring offline
-        $this->dispatch('cart-updated', items: $this->quoterItems);
+        $this->dispatch('cart-updated', [
+            'items' => $this->quoterItems
+        ]);
 
         // Toast más rápido sin información innecesaria
         $this->dispatch('show-toast', [
@@ -557,7 +560,9 @@ class ProductQuoter extends Component
         $this->checkAndDisableIfHasRemission();
 
         // Emitir evento para mirroring offline
-        $this->dispatch('cart-updated', items: $this->quoterItems);
+        $this->dispatch('cart-updated', [
+            'items' => $this->quoterItems
+        ]);
     }
 
     public function removeFromQuoter($productId)
@@ -577,7 +582,9 @@ class ProductQuoter extends Component
             $this->checkAndDisableIfHasRemission();
 
             // Emitir evento para mirroring offline
-            $this->dispatch('cart-updated', items: $this->quoterItems);
+            $this->dispatch('cart-updated', [
+                'items' => $this->quoterItems
+            ]);
 
             $this->dispatch('show-toast', [
                 'type' => 'info',
@@ -611,8 +618,8 @@ class ProductQuoter extends Component
         ]);
 
         // Sincronizar con Alpine.js/IndexedDB
-        $this->dispatch('cart-updated', items: []);
-        $this->dispatch('customer-selected', customer: null);
+        $this->dispatch('cart-updated', ['items' => []]);
+        $this->dispatch('customer-selected', ['customer' => null]);
     }
 
     //funcion para limpiar solo los productos del carrito (mantiene cliente)
@@ -628,7 +635,7 @@ class ProductQuoter extends Component
         ]);
 
         // Sincronizar con Alpine.js/IndexedDB para limpiar localmente
-        $this->dispatch('cart-updated', items: []);
+        $this->dispatch('cart-updated', ['items' => []]);
     }
 
     /**
@@ -1003,7 +1010,7 @@ class ProductQuoter extends Component
         $this->editingCustomerId = null;
         
         // Notificar a Alpine.js para limpiar estado local
-        $this->dispatch('customer-selected', customer: null);
+        $this->dispatch('customer-selected', ['customer' => null]);
     }
 
     /**

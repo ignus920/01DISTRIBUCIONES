@@ -1,18 +1,18 @@
-@push('scripts')
+<div>
 <script>
     /**
      * Componente Alpine.js para gestionar el estado Offline y la Sincronización
      */
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('quoterOffline', () => ({
+    function initQuoterOffline() {
+        if (window.Alpine && !Alpine.data_quoterOffline_registered) {
+            Alpine.data('quoterOffline', () => ({
             isOnline: navigator.onLine,
             forceOffline: false, // Permitir forzar modo offline para pruebas
             syncing: false,
             showCart: false, // Control manual (Principalmente Offline)
             showCartModal: @entangle('showCartModal'), // Sincronizado con Livewire
             showObservations: @entangle('showObservations'), // Sincronizado para observaciones
-            showCreateCustomer: false, // Estado local para el formulario de creación (Offline/UI)
-            displayProducts: [], // Lista única para visualización (Online y Offline)
+            displayProducts: @js($mappedProducts), // Inyectar datos iniciales de forma segura con Livewire 3
             localSearch: '',
             showOfflineCreateForm: false, // Control del formulario offline
             newOfflineCustomer: { // Datos para el nuevo cliente offline
@@ -26,6 +26,7 @@
             localCustomers: [], // Caché de clientes
             selectedLocalCustomer: null,
             currentQuoteUuid: null, // UUID de la cotización actual (para edición)
+            lastSync: null, // Marca de tiempo de la última sincronización completa
             
             // Estados para el swipe de los items del carrito
             swipeStates: {}, 
@@ -71,7 +72,7 @@
 
                     // Limpiar términos de búsqueda local para refrescar la lista
                     this.localSearch = '';
-                    @this.set('search', '', true); 
+                    await this.$wire.set('search', '', true); 
                     
                     // Sincronizar el carrito que se armó offline con la sesión del servidor
                     if (this.localCart.length > 0) {
@@ -90,7 +91,7 @@
                     }
                     
                     // Refrescar lista de productos desde el servidor
-                    await this.syncProducts(); 
+                    await this.syncFullCatalogAuto(); 
                 });
 
                 // Manejar evento de pérdida de conexión (Offline)
@@ -198,6 +199,8 @@
                     this.runInQueue(async () => {
                         console.log('🏁 [SYNC] Sincronización finalizada correctamente');
                         this.syncing = false;
+                        this.lastSync = new Date().toISOString();
+                        await this.persistState();
                         await this.loadLocalProducts();
                         
                         Swal.fire({
@@ -251,13 +254,32 @@
                 if (!this.isOnline || this.forceOffline) {
                     await this.loadLocalProducts();
                 } else {
-                    // Si hay productos del servidor, usarlos, si no, intentar cargar locales
+                    // Ya tenemos displayProducts inyectados desde el servidor
+                    // pero si por alguna razón vienen vacíos, cargamos de la memoria local
                     if (this.displayProducts.length === 0) {
                         await this.loadLocalProducts();
                     }
-                    // Intentar sincronizar al iniciar si estamos online
-                    await this.syncPendingOrders();
+                    
+                    // Sincronización diferida al entrar para no bloquear la UI inicial
+                    setTimeout(async () => {
+                        if (this.isOnline && !this.syncing) {
+                            console.log('🔄 [AUTO-SYNC] Ejecutando sincronización de entrada (Diferida)...');
+                            await this.syncFullCatalogAuto();
+                            await this.syncPendingOrders();
+                        }
+                    }, 3000); // 3 segundos de cortesía
                 }
+
+                // Sincronización periódica cada 15 minutos en segundo plano
+                setInterval(async () => {
+                    if (this.isOnline && !this.syncing && !this.forceOffline) {
+                        const timeSinceLast = new Date() - new Date(this.lastSync);
+                        if (timeSinceLast > (15 * 60 * 1000)) {
+                            console.log('🔄 [AUTO-SYNC] Ejecutando sincronización periódica...');
+                            await this.syncFullCatalogAuto();
+                        }
+                    }
+                }, 60000); // Revisar cada minuto
 
                 // Observar cambios para persistir
                 this.$watch('localCart', async () => { await this.persistState(); });
@@ -292,6 +314,7 @@
                     if (state) {
                         console.log('💾 Cargando estado persistido:', state);
                         this.localCart = state.cart || [];
+                        this.lastSync = state.lastSync || null;
                         // Solo restaurar cliente si hay carrito activo, para evitar clientes "fantasmas"
                         if (this.localCart.length > 0) {
                             this.selectedLocalCustomer = state.customer || null;
@@ -315,6 +338,7 @@
                         cart: JSON.parse(JSON.stringify(this.localCart)),
                         customer: JSON.parse(JSON.stringify(this.selectedLocalCustomer)),
                         uuid: this.currentQuoteUuid,
+                        lastSync: this.lastSync,
                         timestamp: new Date().toISOString()
                     });
                 } catch (e) {
@@ -664,18 +688,33 @@
             },
 
 
+            async syncFullCatalogAuto() {
+                if (this.isOnline && !this.syncing) {
+                    await this.$wire.syncFullCatalog();
+                }
+            },
+
             async syncProducts() {
                 this.syncing = true;
                 this.syncing = false;
             }
         }));
-    });
+        window.Alpine.data_quoterOffline_registered = true;
+    }
+}
+
+// Inicializar inmediatamente o esperar a los eventos necesarios
+if (window.Alpine) {
+    initQuoterOffline();
+} else {
+    document.addEventListener('alpine:init', initQuoterOffline);
+}
+
+// Re-inicializar en navegaciones de Livewire
+document.addEventListener('livewire:navigated', initQuoterOffline);
 </script>
-@endpush
 
 
-{{-- Wrapper principal para asegurar un único elemento raíz para Livewire --}}
-<div>
     {{-- Contenedor con lógica offline --}}
     <div x-data="quoterOffline" class="fixed inset-0 z-[35] bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
         
