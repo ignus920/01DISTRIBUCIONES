@@ -165,6 +165,9 @@ require __DIR__.'/TAT/quoter.php';
 // Incluir rutas de módulo cargue
 require __DIR__.'/tenants/uploads.php';
 
+// Incluir rutas del módulo de usuarios del tenant
+require __DIR__.'/tenants/users.php';
+
 // Incluir rutas del módulo de clientes del tenant
 require __DIR__.'/tenants/customers.php';
 

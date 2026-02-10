@@ -29,26 +29,53 @@
             /**
              * Inicialización global de la base de datos IndexedDB
              */
-            try {
-                const db = new Dexie('01DistribucionesDB');
-                db.version(2).stores({
-                    pedidos: '++id, cliente_nombre, fecha, sincronizado',
-                    productos: 'id, name, sku, category_id, display_name',
-                    categorias: 'id, name',
-                    clientes: 'id, full_name, identification'
-                });
-                window.db = db;
-                console.log('✅ IndexedDB: Base de datos inicializada globalmente.');
-            } catch (e) {
-                console.error('❌ Error inicializando IndexedDB:', e);
-            }
+            window.dbPromise = (async function initDB() {
+                const dbName = '01DistribucionesDB';
+                try {
+                    const db = new Dexie(dbName);
+                    db.version(5).stores({
+                        pedidos: 'uuid, fecha, sincronizado',
+                        productos: 'id, name, sku, category_id, display_name',
+                        categorias: 'id, name',
+                        clientes: 'id, identification, businessName',
+                        estado_quoter: 'id', 
+                        clientes_temporales: 'uuid, identification, sincronizado'
+                    });
+                    
+                    // Manejador global de errores para esta instancia
+                    db.on('versionchange', function() {
+                        db.close();
+                        location.reload();
+                    });
+
+                    await db.open().catch(async (err) => {
+                        console.error('❌ Error abriendo Dexie:', err.name, err.message);
+                        if (err.name === 'UpgradeError' || err.message.includes('primary key')) {
+                            console.warn('⚠️ Error crítico de esquema detectado. Reseteando base de datos...');
+                            await Dexie.delete(dbName);
+                            location.reload();
+                        }
+                    });
+
+                    window.db = db;
+                    console.log('✅ IndexedDB: Base de datos abierta y lista.');
+                    return db;
+                } catch (e) {
+                    console.error('❌ Error fatal inicializando IndexedDB:', e);
+                    return null;
+                }
+            })();
         </script>
 
         <!-- Registro del Service Worker para PWA -->
         <script>
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register("/sw.js");
+                    navigator.serviceWorker.register("/sw.js", { scope: '/' })
+                        .then(reg => {
+                            console.log('✅ Service Worker registrado con éxito en el scope /');
+                        })
+                        .catch(err => console.error('❌ Fallo al registrar Service Worker:', err));
                 });
             }
         </script>

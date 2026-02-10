@@ -3,6 +3,7 @@
 namespace App\Livewire\Tenant\VntCompany\Services;
 
 use App\Models\Tenant\Customer\VntCompany;
+use App\Models\Tenant\VntCustomer\VntCustomer;
 use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +26,13 @@ class CompanyService
     {
         $this->ensureTenantConnection();
 
+        // VERIFICACIÓN: Si el cliente ya existe por identificación, lo retornamos para evitar errores SQL
+        $existing = VntCompany::where('identification', $data['identification'])->first();
+        if ($existing) {
+            Log::info('ℹ️ CompanyService: Empresa ya existe, omitiendo creación.', ['id' => $existing->id]);
+            return $existing;
+        }
+
         // dd($data, $warehouses);
         $companyData = $this->prepareCompanyData($data);
         $company = VntCompany::create($companyData);
@@ -42,7 +50,43 @@ class CompanyService
         // Crear contacto básico automáticamente usando los datos de la empresa
         $this->contactService->createContactsForCompany($company, $contactAdditionalData);
 
+        // Crear registro en vnt_customers (3ra tabla requerida por el usuario)
+        $this->createVntCustomer($company, $data);
+
         return $company;
+    }
+
+    /**
+     * Crear registro en la tabla vnt_customers
+     */
+    private function createVntCustomer(VntCompany $company, array $data): void
+    {
+        $tenantId = session('tenant_id');
+        $tenant = Tenant::find($tenantId);
+        $ownerCompanyId = $tenant->company_id ?? 0;
+
+        // Verificar si ya existe en vnt_customers
+        $exists = VntCustomer::where('identification', $data['identification'])->exists();
+        if ($exists) {
+            Log::info('ℹ️ CompanyService: El registro en vnt_customers ya existe por identificación.');
+            return;
+        }
+
+        VntCustomer::create([
+            'company_id' => $ownerCompanyId,
+            'typePerson' => ($data['typeIdentificationId'] == 2) ? 'Juridica' : 'Natural',
+            'typeIdentificationId' => (int) $data['typeIdentificationId'],
+            'identification' => $data['identification'],
+            'regimeId' => $data['regimeId'] ?? 2,
+            'cityId' => $data['cityId'] ?? null,
+            'businessName' => $data['businessName'] ?? null,
+            'billingEmail' => $data['billingEmail'] ?? null,
+            'firstName' => $data['firstName'] ?? ($data['businessName'] ?? null),
+            'lastName' => $data['lastName'] ?? null,
+            'address' => $data['address'] ?? null,
+            'business_phone' => $data['business_phone'] ?? null,
+            'status' => 1,
+        ]);
     }
 
     /**
@@ -250,9 +294,10 @@ class CompanyService
      */
     private function ensureTenantConnection(): void
     {
-        $tenantId = session('tenant_id');
+        $tenantId = session('tenant_id') ?: (function_exists('tenant') ? tenant('id') : null);
 
         if (!$tenantId) {
+
             throw new \Exception('No tenant selected');
         }
 

@@ -1,9 +1,19 @@
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 ">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900 " x-data="quoterListOffline">
     <div class="max-w-md mx-auto">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
             
+        </div>
+
+        <!-- Banner de estado Offline -->
+        <div x-show="!isOnline" 
+             style="display: none;"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="-translate-y-full"
+             x-transition:enter-end="translate-y-0"
+             class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0 z-[60] flex items-center justify-center gap-2">
+            <span>⚠️ MODO OFFLINE ACTIVADO</span>
         </div>
 
         <!-- Search Input and Add Button - Sticky -->
@@ -18,22 +28,12 @@
                         class="flex-1 p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400"
                     >
                     <button
-                        wire:click="nuevaCotizacion"
-                        wire:loading.attr="disabled"
-                        wire:target="nuevaCotizacion"
-                        class="bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg shadow-sm flex items-center justify-center min-w-[52px] transition-all duration-200"
+                        @click="startNewQuote"
+                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg shadow-sm flex items-center justify-center min-w-[52px] transition-all duration-200"
                         title="Nueva Cotización"
                     >
-                        <!-- Spinner de loading -->
-                        <div wire:loading wire:target="nuevaCotizacion">
-                            <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </div>
-
                         <!-- Ícono normal -->
-                        <div wire:loading.remove wire:target="nuevaCotizacion">
+                        <div>
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                             </svg>
@@ -60,6 +60,67 @@
 
             <!-- Quotes List -->
             <div class="space-y-4">
+            <!-- Offline Quotes List (Alpine) -->
+            <template x-if="offlineQuotes.length > 0">
+                <div class="space-y-4 mb-4">
+                    <div class="flex items-center gap-2 px-1">
+                        <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Pendientes de Sincronización</h3>
+                    </div>
+
+                    <template x-for="quote in offlineQuotes" :key="quote.uuid">
+                        <div class="bg-orange-50 dark:bg-orange-900/10 rounded-lg shadow-sm border border-orange-200 dark:border-orange-800/50">
+                            <!-- Quote Header -->
+                            <div class="bg-orange-600 text-white p-3 rounded-t-lg">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <span class="font-semibold">Cotización Offline</span>
+                                        <br><span class="text-xs text-orange-200" x-text="quote.uuid.substring(0,8) + '...'"></span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-sm" x-text="new Date(quote.fecha).toLocaleDateString()"></span>
+                                        <br><span class="text-xs text-orange-200" x-text="new Date(quote.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quote Content -->
+                            <div class="p-4">
+                                <div class="mb-3">
+                                    <template x-if="quote.customer">
+                                        <div>
+                                            <p class="text-base font-semibold text-gray-800 dark:text-gray-200" x-text="quote.customer.businessName || quote.customer.firstName"></p>
+                                            <p class="text-sm text-gray-600 dark:text-gray-400" x-text="quote.customer.identification"></p>
+                                        </div>
+                                    </template>
+                                    <template x-if="!quote.customer">
+                                        <p class="text-base text-gray-400">Sin cliente asignado</p>
+                                    </template>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Estimado</span>
+                                    <p class="text-lg font-bold text-gray-800 dark:text-gray-200" x-text="'$' + new Intl.NumberFormat('es-CO').format(quote.total)"></p>
+                                    <p class="text-xs text-orange-600 dark:text-orange-400 mt-1">⚠️ Guardado en celular</p>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        @click="editOfflineQuote(quote)"
+                                        class="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        <span>Editar Offline</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
             @forelse($quotes as $quote)
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                     <!-- Quote Header -->
@@ -254,25 +315,25 @@
                         </p>
                         @if(!$search)
                             <button
-                                wire:click="nuevaCotizacion"
-                                wire:loading.attr="disabled"
-                                wire:target="nuevaCotizacion"
-                                class="bg-green-500 hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
-                            >
-                                <!-- Spinner de loading -->
-                                <div wire:loading wire:target="nuevaCotizacion" class="flex items-center gap-2">
-                                    <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <span>Creando...</span>
-                                </div>
+                    @click="startNewQuote"
+                    :disabled="loadingNewQuote"
+                    :class="loadingNewQuote ? 'opacity-75 cursor-wait' : ''"
+                    class="bg-[#2CBF64] hover:bg-green-600 text-white rounded-xl shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 w-12 h-12"
+                    title="Nueva Cotización"
+                >
+                    <!-- Spinner de loading -->
+                    <svg x-show="loadingNewQuote" class="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
 
-                                <!-- Texto normal -->
-                                <span wire:loading.remove wire:target="nuevaCotizacion">Crear Primera Cotización</span>
-                            </button>
-                        @endif
-                    </div>
+                    <!-- Ícono normal -->
+                    <svg x-show="!loadingNewQuote" class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </button>
+                    @endif
+                </div>
                 </div>
             @endforelse
         </div>
@@ -286,5 +347,167 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('quoterListOffline', () => ({
+            offlineQuotes: [],
+            isOnline: navigator.onLine,
+            filteredQuotes: [], // Para búsqueda local
+            loadingNewQuote: false, // Estado de carga para nueva cotización
+
+            async init() {
+                // Escuchar cambios de conexión
+                window.addEventListener('online', async () => {
+                    this.isOnline = true;
+                    console.log('🌐 Conexión recuperada en Lista');
+                    await this.syncPendingOrders();
+                    await this.loadOfflineQuotes();
+                });
+                
+                window.addEventListener('offline', () => {
+                    this.isOnline = false;
+                    this.loadOfflineQuotes();
+                });
+                
+                // Carga inicial
+                await this.loadOfflineQuotes();
+
+                // Si ya estamos online al cargar, intentar sincronizar
+                if(this.isOnline) {
+                    await this.syncPendingOrders();
+                }
+            },
+
+            async getDb() {
+                let attempts = 0;
+                while (!window.db && attempts < 20) { 
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                return window.db;
+            },
+
+            async loadOfflineQuotes() {
+                const db = await this.getDb();
+                if (!db) return;
+
+                try {
+                    // Cargar pedidos no sincronizados
+                    this.offlineQuotes = await db.pedidos
+                        .where('sincronizado').equals(0)
+                        .reverse()
+                        .toArray();
+                    
+                    console.log('📱 Cotizaciones offline cargadas:', this.offlineQuotes.length);
+                } catch (e) {
+                    console.error('❌ Error cargando cotizaciones offline:', e);
+                }
+            },
+
+            async clearLocalState() {
+                const db = await this.getDb();
+                if (db) {
+                    await db.estado_quoter.delete('actual');
+                    console.log('🧹 Estado local limpiado para nueva cotización');
+                }
+            },
+
+            async startNewQuote() {
+                if (this.loadingNewQuote) return;
+                this.loadingNewQuote = true;
+                
+                // 1. Limpiar estado local
+                await this.clearLocalState();
+                
+                // 2. Redirigir a ruta móvil directamente (Offline Safe)
+                // ?clear=1 fuerza al servidor a limpiar la sesión si hay internet
+                window.location.href = "{{ route('tenant.quoter.products.mobile') }}?clear=1";
+            },
+
+            async editOfflineQuote(quote) {
+                const db = await this.getDb();
+                if (!db) return;
+
+                try {
+                    // 1. Preparar el estado "actual" con los datos de esta cotización
+                    await db.estado_quoter.put({
+                        id: 'actual',
+                        cart: JSON.parse(JSON.stringify(quote.items)),
+                        customer: quote.customer ? JSON.parse(JSON.stringify(quote.customer)) : null,
+                        uuid: quote.uuid, // IMPORTANTE: Pasar el UUID para que sea un UPDATE
+                        timestamp: new Date().toISOString()
+                    });
+
+                    // 2. Redirigir al editor (mobile-product-quoter)
+                    // Usamos la ruta directa móvil para evitar redirecciones de servidor que fallan offline
+                    window.location.href = "{{ route('tenant.quoter.products.mobile') }}"; 
+
+                } catch (e) {
+                    console.error('❌ Error al preparar edición offline:', e);
+                    alert('Error al abrir la cotización: ' + e.message);
+                }
+            },
+
+            async syncPendingOrders() {
+                if (!this.isOnline) return;
+                
+                const db = await this.getDb();
+                if (!db) return;
+
+                const pending = await db.pedidos.where('sincronizado').equals(0).toArray();
+                if (pending.length === 0) return;
+
+                console.log(`🔄 [Lista] Sincronizando ${pending.length} pedidos pendientes...`);
+
+                // Mostrar toast de inicio de sincronización
+                const validPedidos = pending.filter(p => p.items && p.items.length > 0);
+                
+                if (validPedidos.length > 0) {
+                     Swal.fire({
+                        title: 'Sincronizando...',
+                        text: 'Subiendo pedidos offline al servidor',
+                        toast: true,
+                        position: 'top-end',
+                        timer: 3000,
+                        showConfirmButton: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+                }
+
+                for (const order of validPedidos) {
+                    try {
+                        // Llamar al endpoint de Livewire para procesar
+                        const response = await @this.processOfflineOrder(order);
+                        
+                        if (response && response.success) {
+                            // Marcar como sincronizado en local
+                            await db.pedidos.update(order.id || order.uuid, { sincronizado: 1 });
+                            console.log('✅ [Lista] Pedido sincronizado:', order.uuid);
+                        }
+                    } catch (e) {
+                        console.error('❌ [Lista] Error sincronizando pedido:', e);
+                    }
+                }
+                
+                // Recargar lista local (deberían desaparecer de la sección naranja)
+                await this.loadOfflineQuotes();
+                
+                // Recargar lista del servidor (Livewire) para que aparezcan en blanco
+                @this.dispatch('refresh-component'); 
+                @this.call('$refresh');
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Sincronización Completada!',
+                    toast: true,
+                    position: 'top-end',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        }));
+    });
+</script>
 
 

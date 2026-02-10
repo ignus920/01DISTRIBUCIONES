@@ -641,6 +641,40 @@ class Quoter extends Component
     }
 
     /**
+     * Procesa un pedido offline recibido desde el frontend
+     * 
+     * @param array $orderData Datos del pedido (uuid, items, customer, etc.)
+     * @return array Resultado de la operación
+     */
+    public function processOfflineOrder($orderData)
+    {
+        try {
+            Log::info('📥 [Livewire] Recibido pedido offline para sincronizar', ['uuid' => $orderData['uuid'] ?? 'N/A']);
+
+            // Validar que tengamos los datos mínimos
+            if (empty($orderData)) {
+                 return ['success' => false, 'message' => 'Datos de pedido vacíos'];
+            }
+
+            // Despachar el Job
+            \App\Jobs\Tenant\Quoter\ProcessOfflineOrderJob::dispatch(
+                $orderData,
+                Auth::id(), 
+                session('warehouse_id', 1),
+                session('branch_id', 1)
+            );
+
+            return ['success' => true];
+        } catch (\Exception $e) {
+            Log::error('❌ [Livewire] Error procesando pedido offline', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Abrir modal de confirmación de pedido
      * 
      * @param int|null $quoteId ID de la cotización a confirmar (opcional)

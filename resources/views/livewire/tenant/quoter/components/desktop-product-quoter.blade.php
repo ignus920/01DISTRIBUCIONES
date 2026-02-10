@@ -784,8 +784,8 @@ $header = 'Seleccionar productos';
     });
 
     // Variables para navegación por teclado en búsqueda de clientes (Desktop)
-    var selectedCustomerIndexDesktop = -1;
-    var customerResultsDesktop = [];
+    window.selectedCustomerIndexDesktop = window.selectedCustomerIndexDesktop || -1;
+    window.customerResultsDesktop = window.customerResultsDesktop || [];
 
     // Función para manejar navegación por teclado en búsqueda de clientes (Desktop)
     function handleCustomerSearchKeydownDesktop(event) {
@@ -845,8 +845,8 @@ $header = 'Seleccionar productos';
 
     // Reset de selección cuando cambian los resultados (Desktop)
     document.addEventListener('livewire:updated', () => {
-        selectedCustomerIndexDesktop = -1;
-        customerResultsDesktop = [];
+        window.selectedCustomerIndexDesktop = -1;
+        window.customerResultsDesktop = [];
     });
 </script>
 @endpush
