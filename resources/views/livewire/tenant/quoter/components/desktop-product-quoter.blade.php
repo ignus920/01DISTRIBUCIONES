@@ -3,7 +3,9 @@
 $header = 'Seleccionar productos';
 @endphp
 
-<div>
+<div x-data="quoterDesktop()" 
+     @customer-selected.window="showOfflineCreateForm = false"
+     :class="{ 'relative z-[9999]': showOfflineCreateForm }">
     <div class="flex">
         <!-- Área principal de productos -->
         <div class="flex-1 p-6">
@@ -303,36 +305,36 @@ $header = 'Seleccionar productos';
                     </div>
                     @endif
 
-                    @if(($showCreateCustomerButton || $showCreateCustomerForm) && auth()->user()->profile_id != 17)
-                    <!-- Formulario para crear/editar cliente -->
 
-                    @if (!$editingCustomerId)
-                    <div class="flex items-center justify-between">
-                        <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Crear Cliente</label>
-                        <button
-                            x-on:click="show = false"
-                            wire:click="clearCustomer"
-                            class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 ml-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+
+                    @if(auth()->user()->profile_id != 17)
+                    <!-- Lógica de Formulario Automático (Unificado: Online/Offline) -->
+                    <div
+                        wire:key="auto-form-logic-{{ strlen($customerSearch) }}-{{ count($customerSearchResults) }}-{{ $selectedCustomer ? 'sel' : 'no' }}" 
+                        x-init="
+                            // Alpine se reinicia cada vez que wire:key cambia
+                            console.log('Init Auto-Form', {
+                                len: @js(strlen($customerSearch)),
+                                results: @js(count($customerSearchResults)),
+                                selected: @js($selectedCustomer ? true : false)
+                            });
+
+                            if (@js(strlen($customerSearch) >= 3) && @js(count($customerSearchResults) === 0) && !@js($selectedCustomer)) {
+                                if (!showOfflineCreateForm) {
+                                    console.log('Opening form automatically (Desktop)');
+                                    showOfflineCreateForm = true;
+                                    newOfflineCustomer.identification = @js($customerSearch);
+                                    // newOfflineCustomer.businessName = ''; // Ya no se copia el valor de búsqueda al nombre
+                                }
+                            } else if (@js(count($customerSearchResults) > 0) || @js($selectedCustomer)) {
+                                showOfflineCreateForm = false;
+                            }
+                        "
+                    ></div>
+
+                    <div class="mt-2">
+                        @include('livewire.tenant.quoter.components.customer-quick-form')
                     </div>
-                    @endif
-
-                    @if (!$editingCustomerId)
-                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-2">
-                        @endif
-                        <livewire:tenant.vnt-company.vnt-company-form
-                            :reusable="true"
-                            :companyId="$editingCustomerId"
-                            key="customer-form-{{ $editingCustomerId ?? 'new' }}" />
-                        @if (!$editingCustomerId)
-                    </div>
-                    @endif
-
-
                     @endif
 
                     @if(!$selectedCustomer && !$showCreateCustomerForm && !$showCreateCustomerButton && auth()->user()->profile_id != 17)
@@ -367,14 +369,8 @@ $header = 'Seleccionar productos';
                             </div>
                             @endforeach
                         </div>
-                        @elseif(strlen($customerSearch) >= 1)
-                        <div class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
-                            <div class="p-3 text-sm text-gray-500 dark:text-gray-400">
-                                <div class="mb-2">No se encontraron clientes</div>
-
-                            </div>
-                        </div>
                         @endif
+
 
                     </div>
                     @endif
@@ -848,5 +844,45 @@ $header = 'Seleccionar productos';
         window.selectedCustomerIndexDesktop = -1;
         window.customerResultsDesktop = [];
     });
+
+    function quoterDesktop() {
+        return {
+            showOfflineCreateForm: false,
+            newOfflineCustomer: {
+                typeIdentificationId: 1,
+                identification: '',
+                businessName: '',
+                phone: '',
+                address: '',
+                billingEmail: '',
+                createUser: false
+            },
+            async saveOfflineCustomer() { // Mantenemos el nombre por compatibilidad con el componente include
+                if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
+                    Swal.fire('Error', 'Identificación y Nombre son obligatorios', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await @this.saveQuickCustomer(this.newOfflineCustomer);
+                    if (response && response.success) {
+                        this.showOfflineCreateForm = false;
+                        this.newOfflineCustomer = {
+                            typeIdentificationId: 1,
+                            identification: '',
+                            businessName: '',
+                            phone: '',
+                            address: '',
+                            billingEmail: '',
+                            createUser: false
+                        };
+                    }
+                } catch (e) {
+                    console.error('Error guardando cliente rápido:', e);
+                    Swal.fire('Error', 'No se pudo guardar el cliente', 'error');
+                }
+            }
+        }
+    }
 </script>
 @endpush

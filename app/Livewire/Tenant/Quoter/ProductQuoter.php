@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Tenant\Movements\InvReason;
 use App\Models\Tenant\Remissions\InvRemissions;
 use App\Models\Tenant\Remissions\InvDetailRemissions;
+use Illuminate\Support\Facades\Hash;
+use App\Models\Auth\User;
+use App\Models\Auth\UserTenant;
+use App\Livewire\Tenant\VntCompany\Services\CompanyService;
 
 class ProductQuoter extends Component
 {
@@ -2833,5 +2837,100 @@ class ProductQuoter extends Component
         }
     }
 
+    /**
+     * Crea un cliente y opcionalmente un usuario de forma rápida (Unificado Online)
+     */
+    public function saveQuickCustomer($customerData)
+    {
+        $this->ensureTenantConnection();
 
+        try {
+            DB::beginTransaction();
+
+            // 1. Preparar datos para el CompanyService
+            $companyData = [
+                'typeIdentificationId' => $customerData['typeIdentificationId'] ?: 1,
+                'identification' => $customerData['identification'],
+                'businessName' => $customerData['businessName'],
+                'firstName' => $customerData['businessName'],
+                'billingEmail' => $customerData['billingEmail'] ?? null,
+                'business_phone' => $customerData['phone'] ?? null,
+                'typePerson' => ($customerData['typeIdentificationId'] == 2) ? 'Juridica' : 'Natural',
+                'status' => 1,
+                'type' => 'CLIENTE',
+                'regimeId' => 2,
+                'fiscalResponsabilityId' => 1
+            ];
+
+            $warehouses = [
+                [
+                    'name' => 'Sucursal Principal',
+                    'address' => $customerData['address'] ?? 'Sin dirección',
+                    'district' => 'Sin Barrio',
+                    'cityId' => 1, // Bogotá por defecto
+                    'main' => 1,
+                    'status' => 1
+                ]
+            ];
+
+            $companyService = app(CompanyService::class);
+            $newCompany = $companyService->create($companyData, $warehouses);
+
+            // 2. Crear usuario si se solicitó
+            if (!empty($customerData['createUser']) && !empty($customerData['billingEmail'])) {
+                $existingUser = User::where('email', $customerData['billingEmail'])->first();
+                
+                if (!$existingUser) {
+                    $newUser = User::create([
+                        'name' => $customerData['businessName'],
+                        'email' => $customerData['billingEmail'],
+                        'password' => Hash::make('12345678'),
+                        'profile_id' => 17,
+                        'contact_id' => $newCompany->mainWarehouse?->contacts->first()?->id,
+                        'phone' => $customerData['phone'] ?? null,
+                    ]);
+
+                    UserTenant::create([
+                        'user_id' => $newUser->id,
+                        'tenant_id' => session('tenant_id'),
+                        'is_active' => 1,
+                    ]);
+
+                    // Copiar productos
+                    \App\Jobs\CopyProductsToClientJob::dispatch($newCompany->id);
+                }
+            }
+
+            DB::commit();
+
+            // 3. Seleccionar el nuevo cliente en el cotizador
+            $this->selectedCustomer = [
+                'id' => $newCompany->id,
+                'businessName' => $newCompany->businessName,
+                'firstName' => $newCompany->firstName,
+                'lastName' => $newCompany->lastName,
+                'identification' => $newCompany->identification,
+                'billingEmail' => $newCompany->billingEmail,
+            ];
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => 'Cliente creado y seleccionado exitosamente'
+            ]);
+
+            // Notificar a Alpine
+            $this->dispatch('customer-selected', customer: $this->selectedCustomer);
+
+            return ['success' => true, 'customerId' => $newCompany->id];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error en saveQuickCustomer: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al crear cliente: ' . $e->getMessage()
+            ]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
 }

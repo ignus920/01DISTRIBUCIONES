@@ -20,8 +20,13 @@
                 identification: '',
                 businessName: '',
                 phone: '',
-                address: ''
+                address: '',
+                billingEmail: '',
+                createUser: false
             },
+            serverCustomerSearch: @entangle('customerSearch'),
+            serverCustomerResults: @entangle('customerSearchResults'),
+            serverSelectedCustomer: @entangle('selectedCustomer'),
             localCart: @json(array_values($quoterItems)), // Inicializar con datos del servidor
             localCustomers: [], // Caché de clientes
             selectedLocalCustomer: null,
@@ -609,6 +614,8 @@
                         address: this.newOfflineCustomer.address || 'Sin dirección',
                         business_phone: this.newOfflineCustomer.phone || '',
                         typeIdentificationId: parseInt(this.newOfflineCustomer.typeIdentificationId),
+                        billingEmail: this.newOfflineCustomer.billingEmail || '',
+                        createUser: this.newOfflineCustomer.createUser ? 1 : 0,
                         isTemporary: true, // Flag importante para el backend
                         sincronizado: 0,
                         term_id: 1, // Contado por defecto
@@ -631,7 +638,9 @@
                         identification: '',
                         businessName: '',
                         phone: '',
-                        address: ''
+                        address: '',
+                        billingEmail: '',
+                        createUser: false
                     };
 
                     Swal.fire({
@@ -716,7 +725,9 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
 
 
     {{-- Contenedor con lógica offline --}}
-    <div x-data="quoterOffline" class="fixed inset-0 z-[35] bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div x-data="quoterOffline" 
+         class="fixed inset-0 bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden transition-all duration-300"
+         :class="showOfflineCreateForm ? 'z-[9999]' : 'z-[35]'">
         
         <!-- Banner de estado Offline -->
         <div x-show="!isOnline || forceOffline" 
@@ -1155,7 +1166,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                     <div class="space-y-2 relative">
                         <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Buscar Cliente</label>
                         
-                        <template x-if="isOnline && !@js($selectedCustomer)">
+                        <div x-show="isOnline && !serverSelectedCustomer">
                             <input
                                 wire:model.live.debounce.300ms="customerSearch"
                                 type="text"
@@ -1163,9 +1174,9 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                 class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                                 autocomplete="off"
                                 id="customerSearchInputMobile">
-                        </template>
+                        </div>
 
-                        <template x-if="(!isOnline || forceOffline) && !selectedLocalCustomer">
+                        <div x-show="(!isOnline || forceOffline) && !selectedLocalCustomer">
                             <input
                                 x-model="localSearch"
                                 @input="searchLocalCustomer($event.target.value)"
@@ -1173,7 +1184,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                 placeholder="Buscar en memoria del celular..."
                                 class="w-full px-3 py-2 text-sm border border-orange-300 rounded-lg bg-orange-50/50 dark:bg-gray-700 dark:border-orange-900/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500"
                                 autocomplete="off">
-                        </template>
+                        </div>
 
                         <!-- Resultados Offline (Solo si hay coincidencias) -->
                         <template x-for="item in [1]" :key="item">
@@ -1190,49 +1201,21 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                         </div>
                         </template>
 
-                        <!-- Botón Crear Nuevo (Solo si NO hay coincidencias pero sí búsqueda) -->
-                        <template x-if="(!isOnline || forceOffline) && localCustomers.length === 0 && localSearch.length > 0">
-                            <div class="relative w-full mt-2 animate-in zoom-in duration-200">
-                                <button @click="showOfflineCreateForm = true; localCustomers = []; newOfflineCustomer.identification = localSearch" 
-                                        class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2 border border-orange-600">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                    Crear Nuevo: <span x-text="localSearch"></span>
-                                </button>
-                            </div>
-                        </template>
+                        <div x-effect="
+                            const query = isOnline ? serverCustomerSearch : localSearch;
+                            const resultsCount = isOnline ? serverCustomerResults.length : localCustomers.length;
+                            const selected = isOnline ? serverSelectedCustomer : selectedLocalCustomer;
 
-                        <!-- Formulario de Creación Rápida Offline -->
-                        <template x-if="showOfflineCreateForm">
-                            <div class="bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-900/40 rounded-lg p-4 mt-2 shadow-lg animate-in zoom-in duration-200">
-                                <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-orange-500"></span>
-                                    Nuevo Cliente (Offline)
-                                </h3>
-                                
-                                <div class="space-y-3">
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <select x-model="newOfflineCustomer.typeIdentificationId" class="col-span-1 px-2 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                            <option value="1">C.C.</option>
-                                            <option value="2">NIT</option>
-                                        </select>
-                                        <input x-model="newOfflineCustomer.identification" type="tel" placeholder="Documento" class="col-span-2 px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                    </div>
-                                    
-                                    <input x-model="newOfflineCustomer.businessName" type="text" placeholder="Nombre / Razón Social" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                    
-                                    
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <input x-model="newOfflineCustomer.phone" type="tel" placeholder="Teléfono" class="px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                        <input x-model="newOfflineCustomer.address" type="text" placeholder="Dirección" class="px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                    </div>
-                                    
-                                    <div class="flex gap-2 pt-1">
-                                        <button @click="showOfflineCreateForm = false" class="flex-1 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg text-xs font-bold">Cancelar</button>
-                                        <button @click="saveOfflineCustomer()" class="flex-1 py-2 bg-orange-600 text-white hover:bg-orange-700 rounded-lg text-xs font-bold">Guardar</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
+                            if (query && query.length >= 3 && resultsCount === 0 && !selected) {
+                                if (!showOfflineCreateForm) {
+                                    showOfflineCreateForm = true;
+                                    newOfflineCustomer.identification = query;
+                                }
+                            } else if (resultsCount > 0 || selected) {
+                                showOfflineCreateForm = false;
+                            }
+                        "></div>
+
 
                         <!-- Caja de Cliente seleccionado Offline -->
                         <template x-if="(!isOnline || forceOffline) && selectedLocalCustomer">
@@ -1266,13 +1249,6 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                         <div class="text-gray-600 dark:text-gray-300">{{ $customer['display_name'] }}</div>
                                     </div>
                                     @endforeach
-                                </div>
-                                @elseif(strlen($customerSearch) >= 1)
-                                <div class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
-                                    <div class="p-3 text-sm text-gray-500 dark:text-gray-400">
-                                        <div class="mb-2">No se encontraron clientes</div>
-                                        <button wire:click="openCustomerModal" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs">Crear nuevo cliente</button>
-                                    </div>
                                 </div>
                                 @endif
                             </div>
@@ -1632,6 +1608,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
 </div>
 </div>
 </div>
+    @include('livewire.tenant.quoter.components.customer-quick-form')
 </div>
 
 

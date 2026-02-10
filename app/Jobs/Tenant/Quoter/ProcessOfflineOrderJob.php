@@ -13,6 +13,9 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use App\Models\Auth\User;
+use App\Models\Auth\UserTenant;
 
 class ProcessOfflineOrderJob implements ShouldQueue
 {
@@ -121,6 +124,43 @@ class ProcessOfflineOrderJob implements ShouldQueue
                         $companyService = app(CompanyService::class);
                         $newCompany = $companyService->create($companyData, $warehouses);
                         $customerId = $newCompany->id;
+
+                        // NUEVO: Crear usuario si se marcó en el formulario offline
+                        if (isset($offlineCustomer['createUser']) && $offlineCustomer['createUser'] && !empty($offlineCustomer['billingEmail'])) {
+                            try {
+                                Log::info("👤 [Job] Intentando crear usuario para cliente offline: {$offlineCustomer['billingEmail']}");
+                                
+                                // Verificar si el usuario ya existe
+                                $existingUser = User::where('email', $offlineCustomer['billingEmail'])->first();
+                                
+                                if (!$existingUser) {
+                                    $newUser = User::create([
+                                        'name' => $offlineCustomer['businessName'],
+                                        'email' => $offlineCustomer['billingEmail'],
+                                        'password' => Hash::make('12345678'), // Password default
+                                        'profile_id' => 17, // Perfil Tienda
+                                        'contact_id' => $newCompany->mainWarehouse?->contacts->first()?->id,
+                                        'phone' => $offlineCustomer['phone'] ?? null,
+                                    ]);
+
+                                    UserTenant::create([
+                                        'user_id' => $newUser->id,
+                                        'tenant_id' => $this->tenantId,
+                                        'is_active' => 1,
+                                    ]);
+
+                                    // Copiar productos en background
+                                    \App\Jobs\CopyProductsToClientJob::dispatch($newCompany->id);
+                                    
+                                    Log::info("✅ [Job] Usuario creado exitosamente para el cliente sincronizado.");
+                                } else {
+                                    Log::warning("⚠️ [Job] El email {$offlineCustomer['billingEmail']} ya está registrado como usuario.");
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("❌ [Job] Error al crear usuario offline: " . $e->getMessage());
+                                // No fallar el job principal si falla la creación del usuario
+                            }
+                        }
                     }
                 } else {
                     // Si ya existía, usamos su ID o buscamos por identificación.
