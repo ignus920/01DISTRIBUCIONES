@@ -181,6 +181,12 @@ class TatCustomersManager extends Component
     {
         $customer = TatCustomer::findOrFail($id);
 
+        // Verificar si el cliente está activo
+        if (!$customer->status) {
+            session()->flash('error', 'No se puede editar un cliente desactivado. Primero debe activarlo.');
+            return;
+        }
+
         $this->editingId = $id;
         $this->typePerson = $customer->typePerson ?? '';
         $this->typeIdentificationId = $customer->typeIdentificationId;

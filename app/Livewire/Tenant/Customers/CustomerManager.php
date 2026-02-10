@@ -129,6 +129,12 @@ class CustomerManager extends Component
         $this->ensureTenantConnection();
 
         $item = Customer::findOrFail($id);
+
+        // Verificar si el cliente está activo
+        if (!$item->active) {
+            session()->flash('error', 'No se puede editar un cliente desactivado. Primero debe activarlo.');
+            return;
+        }
         $this->editingId = $id;
         $this->name = $item->name;
         $this->email = $item->email;
@@ -180,7 +186,15 @@ class CustomerManager extends Component
     {
         $this->ensureTenantConnection();
 
-        Customer::findOrFail($id)->delete();
+        $item = Customer::findOrFail($id);
+
+        // Verificar si el cliente está activo
+        if (!$item->active) {
+            session()->flash('error', 'No se puede eliminar un cliente desactivado. Primero debe activarlo.');
+            return;
+        }
+
+        $item->delete();
         session()->flash('message', 'Cliente eliminado exitosamente.');
     }
 
