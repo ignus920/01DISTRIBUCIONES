@@ -293,7 +293,7 @@ class VntCompanyForm extends Component
         $route = TatCompanyRoute::where('company_id', $id)->first();
         $this->routeId = $route ? $route->route_id : '';
         $this->district = $company->district ?? '';
-
+        $this->type = $company->type ?? '';
 
         // Log detallado de la carga de datos para verificación
         Log::info('Company data loaded in edit()', [
@@ -313,6 +313,8 @@ class VntCompanyForm extends Component
                 'checkDigit' => $this->checkDigit,
                 'verification_digit' => $this->verification_digit,
                 'status' => $this->status,
+                'type' => $this->type,
+                'district' => $this->district,
             ]
         ]);
 

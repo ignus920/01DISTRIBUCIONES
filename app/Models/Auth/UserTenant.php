@@ -33,7 +33,7 @@ class UserTenant extends Model
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Auth::class);
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**

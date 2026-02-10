@@ -645,7 +645,17 @@ class UserRapForm extends Component
             // 4. Buscar relación UserTenant
             $userTenant = UserTenant::where('user_id', $userId)
                 ->where('tenant_id', $tenantId)
-                ->firstOrFail();
+                ->first();
+
+            // Si no existe la relación, crearla
+            if (!$userTenant) {
+                $userTenant = UserTenant::create([
+                    'user_id' => $userId,
+                    'tenant_id' => $tenantId,
+                    'role' => $user->profile_id,
+                    'is_active' => true
+                ]);
+            }
             // dd($userTenant);
             // 5. Iniciar transacción
             DB::beginTransaction();

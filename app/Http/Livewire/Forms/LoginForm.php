@@ -58,6 +58,29 @@ class LoginForm extends Form
             ]);
         }
 
+        // Validar si el usuario está activo después de autenticación exitosa
+        $authenticatedUser = Auth::user();
+
+        // Verificar si el usuario tiene contacto y está desactivado
+        if ($authenticatedUser->contact && !$authenticatedUser->contact->status) {
+            Auth::logout();
+
+            \Illuminate\Support\Facades\Log::warning('🚫 Login bloqueado - Usuario desactivado', [
+                'email' => $this->email,
+                'user_id' => $authenticatedUser->id,
+                'contact_status' => $authenticatedUser->contact->status
+            ]);
+
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'form.email' => 'Tu cuenta ha sido desactivada. Por favor, contacta al administrador.',
+            ]);
+        }
+
+        // Verificar si el usuario tiene acceso activo al tenant actual (opcional)
+        // Esta validación se puede hacer más adelante cuando el usuario seleccione un tenant
+
         \Illuminate\Support\Facades\Log::info('✅ Login exitoso', [
             'email' => $this->email,
             'user_id' => Auth::id()
