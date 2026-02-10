@@ -190,7 +190,7 @@
                             </td>
                             <td class="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
                                 @php
-                                    $contact = $remission->quote->warehouse->contacts->first();
+                                    $contact = $remission->quote?->warehouse?->contacts?->first();
                                 @endphp
                                 {{ $contact ? ($contact->business_phone ?? $contact->personal_phone) : 'Sin contacto' }}
                             </td>
