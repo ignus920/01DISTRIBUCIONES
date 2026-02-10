@@ -668,28 +668,43 @@ class UserRapForm extends Component
                 $this->errorMessage = 'No tienes permisos para crear usuarios';
                 return;
             }
-            
-            $company = VntCompany::with(['warehouses.contacts', 'contacts'])->where('billingEmail', $user->email)->firstOrFail();
-             // Toggle company status
-            $newStatus = $company->status ? 0 : 1;
-            $company->update(['status' => $newStatus]);
-             // Update all warehouses status
-            foreach ($company->warehouses as $warehouse) {
-                 $warehouse->update(['status' => $newStatus]);
-                // Update all contacts for this warehouse
-                foreach ($warehouse->contacts as $contact) {
-                   $contact->update(['status' => $newStatus]);
-                } 
-            }
-             
-             // Update all contacts directly from company (vnt_contacts)
-            foreach ($company->contacts as $contact) {
-              $contact->update(['status' => $newStatus]);
+
+            // 7. Verificar si el usuario es de perfil "Tienda" (profile_id = 17)
+            if ($user->profile_id == 17) {
+                // Usuario de tienda: buscar empresa asociada y actualizar todo
+                $company = VntCompany::with(['warehouses.contacts', 'contacts'])->where('billingEmail', $user->email)->first();
+
+                if ($company) {
+                    // Toggle company status
+                    $newStatus = $company->status ? 0 : 1;
+                    $company->update(['status' => $newStatus]);
+
+                    // Update all warehouses status
+                    foreach ($company->warehouses as $warehouse) {
+                        $warehouse->update(['status' => $newStatus]);
+                        // Update all contacts for this warehouse
+                        foreach ($warehouse->contacts as $contact) {
+                            $contact->update(['status' => $newStatus]);
+                        }
+                    }
+
+                    // Update all contacts directly from company (vnt_contacts)
+                    foreach ($company->contacts as $contact) {
+                        $contact->update(['status' => $newStatus]);
+                    }
+                } else {
+                    // Si no se encuentra la empresa para usuario tienda, solo actualizar contacto
+                    Log::warning('Usuario tienda sin empresa asociada', [
+                        'user_id' => $userId,
+                        'email' => $user->email
+                    ]);
+                    $user->contact->update(['status' => $newStatus]);
+                }
+            } else {
+                // Usuario de otros perfiles: solo actualizar contacto
+                $user->contact->update(['status' => $newStatus]);
             }
 
-            // 7. Actualizar vnt_contacts
-            $user->contact->update(['status' => $newStatus]);
-            
             // 8. Actualizar user_tenants
             $userTenant->update(['is_active' => $newStatus]);
             

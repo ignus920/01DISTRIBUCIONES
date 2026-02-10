@@ -39,16 +39,20 @@ class UserVntsSelect extends Component
          $sessionTenant = $this->getTenantId();
 
         return User::query()
+            ->join('vnt_contacts', 'users.contact_id', '=', 'vnt_contacts.id')
             ->whereHas('tenants', function ($query) use ($sessionTenant) {
-                $query->where('tenants.id', $sessionTenant);
+                $query->where('tenants.id', $sessionTenant)
+                      ->where('user_tenants.is_active', true); // Solo usuarios activos en user_tenants
             })
             ->with(['profile', 'contact.warehouse.company'])
             ->when(function ($query) {
                 $query->where(function ($q) {
-                     $q->where('profile_id', 4);
+                     $q->where('users.profile_id', 4);
                 });
             })
-            ->orderBy('name')->get(['id', 'name', 'email']);
+            ->where('vnt_contacts.status', 1) // Solo usuarios con contacto activo
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name', 'users.email']);
     }
 
     public function render()
