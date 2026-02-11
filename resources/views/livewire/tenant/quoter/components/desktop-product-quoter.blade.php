@@ -3,7 +3,9 @@
 $header = 'Seleccionar productos';
 @endphp
 
-<div>
+<div x-data="quoterDesktop()" 
+     @customer-selected.window="showOfflineCreateForm = false"
+     :class="{ 'relative z-[9999]': showOfflineCreateForm }">
     <div class="flex">
         <!-- Área principal de productos -->
         <div class="flex-1 p-6">
@@ -23,7 +25,21 @@ $header = 'Seleccionar productos';
                     </svg>
                     Regresar a cotizaciones
                 </a>
+
+                 
                 @endif
+   <!-- Boton solo para ruteros -->
+                @if(auth()->check() && auth()->user()->profile_id == 4)
+                <button wire:click="openRoutes"
+                                class="inline-flex items-center px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                                    </path>
+                                </svg>
+                                Ruteros
+                            </button>
+                 @endif
             </div>
 
             <!-- Barra de búsqueda y filtros -->
@@ -129,16 +145,23 @@ $header = 'Seleccionar productos';
                             @endphp
                             @if(!empty($allPrices))
                             @php
-                            $filteredPrices = auth()->user()->profile_id == 17
-                            ? collect($allPrices)->filter(fn($price, $label) => $label === 'Precio Regular')
-                            : collect($allPrices);
+                            $userProfileId = auth()->user()->profile_id;
+                            $filteredPrices = collect($allPrices);
+                            
+                            if ($userProfileId == 17) {
+                                // Perfil Tienda (TAT): Solo Precio Regular
+                                $filteredPrices = $filteredPrices->filter(fn($price, $label) => $label === 'Precio Regular');
+                            } elseif ($userProfileId == 4) {
+                                // Perfil Vendedor: Solo Precio Base (P1)
+                                $filteredPrices = $filteredPrices->filter(fn($price, $label) => 
+                                    strtolower($label) === 'p1' || strtolower($label) === 'precio base'
+                                );
+                            }
+                            
                             $priceCount = $filteredPrices->count();
                             @endphp
                             <div class="mb-2 grid {{ $priceCount == 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-1">
-                                @foreach($allPrices as $label => $price)
-                                @if(auth()->user()->profile_id == 17)
-                                {{-- Solo mostrar Precio Regular para perfil 17 --}}
-                                @if($label === 'Precio Regular')
+                                @foreach($filteredPrices as $label => $price)
                                 @php
                                 $isDisabled = $isSelected;
                                 @endphp
@@ -162,33 +185,6 @@ $header = 'Seleccionar productos';
                                         <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                 </button>
-                                @endif
-                                @else
-                                {{-- Mostrar todos los precios para otros perfiles --}}
-                                @php
-                                $isDisabled = $isSelected;
-                                @endphp
-                                <button
-                                    title="{{ $label }}"
-                                    wire:click="addToQuoter({{ $product->id }}, {{ $price }}, '{{ $label }}')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="addToQuoter"
-                                    x-on:click.stop
-                                    @if($isDisabled) disabled @endif
-                                    class="px-2 py-1 text-center rounded border transition-colors min-h-[28px] flex items-center justify-center {{ $isDisabled ? 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed': 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer'}}">
-
-                                    <!-- Contenido normal -->
-                                    <div wire:loading.remove wire:target="addToQuoter" class="font-bold text-xs {{ $isDisabled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white' }}">
-                                        ${{ number_format($price) }}
-                                    </div>
-
-                                    <!-- Spinner de carga -->
-                                    <svg wire:loading wire:target="addToQuoter" class="w-3 h-3 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </button>
-                                @endif
                                 @endforeach
                             </div>
                             @else
@@ -303,36 +299,36 @@ $header = 'Seleccionar productos';
                     </div>
                     @endif
 
-                    @if(($showCreateCustomerButton || $showCreateCustomerForm) && auth()->user()->profile_id != 17)
-                    <!-- Formulario para crear/editar cliente -->
 
-                    @if (!$editingCustomerId)
-                    <div class="flex items-center justify-between">
-                        <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Crear Cliente</label>
-                        <button
-                            x-on:click="show = false"
-                            wire:click="clearCustomer"
-                            class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 ml-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+
+                    @if(auth()->user()->profile_id != 17)
+                    <!-- Lógica de Formulario Automático (Unificado: Online/Offline) -->
+                    <div
+                        wire:key="auto-form-logic-{{ strlen($customerSearch) }}-{{ count($customerSearchResults) }}-{{ $selectedCustomer ? 'sel' : 'no' }}" 
+                        x-init="
+                            // Alpine se reinicia cada vez que wire:key cambia
+                            console.log('Init Auto-Form', {
+                                len: @js(strlen($customerSearch)),
+                                results: @js(count($customerSearchResults)),
+                                selected: @js($selectedCustomer ? true : false)
+                            });
+
+                            if (@js(strlen($customerSearch) >= 3) && @js(count($customerSearchResults) === 0) && !@js($selectedCustomer)) {
+                                if (!showOfflineCreateForm) {
+                                    console.log('Opening form automatically (Desktop)');
+                                    showOfflineCreateForm = true;
+                                    newOfflineCustomer.identification = @js($customerSearch);
+                                    // newOfflineCustomer.businessName = ''; // Ya no se copia el valor de búsqueda al nombre
+                                }
+                            } else if (@js(count($customerSearchResults) > 0) || @js($selectedCustomer)) {
+                                showOfflineCreateForm = false;
+                            }
+                        "
+                    ></div>
+
+                    <div class="mt-2">
+                        @include('livewire.tenant.quoter.components.customer-quick-form')
                     </div>
-                    @endif
-
-                    @if (!$editingCustomerId)
-                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-2">
-                        @endif
-                        <livewire:tenant.vnt-company.vnt-company-form
-                            :reusable="true"
-                            :companyId="$editingCustomerId"
-                            key="customer-form-{{ $editingCustomerId ?? 'new' }}" />
-                        @if (!$editingCustomerId)
-                    </div>
-                    @endif
-
-
                     @endif
 
                     @if(!$selectedCustomer && !$showCreateCustomerForm && !$showCreateCustomerButton && auth()->user()->profile_id != 17)
@@ -367,14 +363,8 @@ $header = 'Seleccionar productos';
                             </div>
                             @endforeach
                         </div>
-                        @elseif(strlen($customerSearch) >= 1)
-                        <div class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
-                            <div class="p-3 text-sm text-gray-500 dark:text-gray-400">
-                                <div class="mb-2">No se encontraron clientes</div>
-
-                            </div>
-                        </div>
                         @endif
+
 
                     </div>
                     @endif
@@ -720,6 +710,12 @@ $header = 'Seleccionar productos';
             @endif
         </div>
     </div>
+
+
+       <!-- Routes Modal -->
+    @if($showRoutesModal)
+        @livewire('tenant.vnt-company.company-routes-modal', ['showModal' => true], key('routes-modal'))
+    @endif
 </div>
 
 
@@ -848,5 +844,68 @@ $header = 'Seleccionar productos';
         window.selectedCustomerIndexDesktop = -1;
         window.customerResultsDesktop = [];
     });
+
+    function quoterDesktop() {
+        return {
+            showOfflineCreateForm: false,
+            newOfflineCustomer: {
+                id: null,
+                typeIdentificationId: 1,
+                identification: '',
+                businessName: '',
+                phone: '',
+                address: '',
+                billingEmail: '',
+                createUser: false,
+                route_id: @js($newCustomerRouteId)
+            },
+            init() {
+                // Escuchar evento de carga de datos para edición
+                window.addEventListener('load-customer-data', (event) => {
+                    const data = event.detail.customer || event.detail[0]?.customer || event.detail;
+                    console.log('Cargando datos para edición:', data);
+                    this.newOfflineCustomer = {
+                        id: data.id || null,
+                        typeIdentificationId: data.typeIdentificationId || 1,
+                        identification: data.identification || '',
+                        businessName: data.businessName || '',
+                        phone: data.phone || '',
+                        address: data.address || '',
+                        billingEmail: data.billingEmail || '',
+                        createUser: false, // Por seguridad no activamos creación de usuario en edición si no se pide
+                        route_id: data.route_id || @js($newCustomerRouteId)
+                    };
+                    this.showOfflineCreateForm = true;
+                });
+            },
+            async saveOfflineCustomer() { // Mantenemos el nombre por compatibilidad con el componente include
+                if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
+                    Swal.fire('Error', 'Identificación y Nombre son obligatorios', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await @this.saveQuickCustomer(this.newOfflineCustomer);
+                    if (response && response.success) {
+                        this.showOfflineCreateForm = false;
+                        this.newOfflineCustomer = {
+                            id: null,
+                            typeIdentificationId: 1,
+                            identification: '',
+                            businessName: '',
+                            phone: '',
+                            address: '',
+                            billingEmail: '',
+                            createUser: false,
+                            route_id: @js($newCustomerRouteId)
+                        };
+                    }
+                } catch (e) {
+                    console.error('Error guardando cliente rápido:', e);
+                    Swal.fire('Error', 'No se pudo guardar el cliente', 'error');
+                }
+            }
+        }
+    }
 </script>
 @endpush

@@ -18,8 +18,9 @@ class RouteSelect extends Component
     public $class = 'mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-left bg-white cursor-default sm:text-sm py-2 pl-3 pr-10 relative';
     public $search = '';
     public $name = 'routeId';
+    public $salesmanId = null;
 
-    public function mount($selectedValue = '', $eventName = 'route-changed', $placeholder = 'Seleccionar ruta', $label = 'Ruta', $required = true, $showLabel = true, $district = null, $class = null, $name = 'routeId')
+    public function mount($selectedValue = '', $eventName = 'route-changed', $placeholder = 'Seleccionar ruta', $label = 'Ruta', $required = true, $showLabel = true, $district = null, $class = null, $name = 'routeId', $salesmanId = null)
     {
         $this->selectedValue = $selectedValue;
         $this->eventName = $eventName;
@@ -29,6 +30,7 @@ class RouteSelect extends Component
         $this->showLabel = $showLabel;
         $this->district = $district;
         $this->name = $name;
+        $this->salesmanId = $salesmanId;
         
         if ($class) {
             $this->class = $class;
@@ -91,6 +93,11 @@ class RouteSelect extends Component
                   })
                   ->orWhere('sale_day', 'like', '%' . $this->search . '%');
             });
+        }
+
+        // Si se proporciona un vendedor, filtrar por sus rutas específicamente
+        if (!empty($this->salesmanId)) {
+            $query->where('salesman_id', $this->salesmanId);
         }
 
         return $query->orderBy('name')

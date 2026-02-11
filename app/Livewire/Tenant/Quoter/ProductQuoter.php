@@ -18,10 +18,19 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Tenant\Movements\InvReason;
 use App\Models\Tenant\Remissions\InvRemissions;
 use App\Models\Tenant\Remissions\InvDetailRemissions;
+use Illuminate\Support\Facades\Hash;
+use App\Models\Auth\User;
+use App\Models\Auth\UserTenant;
+use App\Livewire\Tenant\VntCompany\Services\CompanyService;
+use App\Models\TAT\Routes\TatRoutes;
+use App\Models\Tenant\Customer\TatCompanyRoute;
 
 class ProductQuoter extends Component
 {
     use WithPagination;
+
+    // Routes modal properties
+    public $showRoutesModal = false;
 
     public $search = '';
     public $perPage = 12;
@@ -62,11 +71,14 @@ class ProductQuoter extends Component
     public $quoteHasRemission = false;
     public $cartHasChanges = false; // Nueva propiedad para rastrear cambios en el carrito
     public $mappedProducts = []; // Lista de productos mapeada para la vista
+    public $availableRoutes = []; // Rutas disponibles para administradores
+    public $newCustomerRouteId = null; // Ruta seleccionada para el nuevo cliente
     protected $listeners = [
         'customer-created' => 'onCustomerCreated',
         'vnt-company-saved' => 'onCustomerCreated',
         'customer-updated' => 'onCustomerUpdated',
-        'customer-form-cancelled' => 'cancelCreateCustomer'
+        'customer-form-cancelled' => 'cancelCreateCustomer',
+        'routes-modal-closed' => 'closeRoutesModal'
     ];
 
     protected $queryString = [
@@ -140,6 +152,28 @@ class ProductQuoter extends Component
         } else {
             $this->quoterItems = session('quoter_items', []);
             Log::info('Cargando items desde sesión', ['count' => count($this->quoterItems)]);
+        }
+
+        // Cargar rutas según perfil
+        if (auth()->check()) {
+            if (auth()->user()->profile_id == 2) {
+                // Administrador: Cargar todas las rutas con su vendedor
+                $this->availableRoutes = TatRoutes::with('salesman')->orderBy('name')->get()->toArray();
+            } elseif (auth()->user()->profile_id == 4) {
+                // Vendedor: Obtener su ruta principal (primera encontrada)
+                // Asegurar consulta a la base de datos central
+                $sellerRoute = DB::connection('central')->table('tat_routes')
+                    ->where('salesman_id', auth()->id())
+                    ->whereNull('deleted_at')
+                    ->first();
+                
+                $this->newCustomerRouteId = $sellerRoute ? $sellerRoute->id : null;
+                Log::info('Ruta automática para vendedor cargada', [
+                    'seller_id' => auth()->id(), 
+                    'route_id' => $this->newCustomerRouteId,
+                    'route_name' => $sellerRoute ? $sellerRoute->name : 'N/A'
+                ]);
+            }
         }
 
         $this->calculateTotal();
@@ -255,8 +289,16 @@ class ProductQuoter extends Component
 
         $this->mappedProducts = collect($products->items())->map(function($p) {
             $allPrices = $p->all_prices;
+            
+            // FILTRADO DE PRECIOS POR PERFIL
             if (auth()->user()->profile_id == 17) {
+                // Perfil Tienda (TAT): Solo Precio Regular
                 $allPrices = collect($allPrices)->filter(fn($val, $label) => $label === 'Precio Regular')->toArray();
+            } elseif (auth()->user()->profile_id == 4) {
+                // Perfil Vendedor: Solo Precio Base (P1)
+                $allPrices = collect($allPrices)->filter(fn($val, $label) => 
+                    strtolower($label) === 'p1' || strtolower($label) === 'precio base'
+                )->toArray();
             }
 
             // Buscar si el producto ya está en el carrito para inyectar su estado
@@ -296,6 +338,11 @@ class ProductQuoter extends Component
             'products' => $this->mappedProducts
         ]);
 
+        // Asegurar que el carrito esté sincronizado con Alpine.js en cada renderizado
+        $this->dispatch('cart-updated', [
+            'items' => $this->quoterItems
+        ]);
+
         return view($viewName, [
             'products' => $products,
             'mappedProducts' => $this->mappedProducts
@@ -317,16 +364,29 @@ class ProductQuoter extends Component
                 ->active()
                 ->with(['principalImage', 'invValues'])
                 ->get()
-                ->map(fn($p) => [
-                    'id' => $p->id,
-                    'name' => $p->display_name,
-                    'sku' => $p->sku,
-                    'display_name' => $p->display_name,
-                    'category_id' => $p->categoryId,
-                    'price' => $p->price,
-                    'all_prices' => $p->all_prices,
-                    'image_url' => $p->principalImage ? $p->principalImage->getImageUrl() : null
-                ]);
+                ->map(function($p) {
+                    $allPrices = $p->all_prices;
+                    
+                    // FILTRADO DE PRECIOS POR PERFIL (Para Offline)
+                    if (auth()->user()->profile_id == 17) {
+                        $allPrices = collect($allPrices)->filter(fn($val, $label) => $label === 'Precio Regular')->toArray();
+                    } elseif (auth()->user()->profile_id == 4) {
+                        $allPrices = collect($allPrices)->filter(fn($val, $label) => 
+                            strtolower($label) === 'p1' || strtolower($label) === 'precio base'
+                        )->toArray();
+                    }
+
+                    return [
+                        'id' => $p->id,
+                        'name' => $p->display_name,
+                        'sku' => $p->sku,
+                        'display_name' => $p->display_name,
+                        'category_id' => $p->categoryId,
+                        'price' => $p->price,
+                        'all_prices' => $allPrices,
+                        'image_url' => $p->principalImage ? $p->principalImage->getImageUrl() : null
+                    ];
+                });
 
             // 2. Obtener lista de clientes con datos extendidos para selección completa offline
             $allCustomers = VntCompany::query()
@@ -1013,31 +1073,6 @@ class ProductQuoter extends Component
         $this->dispatch('customer-selected', ['customer' => null]);
     }
 
-    /**
-     * Editar el cliente actualmente seleccionado
-     */
-    public function editCustomer()
-    {
-        Log::info('🔧 editCustomer() llamado', [
-            'selectedCustomer' => $this->selectedCustomer,
-            'showCreateCustomerForm_antes' => $this->showCreateCustomerForm,
-            'editingCustomerId_antes' => $this->editingCustomerId
-        ]);
-
-        if ($this->selectedCustomer) {
-            $this->editingCustomerId = $this->selectedCustomer['id'];
-            $this->showCreateCustomerForm = true;
-            $this->showCreateCustomerButton = false;
-
-            Log::info('✅ Cliente configurado para edición', [
-                'editingCustomerId' => $this->editingCustomerId,
-                'showCreateCustomerForm' => $this->showCreateCustomerForm,
-                'showCreateCustomerButton' => $this->showCreateCustomerButton
-            ]);
-        } else {
-            Log::warning('⚠️ No hay cliente seleccionado para editar');
-        }
-    }
 
     public function openCustomerModal()
     {
@@ -2833,5 +2868,230 @@ class ProductQuoter extends Component
         }
     }
 
+    /**
+     * Crea un cliente y opcionalmente un usuario de forma rápida (Unificado Online)
+     */
+    public function saveQuickCustomer($customerData)
+    {
+        $this->ensureTenantConnection();
 
+        try {
+            DB::beginTransaction();
+
+            $customerId = $customerData['id'] ?? null;
+            $newCompany = null;
+            $companyService = app(CompanyService::class);
+
+            // 1. Preparar datos para el CompanyService
+            $companyData = [
+                'typeIdentificationId' => $customerData['typeIdentificationId'] ?: 1,
+                'identification' => $customerData['identification'],
+                'businessName' => $customerData['businessName'],
+                'firstName' => $customerData['businessName'],
+                'billingEmail' => $customerData['billingEmail'] ?? null,
+                'business_phone' => $customerData['phone'] ?? null,
+                'typePerson' => ($customerData['typeIdentificationId'] == 2) ? 'Juridica' : 'Natural',
+                'status' => 1,
+                'type' => 'CLIENTE',
+                'regimeId' => 2,
+                'fiscalResponsabilityId' => 1
+            ];
+
+            $warehouses = [
+                [
+                    'name' => 'Sucursal Principal',
+                    'address' => $customerData['address'] ?? 'Sin dirección',
+                    'district' => 'Sin Barrio',
+                    'cityId' => 1, // Bogotá por defecto
+                    'main' => 1,
+                    'status' => 1
+                ]
+            ];
+
+            if ($customerId) {
+                // Actualizar cliente existente
+                $newCompany = VntCompany::find($customerId);
+                if ($newCompany) {
+                    $newCompany->update($companyData);
+                    
+                    // Actualizar sucursal principal
+                    $mainWarehouse = $newCompany->mainWarehouse;
+                    if ($mainWarehouse) {
+                        $mainWarehouse->update($warehouses[0]);
+                        
+                        // Actualizar teléfono en contactos del almacén
+                        $contact = $mainWarehouse->activeContacts->first();
+                        if ($contact) {
+                            $contact->update(['business_phone' => $customerData['phone'] ?? null]);
+                        }
+                    }
+                    Log::info("✅ [EDICIÓN] Cliente ID: {$customerId} actualizado");
+                }
+            } else {
+                // Crear nuevo cliente
+                $newCompany = $companyService->create($companyData, $warehouses);
+                Log::info("✅ [CREACIÓN] Nuevo cliente creado");
+            }
+
+            if (!$newCompany) {
+                throw new \Exception("No se pudo procesar el cliente");
+            }
+
+            // 2. Crear usuario si se solicitó
+            if (!empty($customerData['createUser']) && !empty($customerData['billingEmail'])) {
+                $existingUser = User::where('email', $customerData['billingEmail'])->first();
+                
+                if (!$existingUser) {
+                    $newUser = User::create([
+                        'name' => $customerData['businessName'],
+                        'email' => $customerData['billingEmail'],
+                        'password' => Hash::make('12345678'),
+                        'profile_id' => 17,
+                        'contact_id' => $newCompany->mainWarehouse?->contacts->first()?->id,
+                        'phone' => $customerData['phone'] ?? null,
+                    ]);
+
+                    UserTenant::create([
+                        'user_id' => $newUser->id,
+                        'tenant_id' => session('tenant_id'),
+                        'is_active' => 1,
+                    ]);
+
+                    // Copiar productos
+                    \App\Jobs\CopyProductsToClientJob::dispatch($newCompany->id);
+                }
+            }
+
+            DB::commit();
+
+            $routeId = null;
+            if (auth()->user()->profile_id == 2) {
+                $routeId = $customerData['route_id'] ?? null;
+            } elseif (auth()->user()->profile_id == 4) {
+                // Para vendedor, buscar su ruta en la central
+                $sellerRoute = DB::connection('central')->table('tat_routes')
+                    ->where('salesman_id', auth()->id())
+                    ->whereNull('deleted_at')
+                    ->first();
+                $routeId = $sellerRoute ? $sellerRoute->id : null;
+                Log::info('Asignando ruta automática a vendedor en guardado', [
+                    'user_id' => auth()->id(),
+                    'route_id' => $routeId
+                ]);
+            }
+
+            if ($routeId) {
+                // Calcular el siguiente orden secuencial para esta ruta
+                $maxOrders = TatCompanyRoute::where('route_id', $routeId)
+                    ->selectRaw('MAX(sales_order) as max_sales, MAX(delivery_order) as max_delivery')
+                    ->first();
+
+                $nextSalesOrder = ($maxOrders->max_sales ?? 0) + 1;
+                $nextDeliveryOrder = ($maxOrders->max_delivery ?? 0) + 1;
+
+                TatCompanyRoute::updateOrCreate(
+                    ['company_id' => $newCompany->id],
+                    [
+                        'route_id' => $routeId,
+                        'sales_order' => $nextSalesOrder,
+                        'delivery_order' => $nextDeliveryOrder
+                    ]
+                );
+                Log::info('Cliente asociado a ruta con orden secuencial', [
+                    'company_id' => $newCompany->id, 
+                    'route_id' => $routeId,
+                    'sales_order' => $nextSalesOrder,
+                    'delivery_order' => $nextDeliveryOrder
+                ]);
+            }
+
+            // 3. Seleccionar el nuevo cliente en el cotizador
+            $this->selectedCustomer = [
+                'id' => $newCompany->id,
+                'businessName' => $newCompany->businessName,
+                'firstName' => $newCompany->firstName,
+                'lastName' => $newCompany->lastName,
+                'identification' => $newCompany->identification,
+                'billingEmail' => $newCompany->billingEmail,
+            ];
+
+            $this->dispatch('show-toast', [
+                'type' => 'success',
+                'message' => $customerId ? 'Cliente actualizado exitosamente' : 'Cliente creado y seleccionado exitosamente'
+            ]);
+
+            // Notificar a Alpine
+            $this->dispatch('customer-selected', customer: $this->selectedCustomer);
+
+            return ['success' => true, 'customerId' => $newCompany->id];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error en saveQuickCustomer: ' . $e->getMessage());
+            $this->dispatch('show-toast', [
+                'type' => 'error',
+                'message' => 'Error al procesar cliente: ' . $e->getMessage()
+            ]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Carga los datos del cliente seleccionado para edición
+     */
+    public function editCustomer()
+    {
+        if (!$this->selectedCustomer || !isset($this->selectedCustomer['id'])) {
+            return;
+        }
+
+        $this->ensureTenantConnection();
+
+        try {
+            $company = VntCompany::with(['mainWarehouse.activeContacts'])->find($this->selectedCustomer['id']);
+            
+            if (!$company) {
+                $this->dispatch('show-toast', ['type' => 'error', 'message' => 'No se encontró el cliente']);
+                return;
+            }
+
+            $mainWarehouse = $company->mainWarehouse;
+            $phone = $mainWarehouse?->activeContacts->first()?->business_phone;
+            
+            // Obtener ruta asignada si existe
+            $routeInfo = TatCompanyRoute::where('company_id', $company->id)->first();
+
+            $customerData = [
+                'id' => $company->id,
+                'typeIdentificationId' => $company->typeIdentificationId,
+                'identification' => $company->identification,
+                'businessName' => $company->businessName,
+                'phone' => $phone,
+                'address' => $mainWarehouse?->address,
+                'billingEmail' => $company->billingEmail,
+                'route_id' => $routeInfo?->route_id,
+            ];
+
+            // Despachar evento para que Alpine cargue los datos
+            $this->dispatch('load-customer-data', customer: $customerData);
+            
+            Log::info("💼 [EDICIÓN] Datos cargados para edición", ['id' => $company->id]);
+
+        } catch (\Exception $e) {
+            Log::error('Error en editCustomer: ' . $e->getMessage());
+            $this->dispatch('show-toast', ['type' => 'error', 'message' => 'Error al cargar datos']);
+        }
+    }
+
+
+
+    public function openRoutes()
+    {
+        $this->showRoutesModal = true;
+    }
+
+    public function closeRoutesModal()
+    {
+        $this->showRoutesModal = false;
+    }
 }

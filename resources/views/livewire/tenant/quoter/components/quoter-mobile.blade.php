@@ -235,10 +235,10 @@
 
                                 <!-- Contenido normal (se oculta cuando está cargando) -->
                                 <div wire:loading.remove wire:target="irAlCarrito({{ $quote->id }})" class="flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m4.5-5a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                    </svg>
-                                    <span>Carrito</span>
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                    <span>Editar</span>
                                 </div>
                             </button>
                             @endif
@@ -348,166 +348,166 @@
     </div>
 </div>
 
+@script
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('quoterListOffline', () => ({
-            offlineQuotes: [],
-            isOnline: navigator.onLine,
-            filteredQuotes: [], // Para búsqueda local
-            loadingNewQuote: false, // Estado de carga para nueva cotización
+    Alpine.data('quoterListOffline', () => ({
+        offlineQuotes: [],
+        isOnline: navigator.onLine,
+        filteredQuotes: [], // Para búsqueda local
+        loadingNewQuote: false, // Estado de carga para nueva cotización
 
-            async init() {
-                // Escuchar cambios de conexión
-                window.addEventListener('online', async () => {
-                    this.isOnline = true;
-                    console.log('🌐 Conexión recuperada en Lista');
-                    await this.syncPendingOrders();
-                    await this.loadOfflineQuotes();
-                });
-                
-                window.addEventListener('offline', () => {
-                    this.isOnline = false;
-                    this.loadOfflineQuotes();
-                });
-                
-                // Carga inicial
+        async init() {
+            // Escuchar cambios de conexión
+            window.addEventListener('online', async () => {
+                this.isOnline = true;
+                console.log('🌐 Conexión recuperada en Lista');
+                await this.syncPendingOrders();
                 await this.loadOfflineQuotes();
+            });
+            
+            window.addEventListener('offline', () => {
+                this.isOnline = false;
+                this.loadOfflineQuotes();
+            });
+            
+            // Carga inicial
+            await this.loadOfflineQuotes();
 
-                // Si ya estamos online al cargar, intentar sincronizar
-                if(this.isOnline) {
-                    await this.syncPendingOrders();
-                }
-            },
+            // Si ya estamos online al cargar, intentar sincronizar
+            if(this.isOnline) {
+                await this.syncPendingOrders();
+            }
+        },
 
-            async getDb() {
-                let attempts = 0;
-                while (!window.db && attempts < 20) { 
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    attempts++;
-                }
-                return window.db;
-            },
+        async getDb() {
+            let attempts = 0;
+            while (!window.db && attempts < 20) { 
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            return window.db;
+        },
 
-            async loadOfflineQuotes() {
-                const db = await this.getDb();
-                if (!db) return;
+        async loadOfflineQuotes() {
+            const db = await this.getDb();
+            if (!db) return;
 
-                try {
-                    // Cargar pedidos no sincronizados
-                    this.offlineQuotes = await db.pedidos
-                        .where('sincronizado').equals(0)
-                        .reverse()
-                        .toArray();
-                    
-                    console.log('📱 Cotizaciones offline cargadas:', this.offlineQuotes.length);
-                } catch (e) {
-                    console.error('❌ Error cargando cotizaciones offline:', e);
-                }
-            },
-
-            async clearLocalState() {
-                const db = await this.getDb();
-                if (db) {
-                    await db.estado_quoter.delete('actual');
-                    console.log('🧹 Estado local limpiado para nueva cotización');
-                }
-            },
-
-            async startNewQuote() {
-                if (this.loadingNewQuote) return;
-                this.loadingNewQuote = true;
+            try {
+                // Cargar pedidos no sincronizados
+                this.offlineQuotes = await db.pedidos
+                    .where('sincronizado').equals(0)
+                    .reverse()
+                    .toArray();
                 
-                // 1. Limpiar estado local
-                await this.clearLocalState();
-                
-                // 2. Redirigir a ruta móvil directamente (Offline Safe)
-                // ?clear=1 fuerza al servidor a limpiar la sesión si hay internet
-                window.location.href = "{{ route('tenant.quoter.products.mobile') }}?clear=1";
-            },
+                console.log('📱 Cotizaciones offline cargadas:', this.offlineQuotes.length);
+            } catch (e) {
+                console.error('❌ Error cargando cotizaciones offline:', e);
+            }
+        },
 
-            async editOfflineQuote(quote) {
-                const db = await this.getDb();
-                if (!db) return;
+        async clearLocalState() {
+            const db = await this.getDb();
+            if (db) {
+                await db.estado_quoter.delete('actual');
+                console.log('🧹 Estado local limpiado para nueva cotización');
+            }
+        },
 
-                try {
-                    // 1. Preparar el estado "actual" con los datos de esta cotización
-                    await db.estado_quoter.put({
-                        id: 'actual',
-                        cart: JSON.parse(JSON.stringify(quote.items)),
-                        customer: quote.customer ? JSON.parse(JSON.stringify(quote.customer)) : null,
-                        uuid: quote.uuid, // IMPORTANTE: Pasar el UUID para que sea un UPDATE
-                        timestamp: new Date().toISOString()
-                    });
+        async startNewQuote() {
+            if (this.loadingNewQuote) return;
+            this.loadingNewQuote = true;
+            
+            // 1. Limpiar estado local
+            await this.clearLocalState();
+            
+            // 2. Redirigir a ruta móvil directamente (Offline Safe)
+            // ?clear=1 fuerza al servidor a limpiar la sesión si hay internet
+            window.location.href = "{{ route('tenant.quoter.products.mobile') }}?clear=1";
+        },
 
-                    // 2. Redirigir al editor (mobile-product-quoter)
-                    // Usamos la ruta directa móvil para evitar redirecciones de servidor que fallan offline
-                    window.location.href = "{{ route('tenant.quoter.products.mobile') }}"; 
+        async editOfflineQuote(quote) {
+            const db = await this.getDb();
+            if (!db) return;
 
-                } catch (e) {
-                    console.error('❌ Error al preparar edición offline:', e);
-                    alert('Error al abrir la cotización: ' + e.message);
-                }
-            },
+            try {
+                // 1. Preparar el estado "actual" con los datos de esta cotización
+                await db.estado_quoter.put({
+                    id: 'actual',
+                    cart: JSON.parse(JSON.stringify(quote.items)),
+                    customer: quote.customer ? JSON.parse(JSON.stringify(quote.customer)) : null,
+                    uuid: quote.uuid, // IMPORTANTE: Pasar el UUID para que sea un UPDATE
+                    timestamp: new Date().toISOString()
+                });
 
-            async syncPendingOrders() {
-                if (!this.isOnline) return;
-                
-                const db = await this.getDb();
-                if (!db) return;
+                // 2. Redirigir al editor (mobile-product-quoter)
+                // Usamos la ruta directa móvil para evitar redirecciones de servidor que fallan offline
+                window.location.href = "{{ route('tenant.quoter.products.mobile') }}"; 
 
-                const pending = await db.pedidos.where('sincronizado').equals(0).toArray();
-                if (pending.length === 0) return;
+            } catch (e) {
+                console.error('❌ Error al preparar edición offline:', e);
+                alert('Error al abrir la cotización: ' + e.message);
+            }
+        },
 
-                console.log(`🔄 [Lista] Sincronizando ${pending.length} pedidos pendientes...`);
+        async syncPendingOrders() {
+            if (!this.isOnline) return;
+            
+            const db = await this.getDb();
+            if (!db) return;
 
-                // Mostrar toast de inicio de sincronización
-                const validPedidos = pending.filter(p => p.items && p.items.length > 0);
-                
-                if (validPedidos.length > 0) {
-                     Swal.fire({
-                        title: 'Sincronizando...',
-                        text: 'Subiendo pedidos offline al servidor',
-                        toast: true,
-                        position: 'top-end',
-                        timer: 3000,
-                        showConfirmButton: false,
-                        didOpen: () => { Swal.showLoading(); }
-                    });
-                }
+            const pending = await db.pedidos.where('sincronizado').equals(0).toArray();
+            if (pending.length === 0) return;
 
-                for (const order of validPedidos) {
-                    try {
-                        // Llamar al endpoint de Livewire para procesar
-                        const response = await @this.processOfflineOrder(order);
-                        
-                        if (response && response.success) {
-                            // Marcar como sincronizado en local
-                            await db.pedidos.update(order.id || order.uuid, { sincronizado: 1 });
-                            console.log('✅ [Lista] Pedido sincronizado:', order.uuid);
-                        }
-                    } catch (e) {
-                        console.error('❌ [Lista] Error sincronizando pedido:', e);
-                    }
-                }
-                
-                // Recargar lista local (deberían desaparecer de la sección naranja)
-                await this.loadOfflineQuotes();
-                
-                // Recargar lista del servidor (Livewire) para que aparezcan en blanco
-                @this.dispatch('refresh-component'); 
-                @this.call('$refresh');
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Sincronización Completada!',
+            console.log(`🔄 [Lista] Sincronizando ${pending.length} pedidos pendientes...`);
+
+            // Mostrar toast de inicio de sincronización
+            const validPedidos = pending.filter(p => p.items && p.items.length > 0);
+            
+            if (validPedidos.length > 0) {
+                    Swal.fire({
+                    title: 'Sincronizando...',
+                    text: 'Subiendo pedidos offline al servidor',
                     toast: true,
                     position: 'top-end',
-                    timer: 2000,
-                    showConfirmButton: false
+                    timer: 3000,
+                    showConfirmButton: false,
+                    didOpen: () => { Swal.showLoading(); }
                 });
             }
-        }));
-    });
+
+            for (const order of validPedidos) {
+                try {
+                    // Llamar al endpoint de Livewire para procesar
+                    const response = await $wire.processOfflineOrder(order);
+                    
+                    if (response && response.success) {
+                        // Marcar como sincronizado en local
+                        await db.pedidos.update(order.id || order.uuid, { sincronizado: 1 });
+                        console.log('✅ [Lista] Pedido sincronizado:', order.uuid);
+                    }
+                } catch (e) {
+                    console.error('❌ [Lista] Error sincronizando pedido:', e);
+                }
+            }
+            
+            // Recargar lista local (deberían desaparecer de la sección naranja)
+            await this.loadOfflineQuotes();
+            
+            // Recargar lista del servidor (Livewire) para que aparezcan en blanco
+            $wire.dispatch('refresh-component'); 
+            $wire.$refresh();
+            
+            Swal.fire({
+                icon: 'success',
+                title: '¡Sincronización Completada!',
+                toast: true,
+                position: 'top-end',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+    }));
 </script>
+@endscript
 
 

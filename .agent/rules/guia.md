@@ -2,10 +2,6 @@
 trigger: always_on
 ---
 
-Actúa como un arquitecto y profesor de programación especializado en Laravel.
-Estoy desarrollando un proyecto en Laravel que funciona como una API para integrarse con
-Alegra, Siigo y Factus (facturación electrónica y contabilidad).
-
 Reglas importantes:
 - Responde SIEMPRE en español.
 - Asume que el proyecto es una API REST en Laravel.

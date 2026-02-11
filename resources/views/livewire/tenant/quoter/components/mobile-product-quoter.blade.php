@@ -1,722 +1,574 @@
 <div>
+@script
 <script>
     /**
      * Componente Alpine.js para gestionar el estado Offline y la Sincronización
      */
-    function initQuoterOffline() {
-        if (window.Alpine && !Alpine.data_quoterOffline_registered) {
-            Alpine.data('quoterOffline', () => ({
-            isOnline: navigator.onLine,
-            forceOffline: false, // Permitir forzar modo offline para pruebas
-            syncing: false,
-            showCart: false, // Control manual (Principalmente Offline)
-            showCartModal: @entangle('showCartModal'), // Sincronizado con Livewire
-            showObservations: @entangle('showObservations'), // Sincronizado para observaciones
-            displayProducts: @js($mappedProducts), // Inyectar datos iniciales de forma segura con Livewire 3
-            localSearch: '',
-            showOfflineCreateForm: false, // Control del formulario offline
-            newOfflineCustomer: { // Datos para el nuevo cliente offline
-                typeIdentificationId: 1, 
-                identification: '',
-                businessName: '',
-                phone: '',
-                address: ''
-            },
-            localCart: @json(array_values($quoterItems)), // Inicializar con datos del servidor
-            localCustomers: [], // Caché de clientes
-            selectedLocalCustomer: null,
-            currentQuoteUuid: null, // UUID de la cotización actual (para edición)
-            lastSync: null, // Marca de tiempo de la última sincronización completa
-            
-            // Estados para el swipe de los items del carrito
-            swipeStates: {}, 
-            
-            // Cola de tareas secuencial para evitar bloqueos en IndexedDB
-            syncQueue: Promise.resolve(),
-            runInQueue(task) {
-                this.syncQueue = this.syncQueue.then(() => task());
-                return this.syncQueue;
-            },
+    Alpine.data('quoterOffline', () => ({
+        isOnline: navigator.onLine,
+        forceOffline: false, // Permitir forzar modo offline para pruebas
+        syncing: false,
+        showCart: false, // Control manual (Principalmente Offline)
+        showCartModal: $wire.entangle('showCartModal'), // Sincronizado con Livewire
+        showObservations: $wire.entangle('showObservations'), // Sincronizado para observaciones
+        displayProducts: @js($mappedProducts), // Inyectar datos iniciales de forma segura con Livewire 3
+        localSearch: '',
+        showOfflineCreateForm: false, // Control del formulario offline
+        newOfflineCustomer: { // Datos para el nuevo cliente offline
+            id: null,
+            typeIdentificationId: 1,
+            identification: '',
+            businessName: '',
+            phone: '',
+            address: '',
+            billingEmail: '',
+            createUser: false,
+            route_id: @js($newCustomerRouteId)
+        },
+        serverCustomerSearch: $wire.entangle('customerSearch'),
+        serverCustomerResults: $wire.entangle('customerSearchResults'),
+        serverSelectedCustomer: $wire.entangle('selectedCustomer'),
+        localCart: @json(array_values($quoterItems)), // Inicializar con datos del servidor
+        localCustomers: [], // Caché de clientes
+        selectedLocalCustomer: null,
+        currentQuoteUuid: null, // UUID de la cotización actual (para edición)
+        lastSync: null, // Marca de tiempo de la última sincronización completa
+        
+        // Estados para el swipe de los items del carrito
+        swipeStates: {}, 
+        
+        // Cola de tareas secuencial para evitar bloqueos en IndexedDB
+        syncQueue: Promise.resolve(),
+        runInQueue(task) {
+            this.syncQueue = this.syncQueue.then(() => task());
+            return this.syncQueue;
+        },
 
-            /**
-             * Obtiene la base de datos global con reintentos
-             */
-            async getDb() {
-                let attempts = 0;
-                while (!window.db && attempts < 20) { 
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    attempts++;
-                }
-                return window.db;
-            },
-
-            async init() {
-                // 0. Cargar estado persistido (Carrito y Cliente) desde IndexedDB al arrancar
-                await this.loadPersistedState();
-
-                // Manejar evento de recuperación de conexión (Online)
-                window.addEventListener('online', async () => {
-                    this.isOnline = true;
-                    console.log('🌐 Conexión recuperada');
-                    
-                    // Notificar visualmente al usuario con un toast de SweetAlert
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Conexión Recuperada!',
-                        text: 'Sincronizando datos pendientes...',
-                        toast: true,
-                        position: 'top-end',
-                        timer: 3000,
-                        showConfirmButton: false
-                    });
-
-                    // Limpiar términos de búsqueda local para refrescar la lista
-                    this.localSearch = '';
-                    await this.$wire.set('search', '', true); 
-                    
-                    // Sincronizar el carrito que se armó offline con la sesión del servidor
-                    if (this.localCart.length > 0) {
-                        try {
-                            await this.$wire.syncLocalCart(JSON.parse(JSON.stringify(this.localCart)));
-                        } catch (e) { console.error('Error al sincronizar carrito:', e); }
-                    }
-
-                    // Enviar pedidos guardados localmente a la cola del servidor
-                    await this.syncPendingOrders();
-                    
-                    // Si estamos online y el carrito local está vacío (porque acabamos de vender), 
-                    // forzar limpieza del servidor para que no nos devuelva los items "fantasmas".
-                    if (this.localCart.length === 0 && this.isOnline) {
-                         await this.$wire.syncLocalCart([]);
-                    }
-                    
-                    // Refrescar lista de productos desde el servidor
-                    await this.syncFullCatalogAuto(); 
-                });
-
-                // Manejar evento de pérdida de conexión (Offline)
-                // Manejar evento de pérdida de conexión (Offline)
-                window.addEventListener('offline', () => {
-                   this.handleOffline();
-                });
-
-                // Polling de seguridad: Verificar conexión cada 3 segundos
-                // Algunas tablets no disparan el evento offline correctamente
-                setInterval(() => {
-                    // Si el navegador dice que estamos offline pero la app piensa que está online
-                    if (!navigator.onLine && this.isOnline) {
-                        this.handleOffline();
-                    }
-                    // Si el navegador dice online pero app offline (y no está forzado)
-                    else if (navigator.onLine && !this.isOnline && !this.forceOffline) {
-                        this.isOnline = true; // El evento 'online' trigger se encargará del resto si es necesario, pero actualizamos estado
-                    }
-                }, 3000);
-
-
-
-                // --- NUEVA SINCRONIZACIÓN SEGMENTADA ---
-                
-                // 1. Inicio: Limpiar base de datos para nueva carga
-                window.addEventListener('sync-started', async (event) => {
-                    this.runInQueue(async () => {
-                        console.log('🔄 [SYNC] Iniciando limpieza...');
-                        const db = await this.getDb();
-                        if (!db) return;
-                        
-                        this.syncing = true;
-                        try {
-                            console.log('🗑️ [DB] Borrando productos...');
-                            await db.productos.clear();
-                            console.log('🗑️ [DB] Borrando clientes...');
-                            await db.clientes.clear();
-                            console.log('✨ [DB] Base de datos preparada.');
-                        } catch (e) {
-                            console.error('❌ [DB] Error limpiando:', e);
-                        }
-                    });
-                });
-
-                // 2. Paquete de Clientes
-                window.addEventListener('sync-customers-chunk', async (event) => {
-                    this.runInQueue(async () => {
-                        const data = event.detail[0] || event.detail;
-                        const customers = data.customers;
-                        
-                        console.log('👥 [SYNC] Recibiendo ' + (customers?.length || 0) + ' clientes');
-                        
-                        if (!customers || !Array.isArray(customers)) {
-                            console.error('❌ Datos de clientes inválidos');
-                            return;
-                        }
-
-                        const db = await this.getDb();
-                        if (db) {
-                            try {
-                                console.log('💾 [DB] Guardando clientes...');
-                                await db.clientes.bulkPut(customers);
-                                console.log('✅ [DB] Clientes guardados (Test:', await db.clientes.limit(1).toArray(), ')');
-                                
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Clientes Sincronizados',
-                                    text: `Se guardaron ${customers.length} clientes localmente.`,
-                                    toast: true,
-                                    position: 'bottom-end',
-                                    timer: 2000,
-                                    showConfirmButton: false
-                                });
-                            } catch (e) { 
-                                console.error('❌ [DB] Error guardando clientes:', e); 
-                                Swal.fire('Error Memoria', 'Error al guardar clientes: ' + e.message, 'error');
-                            }
-                        }
-                    });
-                });
-
-                // 3. Paquete de Productos
-                window.addEventListener('sync-products-chunk', async (event) => {
-                    this.runInQueue(async () => {
-                        const data = event.detail[0] || event.detail;
-                        const { products, chunkIndex, totalChunks } = data;
-                        
-                        console.log(`📦 [SYNC] Paquete productos ${chunkIndex}/${totalChunks} (${products?.length} items)`);
-                        
-                        const db = await this.getDb();
-                        if (db && products) {
-                            try {
-                                await db.productos.bulkPut(products);
-                                console.log(`✅ [DB] Paquete ${chunkIndex} guardado`);
-                            } catch (e) { 
-                                console.error('❌ [DB] Error en paquete ' + chunkIndex, e); 
-                            }
-                        }
-                    });
-                });
-
-                // 4. Fin de la sincronización
-                window.addEventListener('sync-finished', async () => {
-                    this.runInQueue(async () => {
-                        console.log('🏁 [SYNC] Sincronización finalizada correctamente');
-                        this.syncing = false;
-                        this.lastSync = new Date().toISOString();
-                        await this.persistState();
-                        await this.loadLocalProducts();
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Sincronización Completa',
-                            text: 'Todos los datos están listos para trabajar offline.',
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                    });
-                });
-
-                // Escuchar actualizaciones de productos desde Livewire (Online)
-                window.addEventListener('products-updated', async (event) => {
-                    if (this.isOnline) {
-                        const products = event.detail[0]?.products || [];
-                        this.displayProducts = products;
-                        await this.saveToLocalCache(products);
-                    }
-                });
-
-                // --- MIRRORING: Sincronizar Carrito Online -> Offline ---
-                window.addEventListener('cart-updated', async (event) => {
-                    if (this.isOnline) {
-                        const items = event.detail.items || event.detail[0]?.items || [];
-                        
-                        // Mapear exactamente la estructura del servidor a local
-                        this.localCart = items.map(item => ({
-                            id: item.id,
-                            name: item.name,
-                            sku: item.sku,
-                            price: item.price,
-                            price_label: item.price_label,
-                            quantity: item.quantity
-                        }));
-
-                        console.log('✅ Carrito sincronizado (Mirroring)', this.localCart);
-                        await this.persistState();
-                    }
-                });
-
-                window.addEventListener('customer-selected', async (event) => {
-                    const customer = event.detail.customer || event.detail[0]?.customer || null;
-                    if (this.isOnline) {
-                        this.selectedLocalCustomer = customer ? JSON.parse(JSON.stringify(customer)) : null;
-                        await this.persistState();
-                    }
-                });
-                
-                // Carga inicial inteligente
-                if (!this.isOnline || this.forceOffline) {
-                    await this.loadLocalProducts();
-                } else {
-                    // Ya tenemos displayProducts inyectados desde el servidor
-                    // pero si por alguna razón vienen vacíos, cargamos de la memoria local
-                    if (this.displayProducts.length === 0) {
-                        await this.loadLocalProducts();
-                    }
-                    
-                    // Sincronización diferida al entrar para no bloquear la UI inicial
-                    setTimeout(async () => {
-                        if (this.isOnline && !this.syncing) {
-                            console.log('🔄 [AUTO-SYNC] Ejecutando sincronización de entrada (Diferida)...');
-                            await this.syncFullCatalogAuto();
-                            await this.syncPendingOrders();
-                        }
-                    }, 3000); // 3 segundos de cortesía
-                }
-
-                // Sincronización periódica cada 15 minutos en segundo plano
-                setInterval(async () => {
-                    if (this.isOnline && !this.syncing && !this.forceOffline) {
-                        const timeSinceLast = new Date() - new Date(this.lastSync);
-                        if (timeSinceLast > (15 * 60 * 1000)) {
-                            console.log('🔄 [AUTO-SYNC] Ejecutando sincronización periódica...');
-                            await this.syncFullCatalogAuto();
-                        }
-                    }
-                }, 60000); // Revisar cada minuto
-
-                // Observar cambios para persistir
-                this.$watch('localCart', async () => { await this.persistState(); });
-                this.$watch('selectedLocalCustomer', async () => { await this.persistState(); });
-            },
-
-            handleOffline() {
-                this.isOnline = false;
-                this.loadLocalProducts();
-                console.log('🔌 Modo Offline activado');
-            },
-
-            toggleForceOffline() {
-                this.forceOffline = !this.forceOffline;
-                if (this.forceOffline) {
-                    this.handleOffline();
-                    this.isOnline = false; // Asegurar visualmente
-                } else {
-                    // Intentar volver online
-                    if (navigator.onLine) {
-                         this.isOnline = true;
-                         window.dispatchEvent(new Event('online')); // Disparar lógica de reconexión
-                    }
-                }
-            },
-
-            async loadPersistedState() {
-                const db = await this.getDb();
-                if (!db) return;
-                try {
-                    const state = await db.estado_quoter.get('actual');
-                    if (state) {
-                        console.log('💾 Cargando estado persistido:', state);
-                        this.localCart = state.cart || [];
-                        this.lastSync = state.lastSync || null;
-                        // Solo restaurar cliente si hay carrito activo, para evitar clientes "fantasmas"
-                        if (this.localCart.length > 0) {
-                            this.selectedLocalCustomer = state.customer || null;
-                            this.currentQuoteUuid = state.uuid || null;
-                        } else {
-                            this.selectedLocalCustomer = null; 
-                            this.currentQuoteUuid = null;
-                        }
-                    }
-                } catch (e) {
-                    console.error('❌ Error cargando persistencia:', e);
-                }
-            },
-
-            async persistState() {
-                const db = await this.getDb();
-                if (!db) return;
-                try {
-                    await db.estado_quoter.put({
-                        id: 'actual',
-                        cart: JSON.parse(JSON.stringify(this.localCart)),
-                        customer: JSON.parse(JSON.stringify(this.selectedLocalCustomer)),
-                        uuid: this.currentQuoteUuid,
-                        lastSync: this.lastSync,
-                        timestamp: new Date().toISOString()
-                    });
-                } catch (e) {
-                    console.error('❌ Error persistiendo:', e);
-                }
-            },
-
-            async syncPendingOrders() {
-                if (!this.isOnline) return;
-                
-                const db = await this.getDb();
-                if (!db) return;
-
-                const pending = await db.pedidos.where('sincronizado').equals(0).toArray();
-                if (pending.length === 0) return;
-
-                console.log(`🔄 Sincronizando ${pending.length} pedidos pendientes...`);
-                this.syncing = true;
-
-                for (const order of pending) {
-                    try {
-                        // Envolver en array por compatibilidad con Livewire 3 events
-                        const response = await this.$wire.processOfflineOrder(order);
-                        if (response && response.success) {
-                            await db.pedidos.update(order.id || order.uuid, { sincronizado: 1 });
-                            console.log('✅ Pedido sincronizado correctamente');
-                        }
-                    } catch (e) {
-                        console.error('❌ Error sincronizando pedido:', e);
-                    }
-                }
-                
-                this.syncing = false;
-            },
-
-            /**
-             * Guarda un pedido en la base de datos local del celular (IndexedDB)
-             * Útil cuando no hay conexión a internet.
-             */
-            async saveLocalOrder() {
-                // Validar que haya productos
-                if (this.localCart.length === 0) {
-                    Swal.fire('Carrito vacío', 'Agrega productos antes de finalizar.', 'warning');
-                    return;
-                }
-
-                // Validar que haya cliente (excepto si es perfil TAT que usa su propia empresa)
-                if (!this.selectedLocalCustomer && @json(auth()->user()->profile_id) != 17) {
-                    Swal.fire('Cliente requerido', 'Selecciona un cliente para continuar.', 'warning');
-                    return;
-                }
-
-                // Confirmación del usuario
-                const result = await Swal.fire({
-                    title: '¿Finalizar pedido local?',
-                    text: 'El pedido se guardará en el celular y se enviará cuando recuperes internet.',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, guardar localmente',
-                    cancelButtonText: 'Cancelar'
-                });
-
-                if (!result.isConfirmed) return;
-
-                const db = await this.getDb();
-                if (!db) return;
-
-                // Generar UUID único o usar el existente
-                const orderUuid = this.currentQuoteUuid || ('local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
-                
-                // Estructura del pedido para guardar en IndexedDB
-                const orderData = {
-                    uuid: orderUuid, // Clave primaria
-                    fecha: new Date().toISOString(),
-                    items: JSON.parse(JSON.stringify(this.localCart)),
-                    customer: this.selectedLocalCustomer ? JSON.parse(JSON.stringify(this.selectedLocalCustomer)) : null,
-                    total: this.localCart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-                    sincronizado: 0, // Flag para saber si falta enviar al servidor
-                    observaciones: @this.get('observaciones') || '',
-                    estado: 'edited' // Flag para saber que es una edición
-                };
-
-                try {
-                    // Guardar en la tabla 'pedidos' de IndexedDB (put = upsert)
-                    await db.pedidos.put(orderData);
-                    
-                    await Swal.fire({
-                        icon: 'success',
-                        title: '¡Pedido Guardado!',
-                        text: 'Redirigiendo a la lista...',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-
-                    // Redirigir a la lista de cotizaciones (Ruta directa móvil para evitar redirección de servidor offline)
-                    window.location.href = "{{ route('tenant.quoter.mobile') }}";
-
-                    // Limpiar carrito local y persistir cambio (evitar pedidos dobles)
-                    this.localCart = [];
-                    this.selectedLocalCustomer = null; // Limpiar cliente seleccionado
-                    this.currentQuoteUuid = null; // Limpiar UUID de edición
-                    await this.persistState();
-                    this.showCart = false;
-                    this.showCartModal = false;
-                    
-                    // Intentar sincronizar de inmediato por si ya hay internet
-                    this.syncPendingOrders();
-                } catch (e) {
-                    console.error('❌ Error guardando pedido local:', e);
-                    Swal.fire('Error', 'No se pudo guardar el pedido localmente.', 'error');
-                }
-            },
-
-            /**
-             * Obtiene la cantidad de un producto (Unificado)
-             */
-            getProductQuantity(productId) {
-                // Si estamos online, priorizar el dato inyectado desde el servidor en displayProducts
-                // para que la UI responda instantáneamente al render de Livewire
-                if (this.isOnline) {
-                    const prod = this.displayProducts.find(p => p.id === productId);
-                    return prod ? (prod.quantity || 0) : 0;
-                } else {
-                    const item = this.localCart.find(item => item.id === productId);
-                    return item ? item.quantity : 0;
-                }
-            },
-
-            /**
-             * Actualiza la cantidad localmente (Modo Offline)
-             */
-            updateLocalQuantity(productId, delta) {
-                const item = this.localCart.find(item => item.id === productId);
-                if (item) {
-                    item.quantity += delta;
-                    if (item.quantity <= 0) {
-                        this.localCart = this.localCart.filter(i => i.id !== productId);
-                    }
-                }
-            },
-
-            /**
-             * Establece la cantidad absoluta (para input manual)
-             */
-            setLocalQuantity(productId, value) {
-                const qty = parseInt(value);
-                if (isNaN(qty) || qty <= 0) {
-                    this.localCart = this.localCart.filter(i => i.id !== productId);
-                } else {
-                    const item = this.localCart.find(item => item.id === productId);
-                    if (item) {
-                        item.quantity = qty;
-                    }
-                }
-                this.persistState();
-            },
-
-            /**
-             * Añade producto al carrito local (Modo Offline)
-             */
-            async addToLocalCart(product, price, priceLabel) {
-                const existing = this.localCart.find(item => item.id === product.id);
-                if (existing) {
-                    existing.quantity++;
-                } else {
-                    this.localCart.push({
-                        id: product.id,
-                        name: product.display_name || product.name,
-                        sku: product.sku,
-                        price: price,
-                        price_label: priceLabel,
-                        quantity: 1
-                    });
-                }
-                await this.persistState();
-            },
-
-            /**
-             * Carga productos desde IndexedDB aplicando filtros
-             * Ordenamiento: ID Descendente (para coincidir con el servidor)
-             */
-            async loadLocalProducts() {
-                const db = await this.getDb();
-                if (!db) return;
-
-                try {
-                    // Usar orderBy('id').reverse() para emular 'id desc' del servidor
-                    let collection = db.productos.orderBy('id').reverse();
-                    
-                    let result = [];
-                    if (this.localSearch) {
-                        const searchLower = this.localSearch.toLowerCase();
-                        result = await collection
-                            .filter(p => {
-                                const name = (p.name || '').toLowerCase();
-                                const dispName = (p.display_name || '').toLowerCase();
-                                const sku = (p.sku || '').toLowerCase();
-                                return name.includes(searchLower) || 
-                                       dispName.includes(searchLower) || 
-                                       sku.includes(searchLower);
-                            })
-                            .limit(50) 
-                            .toArray();
-                    } else {
-                        // Cargar una muestra inicial
-                        result = await collection.limit(50).toArray();
-                    }
-
-                    // LIMPIEZA CRÍTICA: Asegurar que los productos cargados del caché 
-                    // NO tengan cantidad visual asignada (eso depende del carrito actual)
-                    this.displayProducts = result.map(p => ({ ...p, quantity: 0, selected_price: null }));
-
-                } catch (error) {
-                    console.error('❌ Error al cargar productos locales:', error);
-                }
-            },
-
-            /**
-             * Guarda productos individuales en caché (Carga parcial/incremental)
-             */
-            async saveToLocalCache(products) {
-                if (!products || products.length === 0) return;
-                const db = await this.getDb();
-                if (!db) return;
-
-                try {
-                    // LIMPIAR ESTADO ANTES DE GUARDAR
-                    // No queremos guardar check de "agregado" en la base de datos de productos
-                    const cleanProducts = products.map(p => {
-                        const clean = { ...p };
-                        delete clean.quantity;
-                        delete clean.selected_price;
-                        delete clean.price_label;
-                        return clean;
-                    });
-
-                    // bulkPut actualiza si existe el ID o lo crea si no. NO borra lo anterior.
-                    await db.productos.bulkPut(cleanProducts);
-                } catch (error) {
-                    console.error('❌ Error al guardar en caché incremental:', error);
-                }
-            },
-
-            /**
-             * Crea un cliente offline ("temporal") y lo selecciona
-             */
-            async saveOfflineCustomer() {
-                // Validación básica
-                if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
-                    Swal.fire('Error', 'Nombre y Documento son obligatorios', 'error');
-                    return;
-                }
-
-                const db = await this.getDb();
-                if (!db) return;
-
-                try {
-                    // Generar ID temporal negativo o con prefijo para evitar colisiones con IDs reales
-                    // Usamos un string único para asegurar que no choque.
-                    const tempId = 'temp-' + Date.now(); 
-
-                    const cleanCustomer = {
-                        id: tempId,
-                        identification: this.newOfflineCustomer.identification,
-                        businessName: this.newOfflineCustomer.businessName.toUpperCase(),
-                        firstName: this.newOfflineCustomer.businessName.toUpperCase(), // Fallback para visualización
-                        lastName: '',
-                        address: this.newOfflineCustomer.address || 'Sin dirección',
-                        business_phone: this.newOfflineCustomer.phone || '',
-                        typeIdentificationId: parseInt(this.newOfflineCustomer.typeIdentificationId),
-                        isTemporary: true, // Flag importante para el backend
-                        sincronizado: 0,
-                        term_id: 1, // Contado por defecto
-                        price_list_id: 1 // Lista 1 por defecto
-                    };
-
-                    // Guardar en IndexedDB
-                    await db.clientes.add(cleanCustomer);
-                    
-                    // Actualizar lista local (añadir al principio)
-                    this.localCustomers.unshift(cleanCustomer);
-                    
-                    // Seleccionar automáticamente
-                    this.selectedLocalCustomer = cleanCustomer;
-                    
-                    // Limpiar y cerrar formulario
-                    this.showOfflineCreateForm = false;
-                    this.newOfflineCustomer = {
-                        typeIdentificationId: 1,
-                        identification: '',
-                        businessName: '',
-                        phone: '',
-                        address: ''
-                    };
-
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: 'Cliente creado localmente',
-                        showConfirmButton: false,
-                        timer: 2000
-                    });
-
-                } catch (e) {
-                    console.error('❌ Error guardando cliente offline:', e);
-                    Swal.fire('Error', 'No se pudo guardar el cliente localmente', 'error');
-                }
-            },
-
-            /**
-             * Busca clientes en IndexedDB (Modo Offline)
-             */
-            async searchLocalCustomer(query) {
-                const cleanQuery = query ? query.trim() : '';
-                console.log('🔍 Buscando cliente local:', cleanQuery);
-                const db = await this.getDb();
-                if (!db || cleanQuery.length < 3) {
-                    this.localCustomers = [];
-                    return;
-                }
-
-                try {
-                    const count = await db.clientes.count();
-                    console.log('📊 Total clientes en DB local:', count);
-
-                    const searchLower = cleanQuery.toLowerCase();
-                    this.localCustomers = await db.clientes
-                        .filter(c => {
-                            const bName = (c.businessName || '').toLowerCase();
-                            const fName = (c.firstName || '').toLowerCase();
-                            const lName = (c.lastName || '').toLowerCase();
-                            const ident = (c.identification || '').toLowerCase();
-                            
-                            return bName.includes(searchLower) || 
-                                   fName.includes(searchLower) || 
-                                   lName.includes(searchLower) || 
-                                   ident.includes(searchLower);
-                        })
-                        .limit(20)
-                        .toArray();
-                    
-                    console.log('✅ Resultados locales:', this.localCustomers.length, this.localCustomers);
-                } catch (e) {
-                    console.error('❌ Error buscando cliente offline:', e);
-                }
-            },
-
-
-            async syncFullCatalogAuto() {
-                if (this.isOnline && !this.syncing) {
-                    await this.$wire.syncFullCatalog();
-                }
-            },
-
-            async syncProducts() {
-                this.syncing = true;
-                this.syncing = false;
+        /**
+         * Obtiene la base de datos global con reintentos
+         */
+        async getDb() {
+            let attempts = 0;
+            while (!window.db && attempts < 20) { 
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
             }
-        }));
-        window.Alpine.data_quoterOffline_registered = true;
-    }
-}
+            return window.db;
+        },
 
-// Inicializar inmediatamente o esperar a los eventos necesarios
-if (window.Alpine) {
-    initQuoterOffline();
-} else {
-    document.addEventListener('alpine:init', initQuoterOffline);
-}
+        async init() {
+            // Escuchar evento de carga de datos para edición
+            window.addEventListener('load-customer-data', (event) => {
+                const data = event.detail.customer || event.detail[0]?.customer || event.detail;
+                console.log('[Mobile] Cargando para edición:', data);
+                this.newOfflineCustomer = {
+                    id: data.id || null,
+                    typeIdentificationId: data.typeIdentificationId || 1,
+                    identification: data.identification || '',
+                    businessName: data.businessName || '',
+                    phone: data.phone || '',
+                    address: data.address || '',
+                    billingEmail: data.billingEmail || '',
+                    createUser: false,
+                    route_id: data.route_id || @js($newCustomerRouteId)
+                };
+                this.showOfflineCreateForm = true;
+            });
 
-// Re-inicializar en navegaciones de Livewire
-document.addEventListener('livewire:navigated', initQuoterOffline);
+            // 0. Cargar estado persistido (Carrito y Cliente) desde IndexedDB al arrancar
+            await this.loadPersistedState();
+
+            // Manejar evento de recuperación de conexión (Online)
+            window.addEventListener('online', async () => {
+                this.isOnline = true;
+                console.log('🌐 Conexión recuperada');
+                
+                // Notificar visualmente al usuario con un toast de SweetAlert
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Conexión Recuperada!',
+                    text: 'Sincronizando datos pendientes...',
+                    toast: true,
+                    position: 'top-end',
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+
+                // Limpiar términos de búsqueda local para refrescar la lista
+                this.localSearch = '';
+                await $wire.set('search', '', true); 
+                
+                // Sincronizar el carrito que se armó offline con la sesión del servidor
+                if (this.localCart.length > 0) {
+                    try {
+                        await $wire.syncLocalCart(JSON.parse(JSON.stringify(this.localCart)));
+                    } catch (e) { console.error('Error al sincronizar carrito:', e); }
+                }
+
+                // Enviar pedidos guardados localmente a la cola del servidor
+                await this.syncPendingOrders();
+                
+                // Si estamos online y el carrito local está vacío (porque acabamos de vender), 
+                // forzar limpieza del servidor para que no nos devuelva los items "fantasmas".
+                if (this.localCart.length === 0 && this.isOnline) {
+                        await $wire.syncLocalCart([]);
+                }
+                
+                // Refrescar lista de productos desde el servidor
+                await this.syncFullCatalogAuto(); 
+            });
+
+            // Manejar evento de pérdida de conexión (Offline)
+            window.addEventListener('offline', () => {
+                this.handleOffline();
+            });
+
+            // Polling de seguridad: Verificar conexión cada 3 segundos
+            setInterval(() => {
+                if (!navigator.onLine && this.isOnline) {
+                    this.handleOffline();
+                } else if (navigator.onLine && !this.isOnline && !this.forceOffline) {
+                    this.isOnline = true;
+                }
+            }, 3000);
+
+            // --- SINCRONIZACIÓN SEGMENTADA ---
+            window.addEventListener('sync-started', async (event) => {
+                this.runInQueue(async () => {
+                    console.log('🔄 [SYNC] Iniciando limpieza...');
+                    const db = await this.getDb();
+                    if (!db) return;
+                    this.syncing = true;
+                    try {
+                        await db.productos.clear();
+                        await db.clientes.clear();
+                    } catch (e) { console.error('❌ Error limpiando:', e); }
+                });
+            });
+
+            window.addEventListener('sync-customers-chunk', async (event) => {
+                this.runInQueue(async () => {
+                    const data = event.detail[0] || event.detail;
+                    const customers = data.customers;
+                    const db = await this.getDb();
+                    if (db && customers) {
+                        try {
+                            await db.clientes.bulkPut(customers);
+                        } catch (e) { console.error('❌ Error guardando clientes:', e); }
+                    }
+                });
+            });
+
+            window.addEventListener('sync-products-chunk', async (event) => {
+                this.runInQueue(async () => {
+                    const data = event.detail[0] || event.detail;
+                    const { products } = data;
+                    const db = await this.getDb();
+                    if (db && products) {
+                        try {
+                            await db.productos.bulkPut(products);
+                        } catch (e) { console.error('❌ Error guardando productos:', e); }
+                    }
+                });
+            });
+
+            window.addEventListener('sync-finished', async () => {
+                this.runInQueue(async () => {
+                    this.syncing = false;
+                    this.lastSync = new Date().toISOString();
+                    
+                    // Solo recargar productos locales si estamos realmente offline o forzando offline
+                    if (!this.isOnline || this.forceOffline) {
+                        await this.loadLocalProducts();
+                    }
+                    
+                    await this.persistState();
+
+                    // Si está online, refrescar Livewire para asegurar que la sesión del servidor 
+                    // y el estado de Alpine sean idénticos
+                    if (this.isOnline) {
+                        $wire.$refresh();
+                    }
+                });
+            });
+
+            window.addEventListener('products-updated', async (event) => {
+                if (this.isOnline) {
+                    const products = event.detail[0]?.products || [];
+                    this.displayProducts = products;
+                    await this.saveToLocalCache(products);
+                }
+            });
+
+            window.addEventListener('cart-updated', async (event) => {
+                if (this.isOnline) {
+                    const items = event.detail.items || event.detail[0]?.items || [];
+                    this.localCart = items.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        sku: item.sku,
+                        price: item.price,
+                        price_label: item.price_label,
+                        quantity: item.quantity
+                    }));
+                    await this.persistState();
+                    
+                    // IMPORTANTE: Sincronizar también displayProducts si estamos online
+                    // para que la UI se actualice inmediatamente sin esperar loadLocalProducts
+                    this.displayProducts.forEach(p => {
+                        const cartItem = this.localCart.find(item => item.id === p.id);
+                        if (cartItem) {
+                            p.quantity = cartItem.quantity;
+                            p.selected_price = cartItem.price;
+                            p.price_label = cartItem.price_label;
+                        } else {
+                            p.quantity = 0;
+                        }
+                    });
+                }
+            });
+
+            window.addEventListener('customer-selected', async (event) => {
+                const customer = event.detail.customer || event.detail[0]?.customer || null;
+                if (this.isOnline) {
+                    this.selectedLocalCustomer = customer ? JSON.parse(JSON.stringify(customer)) : null;
+                    await this.persistState();
+                }
+            });
+            
+            // Carga inicial
+            if (!this.isOnline || this.forceOffline) {
+                await this.loadLocalProducts();
+            } else if (this.displayProducts.length === 0) {
+                await this.loadLocalProducts();
+            }
+
+            // Sincronización diferida
+            setTimeout(async () => {
+                if (this.isOnline && !this.syncing) {
+                    await this.syncFullCatalogAuto();
+                    await this.syncPendingOrders();
+                }
+            }, 3000);
+
+            // Sincronización periódica
+            setInterval(async () => {
+                if (this.isOnline && !this.syncing && !this.forceOffline) {
+                    const timeSinceLast = new Date() - new Date(this.lastSync);
+                    if (timeSinceLast > (15 * 60 * 1000)) {
+                        await this.syncFullCatalogAuto();
+                    }
+                }
+            }, 60000);
+
+            this.$watch('localCart', async () => { await this.persistState(); });
+            this.$watch('selectedLocalCustomer', async () => { await this.persistState(); });
+        },
+
+        handleOffline() {
+            this.isOnline = false;
+            this.loadLocalProducts();
+            console.log('🔌 Modo Offline activado');
+        },
+
+        toggleForceOffline() {
+            this.forceOffline = !this.forceOffline;
+            if (this.forceOffline) {
+                this.handleOffline();
+                this.isOnline = false;
+            } else if (navigator.onLine) {
+                this.isOnline = true;
+                window.dispatchEvent(new Event('online'));
+            }
+        },
+
+        async loadPersistedState() {
+            const db = await this.getDb();
+            if (!db) return;
+            try {
+                const state = await db.estado_quoter.get('actual');
+                if (state) {
+                    // CRÍTICO: Si estamos Online y el servidor ya nos mandó items en localCart,
+                    // NO debemos sobrescribirlos con la caché local de IndexedDB (que podría estar vacía o vieja).
+                    // Solo sobrescribimos si el carrito actual está vacío o si estamos Offline.
+                    if (!this.isOnline || this.forceOffline || this.localCart.length === 0) {
+                        if (state.cart && state.cart.length > 0) {
+                            this.localCart = state.cart;
+                            console.log('📦 Carrito cargado desde memoria local:', this.localCart.length);
+                        }
+                    }
+                    
+                    this.lastSync = state.lastSync || null;
+                    
+                    // El cliente y el UUID sí los restauramos siempre si no tenemos unos actuales
+                    if (!this.selectedLocalCustomer) {
+                        this.selectedLocalCustomer = state.customer || null;
+                    }
+                    if (!this.currentQuoteUuid) {
+                        this.currentQuoteUuid = state.uuid || null;
+                    }
+                }
+            } catch (e) { console.error('❌ Error persistencia:', e); }
+        },
+
+        async persistState() {
+            const db = await this.getDb();
+            if (!db) return;
+            try {
+                await db.estado_quoter.put({
+                    id: 'actual',
+                    cart: JSON.parse(JSON.stringify(this.localCart)),
+                    customer: JSON.parse(JSON.stringify(this.selectedLocalCustomer)),
+                    uuid: this.currentQuoteUuid,
+                    lastSync: this.lastSync,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (e) { console.error('❌ Error persistiendo:', e); }
+        },
+
+        async syncPendingOrders() {
+            if (!this.isOnline) return;
+            const db = await this.getDb();
+            if (!db) return;
+            const pending = await db.pedidos.where('sincronizado').equals(0).toArray();
+            if (pending.length === 0) return;
+            this.syncing = true;
+            for (const order of pending) {
+                try {
+                    const response = await $wire.processOfflineOrder(order);
+                    if (response && response.success) {
+                        await db.pedidos.update(order.id || order.uuid, { sincronizado: 1 });
+                    }
+                } catch (e) { console.error('❌ Error sincronizando:', e); }
+            }
+            this.syncing = false;
+        },
+
+        async saveLocalOrder() {
+            if (this.localCart.length === 0) {
+                Swal.fire('Carrito vacío', 'Agrega productos antes de finalizar.', 'warning');
+                return;
+            }
+            if (!this.selectedLocalCustomer && @json(auth()->user()->profile_id) != 17) {
+                Swal.fire('Cliente requerido', 'Selecciona un cliente para continuar.', 'warning');
+                return;
+            }
+            const result = await Swal.fire({
+                title: '¿Finalizar pedido local?',
+                text: 'El pedido se guardará en el celular y se enviará cuando recuperes internet.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, guardar localmente',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!result.isConfirmed) return;
+            const db = await this.getDb();
+            if (!db) return;
+            const orderUuid = this.currentQuoteUuid || ('local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+            const orderData = {
+                uuid: orderUuid,
+                fecha: new Date().toISOString(),
+                items: JSON.parse(JSON.stringify(this.localCart)),
+                customer: this.selectedLocalCustomer ? JSON.parse(JSON.stringify(this.selectedLocalCustomer)) : null,
+                total: this.localCart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                sincronizado: 0,
+                observaciones: $wire.get('observaciones') || '',
+                estado: 'edited'
+            };
+            try {
+                await db.pedidos.put(orderData);
+                await Swal.fire({ icon: 'success', title: '¡Pedido Guardado!', timer: 1500, showConfirmButton: false });
+                window.location.href = "{{ route('tenant.quoter.mobile') }}";
+                this.localCart = [];
+                this.selectedLocalCustomer = null; 
+                this.currentQuoteUuid = null;
+                await this.persistState();
+                this.syncPendingOrders();
+            } catch (e) {
+                console.error('❌ Error guardando pedido local:', e);
+                Swal.fire('Error', 'No se pudo guardar el pedido localmente.', 'error');
+            }
+        },
+
+        getProductQuantity(productId) {
+            if (this.isOnline) {
+                const prod = this.displayProducts.find(p => p.id === productId);
+                return prod ? (prod.quantity || 0) : 0;
+            } else {
+                const item = this.localCart.find(item => item.id === productId);
+                return item ? item.quantity : 0;
+            }
+        },
+
+        updateLocalQuantity(productId, delta) {
+            const item = this.localCart.find(item => item.id === productId);
+            if (item) {
+                item.quantity += delta;
+                if (item.quantity <= 0) {
+                    this.localCart = this.localCart.filter(i => i.id !== productId);
+                }
+            }
+        },
+
+        setLocalQuantity(productId, value) {
+            const qty = parseInt(value);
+            if (isNaN(qty) || qty <= 0) {
+                this.localCart = this.localCart.filter(i => i.id !== productId);
+            } else {
+                const item = this.localCart.find(item => item.id === productId);
+                if (item) item.quantity = qty;
+            }
+            this.persistState();
+        },
+
+        async addToLocalCart(product, price, priceLabel) {
+            const existing = this.localCart.find(item => item.id === product.id);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                this.localCart.push({
+                    id: product.id,
+                    name: product.display_name || product.name,
+                    sku: product.sku,
+                    price: price,
+                    price_label: priceLabel,
+                    quantity: 1
+                });
+            }
+            await this.persistState();
+        },
+
+        async loadLocalProducts() {
+            const db = await this.getDb();
+            if (!db) return;
+            try {
+                let collection = db.productos.orderBy('id').reverse();
+                let result = [];
+                if (this.localSearch) {
+                    const searchLower = this.localSearch.toLowerCase();
+                    result = await collection.filter(p => {
+                        const name = (p.name || '').toLowerCase();
+                        const dispName = (p.display_name || '').toLowerCase();
+                        const sku = (p.sku || '').toLowerCase();
+                        return name.includes(searchLower) || dispName.includes(searchLower) || sku.includes(searchLower);
+                    }).limit(50).toArray();
+                } else {
+                    result = await collection.limit(50).toArray();
+                }
+                
+                // Mapear productos inyectando cantidades desde el carrito local para evitar parpadeos
+                this.displayProducts = result.map(p => {
+                    const cartItem = this.localCart.find(item => item.id === p.id);
+                    return { 
+                        ...p, 
+                        quantity: cartItem ? cartItem.quantity : 0, 
+                        selected_price: cartItem ? cartItem.price : null,
+                        price_label: cartItem ? cartItem.price_label : null
+                    };
+                });
+            } catch (error) { console.error('❌ Error local products:', error); }
+        },
+
+        async saveToLocalCache(products) {
+            if (!products || products.length === 0) return;
+            const db = await this.getDb();
+            if (!db) return;
+            try {
+                const cleanProducts = products.map(p => {
+                    const clean = { ...p };
+                    delete clean.quantity;
+                    delete clean.selected_price;
+                    delete clean.price_label;
+                    return clean;
+                });
+                await db.productos.bulkPut(cleanProducts);
+            } catch (error) { console.error('❌ Error incremental cache:', error); }
+        },
+
+
+        getVisiblePrices(allPrices) {
+            if (!allPrices) return {};
+            const profileId = @json(auth()->user()->profile_id);
+            if (profileId == 17) {
+                const filtered = {};
+                if (allPrices['Precio Regular']) filtered['Precio Regular'] = allPrices['Precio Regular'];
+                return filtered;
+            }
+            if (profileId == 4) {
+                const filtered = {};
+                for (const [label, price] of Object.entries(allPrices)) {
+                    const lowerLabel = label.toLowerCase();
+                    if (lowerLabel === 'p1' || lowerLabel === 'precio base') filtered[label] = price;
+                }
+                return filtered;
+            }
+            return allPrices;
+        },
+
+        async saveOfflineCustomer() {
+            if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
+                Swal.fire('Error', 'Nombre y Documento son obligatorios', 'error');
+                return;
+            }
+            const db = await this.getDb();
+            if (!db) return;
+            try {
+                const tempId = 'temp-' + Date.now(); 
+                const cleanCustomer = {
+                    id: tempId,
+                    identification: this.newOfflineCustomer.identification,
+                    businessName: this.newOfflineCustomer.businessName.toUpperCase(),
+                    firstName: this.newOfflineCustomer.businessName.toUpperCase(),
+                    lastName: '',
+                    address: this.newOfflineCustomer.address || 'Sin dirección',
+                    business_phone: this.newOfflineCustomer.phone || '',
+                    typeIdentificationId: parseInt(this.newOfflineCustomer.typeIdentificationId),
+                    billingEmail: this.newOfflineCustomer.billingEmail || '',
+                    createUser: this.newOfflineCustomer.createUser ? 1 : 0,
+                    isTemporary: true,
+                    sincronizado: 0,
+                    term_id: 1,
+                    price_list_id: 1
+                };
+                await db.clientes.add(cleanCustomer);
+                this.localCustomers.unshift(cleanCustomer);
+                this.selectedLocalCustomer = cleanCustomer;
+                this.showOfflineCreateForm = false;
+                this.newOfflineCustomer = { id: null, typeIdentificationId: 1, identification: '', businessName: '', phone: '', address: '', billingEmail: '', createUser: false, route_id: @js($newCustomerRouteId) };
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cliente creado localmente', showConfirmButton: false, timer: 2000 });
+            } catch (e) { console.error('❌ Error save offline customer:', e); }
+        },
+
+        async searchLocalCustomer(query) {
+            const cleanQuery = query ? query.trim() : '';
+            const db = await this.getDb();
+            if (!db || cleanQuery.length < 3) { this.localCustomers = []; return; }
+            try {
+                const searchLower = cleanQuery.toLowerCase();
+                this.localCustomers = await db.clientes.filter(c => {
+                    const bName = (c.businessName || '').toLowerCase();
+                    const fName = (c.firstName || '').toLowerCase();
+                    const lName = (c.lastName || '').toLowerCase();
+                    const ident = (c.identification || '').toLowerCase();
+                    return bName.includes(searchLower) || fName.includes(searchLower) || lName.includes(searchLower) || ident.includes(searchLower);
+                }).limit(20).toArray();
+            } catch (e) { console.error('❌ Error search customer:', e); }
+        },
+
+        async syncFullCatalogAuto() {
+            if (this.isOnline && !this.syncing) {
+                await $wire.syncFullCatalog();
+            }
+        }
+    }));
 </script>
+@endscript
 
 
     {{-- Contenedor con lógica offline --}}
-    <div x-data="quoterOffline" class="fixed inset-0 z-[35] bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div x-data="quoterOffline" 
+         class="fixed inset-0 bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden transition-all duration-300"
+         :class="showOfflineCreateForm ? 'z-[9999]' : 'z-[35]'">
         
         <!-- Banner de estado Offline -->
         <div x-show="!isOnline || forceOffline" 
@@ -759,6 +611,10 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                     <span class="text-sm font-medium">Regresar</span>
                 </a>
                 @endif
+
+                
+
+
 
                 <div class="flex items-center gap-2">
                     <!-- Botón Sincronizar (Solo Online) -->
@@ -818,6 +674,21 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                     </div>
                 </div>
             </div>
+
+            <!-- Boton solo para ruteros (Reposicionado) -->
+            @if(auth()->check() && auth()->user()->profile_id == 4)
+                <div class="px-1 mb-4">
+                    <button wire:click="openRoutes"
+                        class="w-full inline-flex items-center justify-center px-4 py-3 rounded-xl font-bold text-sm uppercase transition-all duration-200 bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                            </path>
+                        </svg>
+                        Ruteros
+                    </button>
+                </div>
+            @endif
 
             <!-- Banner Offline -->
             <!-- <div x-show="!isOnline" 
@@ -973,7 +844,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
 
                             <!-- Precios para seleccionar -->
                             <div x-show="getProductQuantity(product.id) === 0" class="space-y-1.5">
-                                    <template x-for="(price, label) in (product.all_prices || {})" :key="label">
+                                    <template x-for="(price, label) in getVisiblePrices(product.all_prices || {})" :key="label">
                                         <button @click="isOnline ? $wire.addToQuoter(product.id, price, label) : addToLocalCart(product, price, label)"
                                                 class="w-full py-2 px-2 text-center rounded-lg border-2 border-green-100 dark:border-green-800 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 hover:bg-green-100 active:scale-95 transition-all flex flex-col items-center justify-center">
                                             <span class="text-[9px] uppercase font-bold opacity-60" x-text="label == 'Precio Regular' ? 'Precio' : label"></span>
@@ -1100,7 +971,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                     <!-- Ícono de loading -->
                                     <svg wire:loading wire:target="editCustomer" class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                        <path class="opacity-75" fill="currentColor" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                     </svg>
                                 </button>
 
@@ -1155,7 +1026,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                     <div class="space-y-2 relative">
                         <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Buscar Cliente</label>
                         
-                        <template x-if="isOnline && !@js($selectedCustomer)">
+                        <div x-show="isOnline && !serverSelectedCustomer">
                             <input
                                 wire:model.live.debounce.300ms="customerSearch"
                                 type="text"
@@ -1163,9 +1034,9 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                 class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                                 autocomplete="off"
                                 id="customerSearchInputMobile">
-                        </template>
+                        </div>
 
-                        <template x-if="(!isOnline || forceOffline) && !selectedLocalCustomer">
+                        <div x-show="(!isOnline || forceOffline) && !selectedLocalCustomer">
                             <input
                                 x-model="localSearch"
                                 @input="searchLocalCustomer($event.target.value)"
@@ -1173,7 +1044,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                 placeholder="Buscar en memoria del celular..."
                                 class="w-full px-3 py-2 text-sm border border-orange-300 rounded-lg bg-orange-50/50 dark:bg-gray-700 dark:border-orange-900/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500"
                                 autocomplete="off">
-                        </template>
+                        </div>
 
                         <!-- Resultados Offline (Solo si hay coincidencias) -->
                         <template x-for="item in [1]" :key="item">
@@ -1190,49 +1061,21 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                         </div>
                         </template>
 
-                        <!-- Botón Crear Nuevo (Solo si NO hay coincidencias pero sí búsqueda) -->
-                        <template x-if="(!isOnline || forceOffline) && localCustomers.length === 0 && localSearch.length > 0">
-                            <div class="relative w-full mt-2 animate-in zoom-in duration-200">
-                                <button @click="showOfflineCreateForm = true; localCustomers = []; newOfflineCustomer.identification = localSearch" 
-                                        class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2 border border-orange-600">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                    Crear Nuevo: <span x-text="localSearch"></span>
-                                </button>
-                            </div>
-                        </template>
+                        <div x-effect="
+                            const query = isOnline ? serverCustomerSearch : localSearch;
+                            const resultsCount = isOnline ? serverCustomerResults.length : localCustomers.length;
+                            const selected = isOnline ? serverSelectedCustomer : selectedLocalCustomer;
 
-                        <!-- Formulario de Creación Rápida Offline -->
-                        <template x-if="showOfflineCreateForm">
-                            <div class="bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-900/40 rounded-lg p-4 mt-2 shadow-lg animate-in zoom-in duration-200">
-                                <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-orange-500"></span>
-                                    Nuevo Cliente (Offline)
-                                </h3>
-                                
-                                <div class="space-y-3">
-                                    <div class="grid grid-cols-3 gap-2">
-                                        <select x-model="newOfflineCustomer.typeIdentificationId" class="col-span-1 px-2 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                            <option value="1">C.C.</option>
-                                            <option value="2">NIT</option>
-                                        </select>
-                                        <input x-model="newOfflineCustomer.identification" type="tel" placeholder="Documento" class="col-span-2 px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                    </div>
-                                    
-                                    <input x-model="newOfflineCustomer.businessName" type="text" placeholder="Nombre / Razón Social" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                    
-                                    
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <input x-model="newOfflineCustomer.phone" type="tel" placeholder="Teléfono" class="px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                        <input x-model="newOfflineCustomer.address" type="text" placeholder="Dirección" class="px-3 py-2 text-xs border border-gray-300 rounded-lg dark:bg-gray-700 dark:text-white">
-                                    </div>
-                                    
-                                    <div class="flex gap-2 pt-1">
-                                        <button @click="showOfflineCreateForm = false" class="flex-1 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg text-xs font-bold">Cancelar</button>
-                                        <button @click="saveOfflineCustomer()" class="flex-1 py-2 bg-orange-600 text-white hover:bg-orange-700 rounded-lg text-xs font-bold">Guardar</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
+                            if (query && query.length >= 3 && resultsCount === 0 && !selected) {
+                                if (!showOfflineCreateForm) {
+                                    showOfflineCreateForm = true;
+                                    newOfflineCustomer.identification = query;
+                                }
+                            } else if (resultsCount > 0 || selected) {
+                                showOfflineCreateForm = false;
+                            }
+                        "></div>
+
 
                         <!-- Caja de Cliente seleccionado Offline -->
                         <template x-if="(!isOnline || forceOffline) && selectedLocalCustomer">
@@ -1245,11 +1088,33 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                     <div class="font-bold text-gray-900 dark:text-white text-sm" x-text="(selectedLocalCustomer.businessName || (selectedLocalCustomer.firstName + ' ' + selectedLocalCustomer.lastName)).toLowerCase()"></div>
                                     <div class="text-[10px] text-green-600 dark:text-green-400" x-text="selectedLocalCustomer.address || 'Sin dirección registrada'"></div>
                                 </div>
-                                <button @click="selectedLocalCustomer = null" class="text-green-600 hover:text-green-800 dark:text-green-400 p-1.5 hover:bg-green-200/50 rounded-full transition-colors">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
+                                <div class="flex items-center gap-2">
+                                    <!-- Botón Editar Local -->
+                                    <button @click="
+                                        newOfflineCustomer = {
+                                            id: null, // Es local, no tiene ID de servidor
+                                            typeIdentificationId: selectedLocalCustomer.typeIdentificationId || 1,
+                                            identification: selectedLocalCustomer.identification,
+                                            businessName: selectedLocalCustomer.businessName || (selectedLocalCustomer.firstName + ' ' + selectedLocalCustomer.lastName),
+                                            phone: selectedLocalCustomer.phone || '',
+                                            address: selectedLocalCustomer.address || '',
+                                            billingEmail: selectedLocalCustomer.billingEmail || '',
+                                            createUser: false,
+                                            route_id: selectedLocalCustomer.route_id || @js($newCustomerRouteId)
+                                        };
+                                        showOfflineCreateForm = true;
+                                    " class="text-blue-600 hover:text-blue-800 dark:text-blue-400 p-1.5 hover:bg-blue-100/50 rounded-full transition-colors" title="Editar local">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
+
+                                    <button @click="selectedLocalCustomer = null" class="text-green-600 hover:text-green-800 dark:text-green-400 p-1.5 hover:bg-green-200/50 rounded-full transition-colors">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </template>
 
@@ -1266,13 +1131,6 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                                         <div class="text-gray-600 dark:text-gray-300">{{ $customer['display_name'] }}</div>
                                     </div>
                                     @endforeach
-                                </div>
-                                @elseif(strlen($customerSearch) >= 1)
-                                <div class="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
-                                    <div class="p-3 text-sm text-gray-500 dark:text-gray-400">
-                                        <div class="mb-2">No se encontraron clientes</div>
-                                        <button wire:click="openCustomerModal" class="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs">Crear nuevo cliente</button>
-                                    </div>
                                 </div>
                                 @endif
                             </div>
@@ -1330,6 +1188,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
 
                                 <!-- Contenido de la Tarjeta -->
                                 <div class="relative p-3 flex items-center justify-between bg-inherit transition-transform duration-100 ease-out"
+                                     x-init="if (!swipeStates[item.id]) swipeStates[item.id] = {startX: 0, currentX: 0}"
                                      :style="`transform: translateX(${swipeStates[item.id] ? swipeStates[item.id].currentX : 0}px)`">
                                     
                                     <div class="flex-1 min-w-0 pr-4">
@@ -1632,54 +1491,53 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
 </div>
 </div>
 </div>
+    @include('livewire.tenant.quoter.components.customer-quick-form')
 </div>
 
 
-@push('scripts')
+@script
 <script>
-    document.addEventListener('livewire:initialized', () => {
-        Livewire.on('show-toast', (data) => {
-            const payload = Array.isArray(data) ? data[0] : data;
-            console.log('Mobile Toast triggered:', payload); // Debug
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 2000,
-                timerProgressBar: true,
-                icon: payload.type || 'info',
-                title: payload.message,
-                background: '#ffffff',
-                color: '#111827'
-            });
-        });
-
-        Livewire.on('confirm-add-duplicate', (data) => {
-            const payload = Array.isArray(data) ? data[0] : data;
-            Swal.fire({
-                title: 'Producto ya confirmado',
-                text: payload.message + "\n¿Deseas agregarlo de todas formas?",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Sí, agregar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    console.log('Mobile Calling forceAddToQuoter directly:', payload);
-                    Livewire.find('{{ $this->getId() }}').call('forceAddToQuoter',
-                        payload.productId,
-                        payload.selectedPrice,
-                        payload.priceLabel
-                    );
-                }
-            });
+    $wire.on('show-toast', (data) => {
+        const payload = Array.isArray(data) ? data[0] : data;
+        console.log('Mobile Toast triggered:', payload);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true,
+            icon: payload.type || 'info',
+            title: payload.message,
+            background: '#ffffff',
+            color: '#111827'
         });
     });
 
-    // Función para confirmar limpiar carrito
-    function confirmClearCart() {
+    $wire.on('confirm-add-duplicate', (data) => {
+        const payload = Array.isArray(data) ? data[0] : data;
+        Swal.fire({
+            title: 'Producto ya confirmado',
+            text: payload.message + "\n¿Deseas agregarlo de todas formas?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, agregar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                console.log('Mobile Calling forceAddToQuoter directly:', payload);
+                $wire.call('forceAddToQuoter',
+                    payload.productId,
+                    payload.selectedPrice,
+                    payload.priceLabel
+                );
+            }
+        });
+    });
+
+    // Función global para confirmar limpiar carrito (llamada desde Alpine/HTML)
+    window.confirmClearCart = function() {
         Swal.fire({
             title: '¿Limpiar carrito?',
             text: 'Se eliminarán todos los productos del carrito. El cliente seleccionado se mantendrá.',
@@ -1693,33 +1551,21 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
             color: '#111827'
         }).then((result) => {
             if (result.isConfirmed) {
-                @this.call('clearCart');
+                $wire.call('clearCart');
             }
         });
     }
 
-    // Función para manejar Enter en búsqueda de productos
-    function handleProductSearchKeydown(event) {
+    // Función global para manejar Enter en búsqueda de productos
+    window.handleProductSearchKeydown = function(event) {
         if (event.key === 'Enter') {
             event.preventDefault();
-
-            // Buscar el primer producto visible con precio disponible
             const products = document.querySelectorAll('[wire\\:click*="addToQuoter"]');
-
             if (products.length > 0) {
-                // Buscar el primer botón de precio que no esté deshabilitado
                 for (let product of products) {
                     if (!product.disabled && !product.hasAttribute('disabled')) {
-                        // Hacer scroll al producto
-                        product.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center'
-                        });
-
-                        // Simular click después del scroll
-                        setTimeout(() => {
-                            product.click();
-                        }, 300);
+                        product.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        setTimeout(() => { product.click(); }, 300);
                         break;
                     }
                 }
@@ -1730,10 +1576,9 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
     // Keyboard navigation for mobile customer search
     var selectedCustomerIndexMobile = -1;
 
-    function handleCustomerSearchKeydownMobile(event) {
+    window.handleCustomerSearchKeydownMobile = function(event) {
         const resultsContainer = document.getElementById('customerSearchResultsMobile');
         const results = resultsContainer ? resultsContainer.querySelectorAll('.customer-result-mobile') : [];
-
         if (results.length === 0) return;
 
         switch (event.key) {
@@ -1750,10 +1595,7 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
             case 'Enter':
                 event.preventDefault();
                 if (selectedCustomerIndexMobile >= 0 && results[selectedCustomerIndexMobile]) {
-                    const customerId = results[selectedCustomerIndexMobile].getAttribute('data-customer-id');
-                    if (customerId) {
-                        results[selectedCustomerIndexMobile].click();
-                    }
+                    results[selectedCustomerIndexMobile].click();
                 }
                 break;
             case 'Escape':
@@ -1761,39 +1603,24 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
                 selectedCustomerIndexMobile = -1;
                 updateCustomerSelectionMobile(results);
                 document.getElementById('customerSearchInputMobile').value = '';
-                // Clear Livewire model
-                Livewire.find(document.querySelector('[wire\\:id]').getAttribute('wire:id')).set('customerSearch', '');
+                $wire.set('customerSearch', '');
                 break;
         }
     }
 
     function updateCustomerSelectionMobile(results) {
-        // Remove previous highlights
-        results.forEach(result => {
-            result.classList.remove('bg-blue-100', 'dark:bg-blue-700');
-        });
-
-        // Add highlight to current selection
+        results.forEach(result => { result.classList.remove('bg-blue-100', 'dark:bg-blue-700'); });
         if (selectedCustomerIndexMobile >= 0 && results[selectedCustomerIndexMobile]) {
             const selected = results[selectedCustomerIndexMobile];
             selected.classList.add('bg-blue-100', 'dark:bg-blue-700');
-
-            // Scroll into view if needed
             const container = document.getElementById('customerSearchResultsMobile');
             if (container) {
                 const containerRect = container.getBoundingClientRect();
                 const selectedRect = selected.getBoundingClientRect();
-
                 if (selectedRect.bottom > containerRect.bottom) {
-                    selected.scrollIntoView({
-                        block: 'end',
-                        behavior: 'smooth'
-                    });
+                    selected.scrollIntoView({ block: 'end', behavior: 'smooth' });
                 } else if (selectedRect.top < containerRect.top) {
-                    selected.scrollIntoView({
-                        block: 'start',
-                        behavior: 'smooth'
-                    });
+                    selected.scrollIntoView({ block: 'start', behavior: 'smooth' });
                 }
             }
         }
@@ -1804,4 +1631,9 @@ document.addEventListener('livewire:navigated', initQuoterOffline);
         selectedCustomerIndexMobile = -1;
     });
 </script>
-@endpush
+@endscript
+
+<!-- Routes Modal -->
+@if($showRoutesModal)
+    @livewire('tenant.vnt-company.company-routes-modal', ['showModal' => true], key('routes-modal-mobile'))
+@endif

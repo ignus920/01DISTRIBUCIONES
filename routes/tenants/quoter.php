@@ -9,8 +9,8 @@ use App\Livewire\Tenant\Quoter\ProductQuoter;
 | Quoter Routes
 |--------------------------------------------------------------------------
 |
-| Aqu� est�n todas las rutas relacionadas con el cotizador (Quoter)
-| Estas rutas est�n espec�ficamente para el tenant
+| Aquí están todas las rutas relacionadas con el cotizador (Quoter)
+| Estas rutas están específicamente para el tenant
 |
 */
 
@@ -73,4 +73,4 @@ Route::get('/tenant/quoter/products/mobile/remission/{remissionId}', ProductQuot
 Route::get('/quoter/print/temp/{file}', [QuoterPrintController::class, 'showTempPrint'])
     ->middleware(['auth', 'verified', 'tenant'])
     ->name('quoter.print.temp')
-    ->where('file', '^quote_\d+_\d+\.html$');           // Validación de formato de archivo
+    ->where('file', '^(quote|route)_\d+_\d+\.html$');           // Validación de formato de archivo

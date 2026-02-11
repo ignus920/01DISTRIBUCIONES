@@ -50,8 +50,8 @@ class QuoterPrintController extends Controller
      */
     private function isValidTempFile($filename)
     {
-        // Verificar que el nombre del archivo tiene el formato esperado
-        return preg_match('/^quote_\d+_\d+\.html$/', $filename);
+        // Verificar que el nombre del archivo tiene el formato esperado (quote_ o route_)
+        return preg_match('/^(quote|route)_\d+_\d+\.html$/', $filename);
     }
 
     /**
@@ -65,7 +65,12 @@ class QuoterPrintController extends Controller
             return;
         }
 
-        $files = glob($tempDir . '/quote_*.html');
+        // Limpiar tanto quote_ como route_
+        $files = array_merge(
+            glob($tempDir . '/quote_*.html'),
+            glob($tempDir . '/route_*.html')
+        );
+        
         $now = time();
 
         foreach ($files as $file) {
