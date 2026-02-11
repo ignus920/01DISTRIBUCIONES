@@ -21,6 +21,10 @@ class Dashboard extends Component
     public $tenant;
     public $user;
     public $stats = [];
+    public $startDate;
+    public $endDate;
+    public $chartDailyData = [];
+    public $chartMonthlyData = [];
 
     public function mount()
     {
@@ -43,6 +47,10 @@ class Dashboard extends Component
         // IMPORTANTE: Inicializar configuración de empresa para multitenancy
         $this->initializeCompanyConfiguration();
 
+        // Inicializar fechas por defecto (Mes actual)
+        $this->startDate = now()->startOfMonth()->format('Y-m-d');
+        $this->endDate = now()->today()->format('Y-m-d');
+
         // Cargar estadísticas reales
         $this->loadStats();
 
@@ -52,51 +60,153 @@ class Dashboard extends Component
         }
     }
 
+    public function updated($propertyName)
+    {
+        if (in_array($propertyName, ['startDate', 'endDate'])) {
+            $this->loadStats();
+        }
+    }
+
     /**
      * Carga las estadísticas reales consultando la base de datos del tenant
      */
     protected function loadStats()
     {
         try {
+            $isSalesman = $this->user->profile_id == 4;
+            $userId = $this->user->id;
+
             // 1. Ventas Hoy: Suma de (cantidad * valor) de detalles de cotizaciones de hoy
-            $ventasHoy = VntDetailQuote::whereHas('cotizacion', function($query) {
+            $ventasHoy = VntDetailQuote::whereHas('cotizacion', function($query) use ($isSalesman, $userId) {
                 $query->whereDate('created_at', now()->today());
+                if ($isSalesman) {
+                    $query->where('userId', $userId);
+                }
             })->get()->sum(function($detalle) {
-                return $detalle->quantity * ($detalle->price ?? 0);
+                $subtotal = $detalle->quantity * ($detalle->price ?? 0);
+                $tax = $subtotal * (($detalle->tax_percentage ?? 0) / 100);
+                return $subtotal + $tax;
             });
 
-            // 2. Total Clientes: Conteo de empresas registradas (excluyendo eliminados por SoftDeletes)
-            $totalClientes = VntCompany::count();
+            // 2. Total Clientes: Segmentado por perfil
+            if ($isSalesman) {
+                // Clientes asignados a sus rutas
+                $totalClientes = VntCompany::whereHas('routes', function($query) use ($userId) {
+                    $query->whereHas('route', function($q) use ($userId) {
+                        $q->where('salesman_id', $userId);
+                    });
+                })->count();
+            } else {
+                // Global para otros perfiles (Admin)
+                $totalClientes = VntCompany::count();
+            }
 
             // 3. Total Productos: Conteo de items activos
             $totalProductos = Items::active()->count();
 
-            // 4. Ventas del Mes: Suma de (cantidad * valor) de cotizaciones del mes actual
-            $ventasMes = VntDetailQuote::whereHas('cotizacion', function($query) {
-                $query->whereMonth('created_at', now()->month)
-                      ->whereYear('created_at', now()->year);
+            // 4. Ventas en Rango Seleccionado:
+            $ventasRango = VntDetailQuote::whereHas('cotizacion', function($query) use ($isSalesman, $userId) {
+                $query->whereBetween('created_at', [$this->startDate . ' 00:00:00', $this->endDate . ' 23:59:59']);
+                if ($isSalesman) {
+                    $query->where('userId', $userId);
+                }
             })->get()->sum(function($detalle) {
-                return $detalle->quantity * ($detalle->price ?? 0);
+                $subtotal = $detalle->quantity * ($detalle->price ?? 0);
+                $tax = $subtotal * (($detalle->tax_percentage ?? 0) / 100);
+                return $subtotal + $tax;
             });
 
             $this->stats = [
                 'total_ventas_hoy' => $ventasHoy,
                 'total_clientes' => $totalClientes,
                 'total_productos' => $totalProductos,
-                'ventas_mes' => $ventasMes,
+                'ventas_rango' => $ventasRango,
             ];
 
+            // 5. Datos para Gráfico Diario (Rango seleccionado)
+            $this->loadDailyChartData($isSalesman, $userId);
+
+            // 6. Datos para Gráfico Mensual (Últimos 12 meses)
+            $this->loadMonthlyChartData($isSalesman, $userId);
+
+            // Notificar a la vista que los datos de los gráficos han cambiado
+            $this->dispatch('update-charts', daily: $this->chartDailyData, monthly: $this->chartMonthlyData);
+
         } catch (\Exception $e) {
-            // En caso de error (ej. tabla no existe aún), mostrar ceros para no romper la vista
             $this->stats = [
                 'total_ventas_hoy' => 0,
                 'total_clientes' => 0,
                 'total_productos' => 0,
-                'ventas_mes' => 0,
+                'ventas_rango' => 0,
             ];
             
             \Illuminate\Support\Facades\Log::error('Error cargando estadísticas del Dashboard: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Carga los datos para el gráfico de ventas diarias
+     */
+    protected function loadDailyChartData($isSalesman, $userId)
+    {
+        $dailyResults = VntDetailQuote::whereHas('cotizacion', function($query) use ($isSalesman, $userId) {
+                $query->whereBetween('created_at', [$this->startDate . ' 00:00:00', $this->endDate . ' 23:59:59']);
+                if ($isSalesman) {
+                    $query->where('userId', $userId);
+                }
+            })
+            ->select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('SUM(quantity * price * (1 + COALESCE(tax_percentage, 0) / 100)) as total')
+            )
+            ->groupBy('date')
+            ->orderBy('date', 'ASC')
+            ->get();
+
+        $this->chartDailyData = [
+            'labels' => $dailyResults->pluck('date')->map(fn($d) => \Carbon\Carbon::parse($d)->format('d-M'))->toArray(),
+            'values' => $dailyResults->pluck('total')->toArray()
+        ];
+    }
+
+    /**
+     * Carga los datos para el gráfico de ventas mensuales
+     */
+    protected function loadMonthlyChartData($isSalesman, $userId)
+    {
+        $last12Months = now()->subMonths(11)->startOfMonth();
+        
+        $monthlyResults = VntDetailQuote::whereHas('cotizacion', function($query) use ($isSalesman, $userId, $last12Months) {
+                $query->where('created_at', '>=', $last12Months);
+                if ($isSalesman) {
+                    $query->where('userId', $userId);
+                }
+            })
+            ->select(
+                DB::raw('YEAR(created_at) as year'),
+                DB::raw('MONTH(created_at) as month'),
+                DB::raw('SUM(quantity * price * (1 + COALESCE(tax_percentage, 0) / 100)) as total')
+            )
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'ASC')
+            ->orderBy('month', 'ASC')
+            ->get();
+
+        $labels = [];
+        $values = [];
+        
+        // El usuario quiere ver nombres de meses en español preferiblemente
+        $meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+        foreach ($monthlyResults as $row) {
+            $labels[] = $meses[$row->month - 1] . '-' . substr($row->year, 2);
+            $values[] = $row->total;
+        }
+
+        $this->chartMonthlyData = [
+            'labels' => $labels,
+            'values' => $values
+        ];
     }
 
     public function switchTenant()
@@ -126,8 +236,8 @@ class Dashboard extends Component
     public function getEnabledFeatures(): array
     {
         $allFeatures = [
-            'ventas' => ['option_id' => '3', 'name' => 'Nueva Venta', 'route' => 'tenant.quoter.products.   desktop'],
-            'clientes' => ['option_id' => '5', 'name' => 'Clientes', 'route' => 'tenant.customers'],
+            'ventas' => ['option_id' => '3', 'name' => 'Nueva Venta', 'route' => 'tenant.quoter.products'],
+            'clientes' => ['option_id' => '5', 'name' => 'Clientes', 'route' => 'customers.customers'],
             'productos' => ['option_id' => '15', 'name' => 'Productos', 'route' => 'items'],
             'caja' => ['option_id' => '28', 'name' => 'Cajas', 'route' => 'petty-cash.petty-cash'],
         ];
@@ -135,17 +245,24 @@ class Dashboard extends Component
         $enabledFeatures = [];
 
         foreach ($allFeatures as $key => $feature) {
-            if ($this->canShowFeature($feature['option_id'])) {
-                // Verificar si la ruta existe para evitar errores de renderizado
-                try {
-                    $feature['url'] = \Illuminate\Support\Facades\Route::has($feature['route']) 
-                        ? route($feature['route']) 
-                        : $feature['route'];
-                } catch (\Exception $e) {
-                    $feature['url'] = '#';
+            // 1. RESTRICCIÓN PARA VENDEDORES (Perfil 4): Solo ven 'ventas'
+            if ($this->user->profile_id == 4) {
+                if ($key !== 'ventas') {
+                    continue;
                 }
-                $enabledFeatures[$key] = $feature;
             }
+
+            // 2. Para otros perfiles (Admin): Mostramos siempre que la ruta sea válida o si es una opción base
+            // No aplicamos canShowFeature aquí para evitar que configuraciones restrictivas oculten lo que el Admin debe ver
+            try {
+                $feature['url'] = \Illuminate\Support\Facades\Route::has($feature['route']) 
+                    ? route($feature['route']) 
+                    : $feature['route'];
+            } catch (\Exception $e) {
+                $feature['url'] = '#';
+            }
+            
+            $enabledFeatures[$key] = $feature;
         }
 
         return $enabledFeatures;
