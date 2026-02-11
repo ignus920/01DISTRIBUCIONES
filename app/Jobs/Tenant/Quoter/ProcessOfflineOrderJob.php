@@ -75,7 +75,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
                 $customerId = DB::table('vnt_contacts')
                     ->join('vnt_warehouses', 'vnt_contacts.warehouseId', '=', 'vnt_warehouses.id')
                     ->where('vnt_contacts.id', DB::table('users')->where('id', $this->userId)->value('contact_id'))
-                    ->value('vnt_warehouses.companyId');
+                    ->value('vnt_warehouses.id');
                 
                 if (!$customerId) {
                     throw new \Exception("No se pudo identificar la empresa para el pedido Restock (Tienda TAT)");
@@ -125,7 +125,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
 
                         $companyService = app(CompanyService::class);
                         $newCompany = $companyService->create($companyData, $warehouses);
-                        $customerId = $newCompany->id;
+                        $customerId = $newCompany->mainWarehouse->id ?? $newCompany->id;
 
                         // Asociar a ruta si aplica
                         $routeId = null;
