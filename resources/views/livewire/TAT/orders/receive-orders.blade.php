@@ -188,7 +188,8 @@
     <!-- Toast Scripts if needed (though usually in layout) -->
     <script>
         document.addEventListener('livewire:initialized', () => {
-             Livewire.on('show-toast', (data) => {
+             window.addEventListener('show-toast', (event) => {
+                const data = event.detail;
                 const payload = Array.isArray(data) ? data[0] : data;
                 const Toast = Swal.mixin({
                     toast: true,

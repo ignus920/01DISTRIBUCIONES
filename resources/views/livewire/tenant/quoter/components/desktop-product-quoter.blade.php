@@ -722,7 +722,8 @@ $header = 'Seleccionar productos';
 @push('scripts')
 <script>
     document.addEventListener('livewire:initialized', () => {
-        Livewire.on('show-toast', (data) => {
+        window.addEventListener('show-toast', (event) => {
+            const data = event.detail;
             const payload = Array.isArray(data) ? data[0] : data;
             console.log('Toast triggered:', payload); // Debug
             Swal.fire({
@@ -736,7 +737,8 @@ $header = 'Seleccionar productos';
             });
         });
 
-        Livewire.on('confirm-add-duplicate', (data) => {
+        window.addEventListener('confirm-add-duplicate', (event) => {
+            const data = event.detail;
             const payload = Array.isArray(data) ? data[0] : data;
             Swal.fire({
                 title: 'Producto ya confirmado',

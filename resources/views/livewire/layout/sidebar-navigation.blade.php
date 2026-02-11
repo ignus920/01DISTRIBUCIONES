@@ -51,7 +51,18 @@ new class extends Component
 
 
     <!-- Navigation -->
-    <nav class="flex flex-1 flex-col p-4 space-y-1">
+    <nav class="flex flex-1 flex-col p-4 space-y-1" x-data="{ 
+        async startNewQuote() {
+            if (window.db && window.db.estado_quoter) {
+                try {
+                    await window.db.estado_quoter.delete('actual');
+                    console.log('🧹 Estado local limpiado desde sidebar');
+                } catch (e) {
+                    console.error('Error limpiando estado local:', e);
+                }
+            }
+        }
+    }">
         <!-- Empresas -->
          @if(auth()->user()->profile_id != 17)
         <a href="{{ route('tenant.select') }}" wire:navigate
@@ -80,7 +91,7 @@ new class extends Component
 
         <!-- Ventas -->
  @if(auth()->user()->profile_id === 17 && PermissionHelper::userCan('Ventas', 'show'))
-<a href="{{ route('tenant.quoter.products') }}" wire:navigate
+<a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" @click="startNewQuote" wire:navigate
     class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
     {{ request()->routeIs('tenant.quoter.products*')
         ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500'
@@ -164,7 +175,7 @@ new class extends Component
      <div x-show="open && !sidebarCollapsed" x-transition
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
 
-        <a href="{{ route('tenant.quoter.products') }}" wire:navigate class="block px-2 py-1 hover:text-indigo-600">
+        <a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" @click="startNewQuote" wire:navigate class="block px-2 py-1 hover:text-indigo-600">
             Ventas
         </a>
 
@@ -182,7 +193,7 @@ new class extends Component
         class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
         @mouseenter="tooltip = true" @mouseleave="tooltip = false">
         
-        <a href="{{ route('tenant.quoter.products') }}" wire:navigate
+        <a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" @click="startNewQuote" wire:navigate
             class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Ventas</a>
         <a href="{{ route('tenant.quoter') }}" wire:navigate
             class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Cotizaciones</a>

@@ -83,17 +83,6 @@
                 this.isOnline = true;
                 console.log('🌐 Conexión recuperada');
                 
-                // Notificar visualmente al usuario con un toast de SweetAlert
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Conexión Recuperada!',
-                    text: 'Sincronizando datos pendientes...',
-                    toast: true,
-                    position: 'top-end',
-                    timer: 3000,
-                    showConfirmButton: false
-                });
-
                 // Limpiar términos de búsqueda local para refrescar la lista
                 this.localSearch = '';
                 await $wire.set('search', '', true); 
@@ -767,7 +756,13 @@
 
     <!-- Lista de productos UNIFICADA -->
     <div class="flex-1 overflow-y-auto pb-20">
-        <div class="px-3 py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+       <div class="px-3 py-4 grid
+    grid-cols-3
+    min-[640px]:grid-cols-3
+    md:grid-cols-4
+    lg:grid-cols-5
+    xl:grid-cols-6
+    gap-3">
             <template x-for="product in displayProducts" :key="product.id">
                 <div class="relative flex flex-col bg-white dark:bg-gray-800 rounded-xl border-2 transition-all duration-300 overflow-hidden"
                      :class="getProductQuantity(product.id) > 0 
@@ -1497,7 +1492,8 @@
 
 @script
 <script>
-    $wire.on('show-toast', (data) => {
+    window.addEventListener('show-toast', (event) => {
+        const data = event.detail;
         const payload = Array.isArray(data) ? data[0] : data;
         console.log('Mobile Toast triggered:', payload);
         Swal.fire({

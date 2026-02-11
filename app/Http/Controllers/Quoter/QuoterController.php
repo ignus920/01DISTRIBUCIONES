@@ -42,10 +42,10 @@ class QuoterController extends Controller
 
         // FORZAR TABLET A MOBILE
         if ($agent->isMobile() || $agent->isTablet()) {
-            return redirect()->route('tenant.quoter.products.mobile');
+            return redirect()->route('tenant.quoter.products.mobile', $request->all());
         }
 
         // Desktop - redirigir a la ruta desktop
-        return redirect()->route('tenant.quoter.products.desktop');
+        return redirect()->route('tenant.quoter.products.desktop', $request->all());
     }
 }

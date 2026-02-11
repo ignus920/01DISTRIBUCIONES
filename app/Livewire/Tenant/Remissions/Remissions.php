@@ -78,6 +78,9 @@ class Remissions extends Component
                 ->when($this->search, function ($query) {
                     $this->applyBaseFilters($query);
                 })
+                ->when(auth()->user()->profile_id == 4, function ($query) {
+                    $query->where('userId', auth()->id());
+                })
                 ->where('status', 'REGISTRADO') // Solo se facturan las registradas
                 ->pluck('id')
                 ->map(fn($id) => (string) $id)
@@ -426,6 +429,9 @@ class Remissions extends Component
         $remissions = InvRemissions::with(['quote.customer', 'quote.warehouse', 'quote.branch', 'details'])
             ->where(function($query) {
                 $this->applyBaseFilters($query);
+            })
+            ->when(auth()->user()->profile_id == 4, function ($query) {
+                $query->where('userId', auth()->id());
             })
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage);
