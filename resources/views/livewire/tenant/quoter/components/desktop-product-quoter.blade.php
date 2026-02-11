@@ -25,7 +25,21 @@ $header = 'Seleccionar productos';
                     </svg>
                     Regresar a cotizaciones
                 </a>
+
+                 
                 @endif
+   <!-- Boton solo para ruteros -->
+                @if(auth()->check() && auth()->user()->profile_id == 4)
+                <button wire:click="openRoutes"
+                                class="inline-flex items-center px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                                    </path>
+                                </svg>
+                                Ruteros
+                            </button>
+                 @endif
             </div>
 
             <!-- Barra de búsqueda y filtros -->
@@ -131,16 +145,23 @@ $header = 'Seleccionar productos';
                             @endphp
                             @if(!empty($allPrices))
                             @php
-                            $filteredPrices = auth()->user()->profile_id == 17
-                            ? collect($allPrices)->filter(fn($price, $label) => $label === 'Precio Regular')
-                            : collect($allPrices);
+                            $userProfileId = auth()->user()->profile_id;
+                            $filteredPrices = collect($allPrices);
+                            
+                            if ($userProfileId == 17) {
+                                // Perfil Tienda (TAT): Solo Precio Regular
+                                $filteredPrices = $filteredPrices->filter(fn($price, $label) => $label === 'Precio Regular');
+                            } elseif ($userProfileId == 4) {
+                                // Perfil Vendedor: Solo Precio Base (P1)
+                                $filteredPrices = $filteredPrices->filter(fn($price, $label) => 
+                                    strtolower($label) === 'p1' || strtolower($label) === 'precio base'
+                                );
+                            }
+                            
                             $priceCount = $filteredPrices->count();
                             @endphp
                             <div class="mb-2 grid {{ $priceCount == 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-1">
-                                @foreach($allPrices as $label => $price)
-                                @if(auth()->user()->profile_id == 17)
-                                {{-- Solo mostrar Precio Regular para perfil 17 --}}
-                                @if($label === 'Precio Regular')
+                                @foreach($filteredPrices as $label => $price)
                                 @php
                                 $isDisabled = $isSelected;
                                 @endphp
@@ -164,33 +185,6 @@ $header = 'Seleccionar productos';
                                         <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                 </button>
-                                @endif
-                                @else
-                                {{-- Mostrar todos los precios para otros perfiles --}}
-                                @php
-                                $isDisabled = $isSelected;
-                                @endphp
-                                <button
-                                    title="{{ $label }}"
-                                    wire:click="addToQuoter({{ $product->id }}, {{ $price }}, '{{ $label }}')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="addToQuoter"
-                                    x-on:click.stop
-                                    @if($isDisabled) disabled @endif
-                                    class="px-2 py-1 text-center rounded border transition-colors min-h-[28px] flex items-center justify-center {{ $isDisabled ? 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed': 'bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer'}}">
-
-                                    <!-- Contenido normal -->
-                                    <div wire:loading.remove wire:target="addToQuoter" class="font-bold text-xs {{ $isDisabled ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white' }}">
-                                        ${{ number_format($price) }}
-                                    </div>
-
-                                    <!-- Spinner de carga -->
-                                    <svg wire:loading wire:target="addToQuoter" class="w-3 h-3 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </button>
-                                @endif
                                 @endforeach
                             </div>
                             @else
@@ -716,6 +710,12 @@ $header = 'Seleccionar productos';
             @endif
         </div>
     </div>
+
+
+       <!-- Routes Modal -->
+    @if($showRoutesModal)
+        @livewire('tenant.vnt-company.company-routes-modal', ['showModal' => true], key('routes-modal'))
+    @endif
 </div>
 
 
@@ -849,13 +849,34 @@ $header = 'Seleccionar productos';
         return {
             showOfflineCreateForm: false,
             newOfflineCustomer: {
+                id: null,
                 typeIdentificationId: 1,
                 identification: '',
                 businessName: '',
                 phone: '',
                 address: '',
                 billingEmail: '',
-                createUser: false
+                createUser: false,
+                route_id: @js($newCustomerRouteId)
+            },
+            init() {
+                // Escuchar evento de carga de datos para edición
+                window.addEventListener('load-customer-data', (event) => {
+                    const data = event.detail.customer || event.detail[0]?.customer || event.detail;
+                    console.log('Cargando datos para edición:', data);
+                    this.newOfflineCustomer = {
+                        id: data.id || null,
+                        typeIdentificationId: data.typeIdentificationId || 1,
+                        identification: data.identification || '',
+                        businessName: data.businessName || '',
+                        phone: data.phone || '',
+                        address: data.address || '',
+                        billingEmail: data.billingEmail || '',
+                        createUser: false, // Por seguridad no activamos creación de usuario en edición si no se pide
+                        route_id: data.route_id || @js($newCustomerRouteId)
+                    };
+                    this.showOfflineCreateForm = true;
+                });
             },
             async saveOfflineCustomer() { // Mantenemos el nombre por compatibilidad con el componente include
                 if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
@@ -868,13 +889,15 @@ $header = 'Seleccionar productos';
                     if (response && response.success) {
                         this.showOfflineCreateForm = false;
                         this.newOfflineCustomer = {
+                            id: null,
                             typeIdentificationId: 1,
                             identification: '',
                             businessName: '',
                             phone: '',
                             address: '',
                             billingEmail: '',
-                            createUser: false
+                            createUser: false,
+                            route_id: @js($newCustomerRouteId)
                         };
                     }
                 } catch (e) {

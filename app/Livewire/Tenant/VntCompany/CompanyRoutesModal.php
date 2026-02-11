@@ -201,4 +201,67 @@ class CompanyRoutesModal extends Component
             session()->flash('error', 'Error al actualizar el orden: ' . $e->getMessage());
         }
     }
+
+    public function printRoute()
+    {
+        try {
+            if (!$this->filterRouteId) {
+                return;
+            }
+
+            $route = \App\Models\TAT\Routes\TatRoutes::with(['salesman', 'zones'])->find($this->filterRouteId);
+            if (!$route) {
+                session()->flash('error', 'Ruta no encontrada');
+                return;
+            }
+
+            $items = TatCompanyRoute::query()
+                ->with([
+                    'company.mainWarehouse', 
+                    'company.activeContacts',
+                    'route.zones'
+                ])
+                ->where('route_id', $this->filterRouteId)
+                ->orderBy('sales_order', 'asc')
+                ->get();
+
+            if ($items->isEmpty()) {
+                session()->flash('error', 'No hay clientes en esta ruta para imprimir');
+                return;
+            }
+
+            // Datos para la vista de impresión
+            $data = [
+                'companyName' => '01 DISTRIBUCIONES',
+                'companyNit' => '901.456.789-0', // Valor quemado por ahora, idealmente viene de config
+                'routeName' => $route->name,
+                'salesmanName' => $route->salesman->name ?? 'N/A',
+                'saleDay' => ucfirst($route->sale_day ?? 'N/A'),
+                'deliveryDay' => ucfirst($route->delivery_day ?? 'N/A'),
+                'items' => $items
+            ];
+
+            $html = view('livewire.tenant.vnt-company.print.print-route', $data)->render();
+
+            // Guardar temporalmente el HTML
+            $tempFileName = 'route_' . $this->filterRouteId . '_' . time() . '.html';
+            $tempPath = storage_path('app/temp/' . $tempFileName);
+
+            if (!file_exists(dirname($tempPath))) {
+                mkdir(dirname($tempPath), 0755, true);
+            }
+
+            file_put_contents($tempPath, $html);
+
+            // Generar la URL del archivo
+            $printUrl = route('quoter.print.temp', ['file' => $tempFileName]);
+
+            // Despachar evento para abrir en nueva ventana
+            $this->dispatch('open-print-window', ['url' => $printUrl]);
+
+        } catch (\Exception $e) {
+            Log::error('Error printing route: ' . $e->getMessage());
+            session()->flash('error', 'Error al generar la impresión: ' . $e->getMessage());
+        }
+    }
 }

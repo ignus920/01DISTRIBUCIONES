@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Auth\User;
 use App\Models\Auth\UserTenant;
+use App\Models\TAT\Routes\TatRoutes;
+use App\Models\Tenant\Customer\TatCompanyRoute;
 
 class ProcessOfflineOrderJob implements ShouldQueue
 {
@@ -124,6 +126,39 @@ class ProcessOfflineOrderJob implements ShouldQueue
                         $companyService = app(CompanyService::class);
                         $newCompany = $companyService->create($companyData, $warehouses);
                         $customerId = $newCompany->id;
+
+                        // Asociar a ruta si aplica
+                        $routeId = null;
+                        $currentUser = User::find($this->userId);
+                        if ($currentUser && $currentUser->profile_id == 2) {
+                            $routeId = $offlineCustomer['route_id'] ?? $offlineCustomer['routeId'] ?? null;
+                        } elseif ($currentUser && $currentUser->profile_id == 4) {
+                            $sellerRoute = DB::connection('central')->table('tat_routes')
+                                ->where('salesman_id', $this->userId)
+                                ->whereNull('deleted_at')
+                                ->first();
+                            $routeId = $sellerRoute ? $sellerRoute->id : null;
+                        }
+
+                        if ($routeId) {
+                            // Calcular el siguiente orden secuencial para esta ruta
+                            $maxOrders = TatCompanyRoute::where('route_id', $routeId)
+                                ->selectRaw('MAX(sales_order) as max_sales, MAX(delivery_order) as max_delivery')
+                                ->first();
+
+                            $nextSalesOrder = ($maxOrders->max_sales ?? 0) + 1;
+                            $nextDeliveryOrder = ($maxOrders->max_delivery ?? 0) + 1;
+
+                            TatCompanyRoute::updateOrCreate(
+                                ['company_id' => $customerId],
+                                [
+                                    'route_id' => $routeId,
+                                    'sales_order' => $nextSalesOrder,
+                                    'delivery_order' => $nextDeliveryOrder
+                                ]
+                            );
+                            Log::info("✅ [Job] Cliente offline asociado a ruta ID: {$routeId} con orden secuencial (S:{$nextSalesOrder}, D:{$nextDeliveryOrder})");
+                        }
 
                         // NUEVO: Crear usuario si se marcó en el formulario offline
                         if (isset($offlineCustomer['createUser']) && $offlineCustomer['createUser'] && !empty($offlineCustomer['billingEmail'])) {

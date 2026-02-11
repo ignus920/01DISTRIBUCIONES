@@ -27,8 +27,8 @@ x-init="
         x-transition:leave="ease-in duration-200"
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0">
-        <div class="relative min-h-screen flex items-start justify-center p-4 pt-12">
-            <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+        <div class="relative min-h-screen flex items-center sm:items-start justify-center p-2 sm:p-4 pt-12">
+            <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
                 x-transition:enter="ease-out duration-300"
                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
@@ -71,8 +71,7 @@ x-init="
                 </div>
                 @endif
 
-                <!-- Content -->
-                <div class="p-6">
+                <div class="p-4 sm:p-6 overflow-y-auto flex-1">
                     <!-- Filter Section -->
                     <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
                         <div class="flex items-center gap-2 mb-3">
@@ -83,12 +82,25 @@ x-init="
                                 Selecciona una ruta para ver y reordenar sus clientes
                             </h5>
                         </div>
-                        <div class="max-w-md">
-                            @livewire('selects.route-select', [
-                                'selectedValue' => $filterRouteId,
-                                'eventName' => 'filter-route-changed',
-                                'placeholder' => 'Seleccione una ruta'
-                            ], key('filter-route-select'))
+                        <div class="flex flex-col sm:flex-row sm:items-end gap-4">
+                            <div class="flex-1 min-w-0">
+                                @livewire('selects.route-select', [
+                                    'selectedValue' => $filterRouteId,
+                                    'eventName' => 'filter-route-changed',
+                                    'placeholder' => 'Seleccione una ruta',
+                                    'salesmanId' => auth()->user()->profile_id == 4 ? auth()->id() : null
+                                ], key('filter-route-select'))
+                            </div>
+
+                            @if($filterRouteId)
+                            <button wire:click="printRoute"
+                                class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm h-[48px] active:scale-95">
+                                <svg class="w-5 h-5 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                </svg>
+                                Imprimir Listado
+                            </button>
+                            @endif
                         </div>
                     </div>
 
@@ -115,7 +127,7 @@ x-init="
                                         Cliente
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Identificación
+                                        Datos de Contacto
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Zona
@@ -142,8 +154,38 @@ x-init="
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
                                         {{ $item->company->businessName && trim($item->company->businessName) !== '' ? $item->company->businessName : $item->company->firstName . ' ' . $item->company->lastName }}
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $item->company->identification ?? 'N/A' }}
+                                    <td class="px-6 py-4">
+                                        <div class="flex flex-col gap-1">
+                                            @if($item->company->mainWarehouse)
+                                                <div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    </svg>
+                                                    {{ $item->company->mainWarehouse->address }}
+                                                </div>
+                                            @endif
+                                            
+                                            <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                                </svg>
+                                                {{ $item->company->billingEmail ?: 'Sin correo' }}
+                                            </div>
+
+                                            @php
+                                                $contact = $item->company->activeContacts->first();
+                                                $phone = $contact ? $contact->primaryPhone : null;
+                                            @endphp
+                                            @if($phone)
+                                                <div class="flex items-center gap-1.5 text-xs font-medium text-cyan-600 dark:text-cyan-400">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h2.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                                                    </svg>
+                                                    {{ $phone }}
+                                                </div>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                         {{ $item->route->zones->name ?? 'N/A' }}

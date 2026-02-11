@@ -24,10 +24,10 @@
             <!-- Header -->
             <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="newOfflineCustomer.id ? 'Editar Cliente' : 'Nuevo Cliente'">
                         Nuevo Cliente
                     </h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" x-text="newOfflineCustomer.id ? 'Modifica los datos del cliente' : 'Completa los datos para el registro rápido'">
                         Completa los datos para el registro rápido
                     </p>
                 </div>
@@ -73,6 +73,24 @@
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 uppercase font-bold text-lg"
                         placeholder="Nombre completo del cliente">
                 </div>
+
+                <!-- Selección de Ruta (Solo Administradores perfil 2) -->
+                @if(auth()->check() && auth()->user()->profile_id == 2)
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Ruta de Venta <span class="text-red-500">*</span>
+                    </label>
+                    <select x-model="newOfflineCustomer.route_id"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 font-bold">
+                        <option value="">-- Seleccione una ruta --</option>
+                        @foreach($availableRoutes as $route)
+                            <option value="{{ $route['id'] }}">
+                                {{ $route['name'] }} - {{ $route['salesman_name'] ?? 'Sin vendedor' }} ({{ $route['sale_day'] ?? 'Sin día' }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
 
                 <!-- Contacto -->
                 <div class="grid grid-cols-1 gap-4">
@@ -127,7 +145,8 @@
                 </button>
 
                 <button @click="saveOfflineCustomer()"
-                    class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
+                    class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    x-text="newOfflineCustomer.id ? 'Actualizar Cliente' : 'Guardar Cliente'">
                     Guardar Cliente
                 </button>
             </div>
