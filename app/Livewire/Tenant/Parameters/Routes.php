@@ -108,6 +108,23 @@ class Routes extends Component
     {
         $this->validate();
 
+        // Validar que el vendedor no esté asignado a otra ruta
+        if ($this->salesman_id) {
+            $existingRoute = TatRoutes::where('salesman_id', $this->salesman_id)
+                ->when($this->routeId, function ($query) {
+                    $query->where('id', '!=', $this->routeId);
+                })
+                ->first();
+
+            if ($existingRoute) {
+                $vendedor = \App\Models\Auth\User::find($this->salesman_id);
+                $vendedorName = $vendedor ? $vendedor->name : 'Este vendedor';
+                
+                session()->flash('error', "<strong>$vendedorName</strong> ya está asignado a la ruta: <strong>$existingRoute->name</strong>. <br>Un vendedor solo puede tener una ruta asignada.");
+                return;
+            }
+        }
+
         $routeData = [
             'name' => $this->name,
             'zone_id' => $this->zone_id,
