@@ -215,7 +215,6 @@
                     <th class="text-left item">ITEM</th>
                     <th class="text-center quantity">CANTIDAD PEDIDA</th>
                     <th class="text-center stock-quantity">STOCK DISPONIBLE</th>
-                    <th class="text-right subtotal">SUBTOTAL</th>
                 </tr>
             </thead>
             <tbody>
@@ -228,7 +227,7 @@
                 @foreach ($groupedItems as $category => $itemsInCategory)
                     <!-- Fila de categoría -->
                     <tr class="category-row no-border">
-                        <td colspan="6"><strong>{{ strtoupper($category) }}</strong></td>
+                        <td colspan="5"><strong>{{ strtoupper($category) }}</strong></td>
                     </tr>
                     @php $rowCount++; @endphp
                     
@@ -245,7 +244,6 @@
                         <td class="text-left item">{{ $item['name_item'] }}</td>
                         <td class="text-center quantity">{{ $item['quantity'] }}</td>
                         <td class="text-center stock-quantity">{{ $item['stockActual'] }}</td>
-                        <td class="text-right subtotal currency">$ {{ number_format($item['subtotal'], 2, ',', '.') }}</td>
                     </tr>
                     @endforeach
                 @endforeach
@@ -253,11 +251,6 @@
         </table>
     
         <hr style="margin-top: 30px;">
-    
-         <div class="total-section">
-            <span class="total-label">TOTAL:</span>
-            <span class="total-amount">$ {{ number_format($total, 2, ',', '.') }}</span>
-        </div>
 
         <div class="footer">
             <div class="document-info">

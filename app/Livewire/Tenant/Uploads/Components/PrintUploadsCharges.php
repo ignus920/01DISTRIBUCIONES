@@ -26,42 +26,64 @@ class PrintUploadsCharges extends Component
 
     public function printDetail($deliveryId)
     {
+        // Debug inicial
+        Log::info("=== INICIO printDetail ===", ['delivery_id' => $deliveryId]);
+
         try {
-            // Obtener items con la consulta SQL ordenados por categoría
-            $items = DB::table('dis_deliveries as dl')
-                ->join('inv_remissions as r', function ($join) {
-                    $join->on('dl.salesman_id', '=', 'r.userId')
-                        ->whereRaw('DATE(r.deliveryDate) = dl.sale_date');
-                })
+            // Primero verificar cuántas remisiones hay
+            $remisiones = DB::table('inv_remissions')
+                ->where('delivery_id', $deliveryId)
+                ->select('id', 'userId')
+                ->get();
+
+            Log::info("Remisiones encontradas:", ['remisiones' => $remisiones->toArray()]);
+
+            // Obtener items sin agrupar para mostrar todos los pedidos
+            $items = DB::table('inv_remissions as r')
                 ->join('inv_detail_remissions as dt', 'dt.remissionId', '=', 'r.id')
                 ->join('inv_items as i', 'i.id', '=', 'dt.itemId')
                 ->join('inv_items_store as its', 'i.id', '=', 'its.itemId')
                 ->join('inv_categories as c', 'i.categoryId', '=', 'c.id')
                 ->where('r.delivery_id', $deliveryId)
                 ->select(
+                    'r.id as remision_id',
                     'i.id as code',
                     'c.name as category',
                     'i.name as name_item',
-                    DB::raw('SUM(dt.quantity) as quantity'),
-                    DB::raw('SUM(dt.quantity) * dt.value as subtotal')
+                    'dt.quantity as quantity',
+                    DB::raw('dt.quantity * dt.value as subtotal')
                 )
-                ->groupBy('c.id', 'c.name', 'i.id', 'i.name', 'dt.value')
+                ->orderBy('r.id')
                 ->orderBy('c.name')
                 ->orderBy('i.name')
                 ->get();
 
+            Log::info("SQL generada:", [
+                'sql' => DB::table('inv_remissions as r')
+                    ->join('inv_detail_remissions as dt', 'dt.remissionId', '=', 'r.id')
+                    ->join('inv_items as i', 'i.id', '=', 'dt.itemId')
+                    ->join('inv_items_store as its', 'i.id', '=', 'its.itemId')
+                    ->join('inv_categories as c', 'i.categoryId', '=', 'c.id')
+                    ->where('r.delivery_id', $deliveryId)
+                    ->toSql(),
+                'bindings' => [$deliveryId]
+            ]);
+
             // Calcular el total
             $total = collect($items)->sum('subtotal');
 
-            //Calcular cantidad de pedidos
-            $pedidosCount = DB::table('dis_deliveries as dl')
-                ->join('inv_remissions as r', function ($join) {
-                    $join->on('dl.salesman_id', '=', 'r.userId')
-                        ->whereRaw('DATE(r.deliveryDate) = dl.sale_date');
-                })
-                ->where('r.delivery_id', $deliveryId)
-                ->distinct('r.id')
-                ->count('r.id');
+            //Calcular cantidad de pedidos - método simplificado
+            $pedidosCount = DB::table('inv_remissions')
+                ->where('delivery_id', $deliveryId)
+                ->count();
+
+            // Debug: verificar los datos
+            Log::info('Items para PDF:', [
+                'delivery_id' => $deliveryId,
+                'items_count' => $items->count(),
+                'pedidos_count' => $pedidosCount,
+                'items' => $items->toArray()
+            ]);
 
             $cleanedItems = $this->cleanUtf8Data($items);
             $cleanedTotal = $this->cleanString((string)$total);
@@ -86,20 +108,19 @@ class PrintUploadsCharges extends Component
 
     public function printOrders($deliveryId)
     {
+        // Debug inicial
+        Log::info("=== INICIO printOrders ===", ['delivery_id' => $deliveryId]);
+
         try {
-            $orders = DB::table('dis_deliveries as dl')
-                ->join('inv_remissions as r', function ($join) {
-                    $join->on('dl.salesman_id', '=', 'r.userId')
-                        ->whereRaw('DATE(r.deliveryDate) = DATE(dl.sale_date)');
-                })
+            // Consulta simplificada para obtener todas las remisiones del delivery
+            $orders = DB::table('inv_remissions as r')
                 ->join('inv_detail_remissions as dt', 'dt.remissionId', '=', 'r.id')
                 ->join('inv_items as i', 'i.id', '=', 'dt.itemId')
                 ->join('inv_items_store as its', 'i.id', '=', 'its.itemId')
                 ->join('inv_categories as c', 'i.categoryId', '=', 'c.id')
-                ->leftJoin('users as u', 'dl.user_id', '=', 'u.id')
                 ->join('vnt_quotes as vq', 'vq.id', '=', 'r.quoteId')
-                ->join('vnt_companies as vc', 'vc.id', '=', 'vq.customerId')
-                ->join('vnt_warehouses as vw', 'vw.companyId', '=', 'vc.id')
+                ->join('vnt_warehouses as vw', 'vq.customerId', '=', 'vw.id')
+                ->join('vnt_companies as vc', 'vw.companyId', '=', 'vc.id')
                 ->join('vnt_contacts as v_c', 'v_c.warehouseId', '=', 'vw.id')
                 ->join('tat_companies_routes as t_c_r', 't_c_r.company_id', '=', 'vc.id')
                 ->join('tat_routes as t_r', 't_r.id', '=', 't_c_r.route_id')
@@ -116,38 +137,32 @@ class PrintUploadsCharges extends Component
                     'vw.district',
                     'vw.address',
                     'v_c.business_phone',
-                    'u.name as salesPerson',
+                    'r.userId as salesPerson',
                     't_r.sale_day',
                     'r.id as remission_id',
                     // Observaciones (items)
                     'i.id as code',
                     'c.name as category',
                     'i.name as name_item',
-                    DB::raw('SUM(dt.quantity) as quantity'),
-                    DB::raw('SUM(dt.quantity * dt.value) as subtotal')
+                    'dt.quantity as quantity',
+                    DB::raw('dt.quantity * dt.value as subtotal')
                 )
-                ->groupBy(
-                    DB::raw("IF(vc.typePerson = 'PERSON_ENTITY', CONCAT(vc.firstName, ' ', vc.lastName), vc.businessName)"),
-                    'vc.identification',
-                    'vw.district',
-                    'vw.address',
-                    'v_c.business_phone',
-                    'u.name',
-                    't_r.sale_day',
-                    'r.id',
-                    'i.id',
-                    'c.name',
-                    'i.name'
-                )
+                ->orderBy('r.id')
                 ->orderBy('customerName')
                 ->orderBy('c.name')
                 ->orderBy('i.name')
                 ->get();
 
-            // Agrupar por cliente
+            Log::info("Orders encontradas:", [
+                'total_orders' => $orders->count(),
+                'remisiones_unicas' => $orders->pluck('remission_id')->unique()->count(),
+                'orders' => $orders->toArray()
+            ]);
+
+            // Agrupar por remisión (pedido) en lugar de por cliente
             $customerOrders = [];
             foreach ($orders as $order) {
-                $key = $order->customerName . '_' . $order->identification;
+                $key = $order->remission_id; // Usar remission_id como clave única
 
                 if (!isset($customerOrders[$key])) {
                     $customerOrders[$key] = [
@@ -179,6 +194,11 @@ class PrintUploadsCharges extends Component
                 $customerOrders[$key]['subtotal'] += $order->subtotal;
             }
 
+            Log::info('CustomerOrders agrupados por remisión:', [
+                'total_remisiones' => count($customerOrders),
+                'remisiones_ids' => array_keys($customerOrders)
+            ]);
+
             // Calcular totales y convertir a letras
             foreach ($customerOrders as &$customerOrder) {
                 $customerOrder['total'] = $customerOrder['subtotal'] + $customerOrder['iva'];
@@ -207,9 +227,10 @@ class PrintUploadsCharges extends Component
     public function render()
     {
         $deliveries = DisDeliveries::query()
-            ->select('id', 'sale_date', 'user_id', 'salesman_id')
-            ->orderBy('sale_date', 'desc')
-            ->orderBy('id', 'desc')
+            ->leftJoin('users as transportador', 'dis_deliveries.deliveryman_id', '=', 'transportador.id')
+            ->select('dis_deliveries.id', 'dis_deliveries.sale_date', 'dis_deliveries.user_id', 'dis_deliveries.salesman_id', 'dis_deliveries.deliveryman_id', 'transportador.name as transportador_name')
+            ->orderBy('dis_deliveries.sale_date', 'desc')
+            ->orderBy('dis_deliveries.id', 'desc')
             ->paginate($this->perPage);
 
         return view('livewire.tenant.uploads.components.print-uploads-charges', [

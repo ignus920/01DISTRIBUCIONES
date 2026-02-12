@@ -124,6 +124,9 @@
                                 Zona</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Vendedor</th>
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Día de venta</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -144,6 +147,16 @@
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $rt->zones->name ?? 'Sin zona' }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                @if($rt->salesman)
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-gray-900 dark:text-white">{{ $rt->salesman->name }}</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ $rt->salesman->email }}</span>
+                                    </div>
+                                @else
+                                    <span class="text-gray-400 italic">Sin vendedor asignado</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                 {{ $rt->sale_day }}
@@ -167,7 +180,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                 <div class="flex flex-col items-center">
                                     <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24">

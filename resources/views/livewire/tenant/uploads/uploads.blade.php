@@ -8,7 +8,7 @@
             <!-- Ajustado padding -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Parámetros cargue de pedidos
+                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Cargue de pedidos
                     </h1>
                     <!-- Ajustado tamaño texto -->
                     <p class="text-gray-600 dark:text-gray-400 mt-1">Gestion de cargue de pedidos</p>
@@ -74,27 +74,34 @@
                     </div>
                 </div>
                 @endif
-                <!-- DataTable Card -->
-
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
+                <!-- Layout con división de pantalla -->
+                <div class="flex flex-col {{ $showPreviewCharge ? 'lg:flex-row' : '' }} gap-6">
+                    <!-- Sección de Cargue de Pedidos -->
+                    <div class="{{ $showPreviewCharge ? 'lg:w-1/2' : 'w-full' }}">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
                     <!-- Toolbar -->
                     <div class="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
                         <!-- Ajustado padding -->
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full">
-                            <!-- Selector de fechas -->
+                            <!-- Selector de días de la semana -->
                             <div class="flex-1">
                                 <div class="relative">
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <x-heroicon-o-calendar-days class="w-6 h-6" />
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
                                     </div>
-                                    <input type="date" wire:model.live="selectedDate"
-                                        class="block w-full ps-9 pe-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2.5 shadow-xs placeholder:text-gray-500 dark:placeholder:text-gray-400"
-                                        placeholder="Selecciona una fecha">
+                                    <select wire:model.live="selectedSaleDay"
+                                        class="block w-full pl-10 pr-8 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-xs">
+                                        <option value="">-- Filtrar por día de venta --</option>
+                                        @foreach ($daysOfWeek as $day => $dayName)
+                                        <option value="{{ $day }}">{{ $dayName }}</option>
+                                        @endforeach
+                                    </select>
 
-                                    {{-- Botón para limpiar fecha --}}
-                                    @if($selectedDate)
-                                    <button type="button" wire:click="clearDate"
+                                    {{-- Botón para limpiar filtro de día --}}
+                                    @if($selectedSaleDay)
+                                    <button type="button" wire:click="$set('selectedSaleDay', '')"
                                         class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -104,6 +111,7 @@
                                     @endif
                                 </div>
                             </div>
+
                             <!-- Transportador -->
                             <div class="flex-1 flex items-center gap-3">
                                 <label
@@ -117,6 +125,8 @@
                                 </select>
                             </div>
                         </div>
+
+
                         {{-- <div class="border-b border-default justify-center flex">
                             <ul class="flex flex-wrap -mb-px text-sm font-medium text-center text-body">
                                 <li class="me-2">
@@ -135,19 +145,35 @@
                             </ul>
                         </div> --}}
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full pt-3">
-                            <div class="flex-1">
+                            <div class="flex-1 flex gap-3">
                                 <button wire:click="showConfirmUploadModal"
                                     class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                                     <x-heroicon-o-plus class="w-6 h-5 pr-2" />
                                     Confirmar Cargue
                                 </button>
                             </div>
-                            <div class="flex-1 flex items-center gap-3">
-                                <button wire:click="printPreCharge"
-                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
-                                    <x-heroicon-o-eye class="w-6 h-5 pr-2" />
-                                    Previa del Cargue
-                                </button>
+                            <div class="flex-1 flex items-center gap-3 justify-end">
+                                @if($this->hasLoadedDeliveries())
+                                    @if($showPreviewCharge)
+                                        <button wire:click="hidePreCharge"
+                                            class="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 dark:bg-gray-500 dark:hover:bg-gray-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                            <x-heroicon-o-eye-slash class="w-6 h-5 pr-2" />
+                                            Ocultar Previa
+                                        </button>
+                                    @else
+                                        <button wire:click="showPreCharge"
+                                            class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                            <x-heroicon-o-eye class="w-6 h-5 pr-2" />
+                                            Ver Previa del Cargue
+                                        </button>
+                                    @endif
+
+                                    <button wire:click="printPreCharge"
+                                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                        <x-heroicon-o-printer class="w-6 h-5 pr-2" />
+                                        Imprimir PDF
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -159,16 +185,16 @@
                                 <tr>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Vendedor</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Ruta</th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Cantidad</th>
+                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Vendedores</th>
                                     <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Fecha</th>
+                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Total Pedidos</th>
+                                    <th
+                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Estado</th>
                                     <th
                                         class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Cargar/Eliminar
@@ -181,29 +207,40 @@
                                     class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                     <td
                                         class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                        {{ $remission->name }}
-                                    </td>
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                         {{ $remission->ruta }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $remission->total_registros }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $remission->cantidad_vendedores }} vendedor{{ $remission->cantidad_vendedores != 1 ? 'es' : '' }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $remission->fecha }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
+                                        {{ $remission->cantidad_pedidos }} pedido{{ $remission->cantidad_pedidos != 1 ? 's' : '' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($remission->existe == "NO")
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                Sin cargar
+                                            </span>
+                                        @elseif($remission->existe == "PARCIAL")
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                                Parcialmente cargado
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                                Completamente cargado
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                         <div class="flex items-center justify-center gap-2">
                                             @if($remission->existe == "NO")
-                                            <button wire:click="cargar({{ $remission->userId }})"
+                                            <button wire:click="cargarRuta({{ $remission->route_id }})"
                                                 wire:loading.attr="disabled"
-                                                wire:target="cargar({{ $remission->userId }})"
+                                                wire:target="cargarRuta({{ $remission->route_id }})"
                                                 class="inline-flex items-center px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs font-medium rounded-full hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50">
                                                 <x-heroicon-o-arrow-up-tray class="w-5 h-4" />
                                                 <span wire:loading.remove
-                                                    wire:target="cargar({{ $remission->userId }})">Cargar</span>
-                                                <span wire:loading wire:target="cargar({{ $remission->userId }})"
+                                                    wire:target="cargarRuta({{ $remission->route_id }})">Cargar Ruta</span>
+                                                <span wire:loading wire:target="cargarRuta({{ $remission->route_id }})"
                                                     class="flex items-center">
                                                     <svg class="animate-spin h-3 w-3 mr-1"
                                                         xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -217,11 +254,24 @@
                                                     Cargando...
                                                 </span>
                                             </button>
-                                            @else
-                                            <button wire:click="eliminar({{ $remission->userId }})"
+                                            @elseif($remission->existe == "PARCIAL")
+                                            <button wire:click="cargarRuta({{ $remission->route_id }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="cargarRuta({{ $remission->route_id }})"
+                                                class="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs font-medium rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50">
+                                                <x-heroicon-o-arrow-up-tray class="w-5 h-4" />
+                                                Completar Cargue
+                                            </button>
+                                            <button wire:click="eliminarRuta({{ $remission->route_id }})"
                                                 class="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs font-medium rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
                                                 <x-heroicon-o-trash class="w-5 h-4" />
-                                                Eliminar
+                                                Limpiar
+                                            </button>
+                                            @else
+                                            <button wire:click="eliminarRuta({{ $remission->route_id }})"
+                                                class="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs font-medium rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
+                                                <x-heroicon-o-trash class="w-5 h-4" />
+                                                Eliminar Ruta
                                             </button>
                                             @endif
                                         </div>
@@ -229,7 +279,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                    <td colspan="5" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                         <div class="flex flex-col items-center">
                                             <svg class="w-12 h-12 mb-4 text-gray-400 dark:text-gray-600" fill="none"
                                                 stroke="currentColor" viewBox="0 0 24 24">
@@ -258,6 +308,133 @@
                             </thead>
                         </table>
                     </div> --}}
+                        </div>
+                    </div>
+
+                    <!-- Sección de Previa del Cargue -->
+                    @if($showPreviewCharge)
+                    <div class="lg:w-1/2">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 h-full">
+                            <!-- Header de la Previa -->
+                            <div class="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                                        Previa del Cargue
+                                    </h3>
+                                    <button wire:click="hidePreCharge"
+                                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                @if($selectedRouteName && $selectedDeliveryMan)
+                                <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                    <p><span class="font-medium">Ruta:</span> {{ $selectedRouteName }}</p>
+                                    @php
+                                        $transporterName = \DB::table('users')->where('id', $selectedDeliveryMan)->value('name');
+                                    @endphp
+                                    <p><span class="font-medium">Transportador:</span> {{ $transporterName }}</p>
+                                </div>
+                                @endif
+                            </div>
+
+                            <!-- Tabla de Items -->
+                            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Código
+                                            </th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Producto
+                                            </th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Categoría
+                                            </th>
+                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Cantidad
+                                            </th>
+                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Stock
+                                            </th>
+                                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Estado
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        @forelse($previewItems as $item)
+                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700
+                                            {{ $item->status_stock === 'FALTANTE' ? 'bg-red-50 dark:bg-red-900/20' : ($item->status_stock === 'FALTANTE - No existe en inventario' ? 'bg-yellow-50 dark:bg-yellow-900/20' : '') }}">
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                                {{ $item->code }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                                {{ $item->name_item }}
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                                {{ $item->category }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center text-sm text-gray-900 dark:text-white">
+                                                {{ $item->quantity }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center text-sm text-gray-900 dark:text-white">
+                                                {{ $item->stock_actual }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center text-sm">
+                                                @if($item->status_stock === 'DISPONIBLE')
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                                        ✓ Disponible
+                                                    </span>
+                                                @elseif($item->status_stock === 'FALTANTE')
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                                                        ⚠ Faltante
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                                        ⚠ Sin Stock
+                                                    </span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                                No hay items para mostrar
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Resumen -->
+                            <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                                @php
+                                    $totalItems = collect($previewItems)->sum('quantity');
+                                    $faltantes = collect($previewItems)->where('status_stock', '!=', 'DISPONIBLE')->count();
+                                    $disponibles = collect($previewItems)->where('status_stock', 'DISPONIBLE')->count();
+                                @endphp
+                                <div class="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $totalItems }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Total Items</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $disponibles }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Disponibles</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $faltantes }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Faltantes</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
                 </div>
                 @else
                 <div wire:key="uploads-cargues-container">

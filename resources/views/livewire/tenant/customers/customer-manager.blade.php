@@ -185,7 +185,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                    {{ $item->email ?? 'Sin email' }}
+                                    {{ $item->email ?? 'Sin  email' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     {{ $item->phone ?? 'Sin teléfono' }}

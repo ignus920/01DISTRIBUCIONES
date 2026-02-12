@@ -30,6 +30,9 @@
                             Cargue
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                            Transportador
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                             Opciones
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
@@ -43,10 +46,13 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                #{{ $delivery->id }}
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                {{ $delivery->transportador_name ?? 'Sin asignar' }}
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                               <div class="flex gap-2">
                                     <button wire:click="printDetail({{ $delivery->id }})"
-                                       class="inline-flex items-center px-3 py-1 bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white text-xs font-medium rounded transition">
+                                       class="inline-flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white text-xs font-medium rounded transition">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                                         </svg>
@@ -80,12 +86,18 @@
                         <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">#{{ $delivery->id }}</p>
                     </div>
 
+                    <!-- Transportador -->
+                    <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider font-medium">Transportador</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $delivery->transportador_name ?? 'Sin asignar' }}</p>
+                    </div>
+
                     <!-- Action Buttons -->
                     <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                         <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider font-medium mb-3">Opciones</p>
                         <div class="flex flex-col gap-2">
                             <button wire:click="printDetail({{ $delivery->id }})"
-                               class="w-full inline-flex items-center justify-center px-3 py-2 bg-teal-600 hover:bg-teal-700 dark:bg-teal-500 dark:hover:bg-teal-600 text-white text-sm font-medium rounded transition">
+                               class="w-full inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white text-sm font-medium rounded transition">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                                 </svg>

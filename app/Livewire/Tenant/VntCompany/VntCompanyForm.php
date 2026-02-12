@@ -266,6 +266,12 @@ class VntCompanyForm extends Component
         $this->clearUniqueValidationErrors();
         $company = $this->companyService->getCompanyForEdit($id);
 
+        // Verificar si la empresa está activa
+        if (!$company->status) {
+            session()->flash('error', 'No se puede editar una empresa desactivada. Primero debe activarla.');
+            return;
+        }
+
         // Log company loading for debugging
         Log::info('Loading company for edit', [
             'company_id' => $id,

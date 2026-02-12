@@ -148,9 +148,13 @@ class Routes extends Component
     public function render()
     {
         $routes = TatRoutes::query()
-            ->with(['zones'])
+            ->with(['zones', 'salesman'])
             ->when($this->search, function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%');
+                $query->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('salesman', function ($q) {
+                          $q->where('name', 'like', '%' . $this->search . '%')
+                            ->orWhere('email', 'like', '%' . $this->search . '%');
+                      });
             })
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
@@ -172,9 +176,13 @@ class Routes extends Component
     protected function getExportData()
     {
         return TatRoutes::query()
-            ->with(['zones'])
+            ->with(['zones', 'salesman'])
             ->when($this->search, function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%');
+                $query->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhereHas('salesman', function ($q) {
+                          $q->where('name', 'like', '%' . $this->search . '%')
+                            ->orWhere('email', 'like', '%' . $this->search . '%');
+                      });
             })
             ->orderBy($this->sortField, $this->sortDirection)
             ->get();
@@ -182,7 +190,7 @@ class Routes extends Component
 
     protected function getExportHeadings(): array
     {
-        return ['ID', 'Nombre', 'Zona', 'Día Venta', 'Día Entrega'];
+        return ['ID', 'Nombre', 'Zona', 'Vendedor', 'Día Venta', 'Día Entrega'];
     }
 
     protected function getExportMapping()
@@ -192,6 +200,7 @@ class Routes extends Component
                 $route->id,
                 $route->name,
                 $route->zones->name ?? 'Sin zona',
+                $route->salesman_name ?? 'Sin vendedor',
                 $this->days[$route->sale_day] ?? $route->sale_day,
                 $this->days[$route->delivery_day] ?? $route->delivery_day,
             ];

@@ -248,16 +248,21 @@
         
         <!-- Tabla de productos -->
         @php
-            // Agrupar los items por categoría como en el PDF
-            $groupedItems = collect($items)->groupBy('category');
+            // Agrupar los items por remisión (pedido) primero, luego por categoría
+            $groupedByRemission = collect($items)->groupBy('remision_id');
             $currentPageItems = 0;
-            $maxItemsPerPage = 35; // Aproximadamente lo que cabe en una página A4 con este estilo
+            $maxItemsPerPage = 35;
         @endphp
-        
-        @foreach ($groupedItems as $category => $itemsInCategory)
-            <!-- Encabezado de categoría -->
-            <div class="category-header">{{ strtoupper($category) }}</div>
-            
+
+        @foreach ($groupedByRemission as $remissionId => $remissionItems)
+            <!-- Encabezado del pedido/remisión -->
+            <div class="category-header">PEDIDO # {{ $remissionId }}</div>
+
+            @php
+                // Agrupar items de esta remisión por categoría
+                $groupedByCategory = $remissionItems->groupBy('category');
+            @endphp
+
             <table class="items-table">
                 <thead>
                     <tr>
@@ -268,25 +273,32 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($itemsInCategory as $item)
-                        @php 
-                            $currentPageItems++;
-                            // Control de saltos de página
-                            if ($currentPageItems > $maxItemsPerPage && $loop->first && $loop->parent->iteration > 1) {
-                                echo '</tbody></table><div class="page-break"></div>';
-                                $currentPageItems = 1;
-                                echo '<table class="items-table"><thead><tr><th class="col-code">Codigo</th><th class="col-product">Producto</th><th class="col-quantity">Cantidad</th><th class="col-subtotal">Subtotal</th></tr></thead><tbody>';
-                            }
-                        @endphp
-                        <tr>
-                            <td class="col-code">{{ $item['code'] }}</td>
-                            <td class="col-product">{{ $item['name_item'] }}</td>
-                            <td class="col-quantity">{{ $item['quantity'] }}</td>
-                            <td class="col-subtotal">{{ number_format($item['subtotal'], 0) }}</td>
+                    @foreach ($groupedByCategory as $category => $itemsInCategory)
+                        <!-- Separador de categoría dentro del pedido -->
+                        <tr class="category-row">
+                            <td colspan="4">{{ strtoupper($category) }}</td>
                         </tr>
+
+                        @foreach ($itemsInCategory as $item)
+                            @php $currentPageItems++; @endphp
+                            <tr>
+                                <td class="col-code">{{ $item['code'] }}</td>
+                                <td class="col-product">{{ $item['name_item'] }}</td>
+                                <td class="col-quantity">{{ $item['quantity'] }}</td>
+                                <td class="col-subtotal">{{ number_format($item['subtotal'], 0) }}</td>
+                            </tr>
+                        @endforeach
                     @endforeach
                 </tbody>
             </table>
+
+            <!-- Subtotal del pedido -->
+            @php
+                $pedidoSubtotal = $remissionItems->sum('subtotal');
+            @endphp
+            <div style="text-align: right; margin-bottom: 15px; font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+                Subtotal Pedido #{{ $remissionId }}: $ {{ number_format($pedidoSubtotal, 0) }}
+            </div>
         @endforeach
         
         <!-- Total -->
