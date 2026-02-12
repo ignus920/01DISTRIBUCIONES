@@ -420,15 +420,15 @@
                                 <div class="grid grid-cols-3 gap-4 text-center">
                                     <div>
                                         <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $totalItems }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">Total Items</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Total unidades</div>
                                     </div>
                                     <div>
                                         <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $disponibles }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">Disponibles</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Items disponibles</div>
                                     </div>
                                     <div>
                                         <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $faltantes }}</div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">Faltantes</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Items faltantes</div>
                                     </div>
                                 </div>
                             </div>

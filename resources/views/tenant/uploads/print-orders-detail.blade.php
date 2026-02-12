@@ -216,7 +216,7 @@
                                             <td width="45%" class="header-center">
                                                 <strong>Mas distribuciones JM</strong><br>
                                                 Nit: 1017134785-1<br>
-                                                PÁGINA: {{ ($card['orderNumber']) }}-{{ ($card['currentPage']) }}
+                                                PÁGINA: {{ ($card['currentPage']) }} de {{ ($card['totalPages']) }}
                                             </td>
                                             <td width="30%" class="header-right">
                                                 <span class="order-title">PEDIDO # {{ $idPed }}</span><br>
