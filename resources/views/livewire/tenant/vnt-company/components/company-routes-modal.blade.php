@@ -152,11 +152,15 @@ x-init="
                                         />
                                     </td>
                                     <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                                        {{ $item->company->businessName && trim($item->company->businessName) !== '' ? $item->company->businessName : $item->company->firstName . ' ' . $item->company->lastName }}
+                                        @if($item->company)
+                                            {{ $item->company->businessName && trim($item->company->businessName) !== '' ? $item->company->businessName : $item->company->firstName . ' ' . $item->company->lastName }}
+                                        @else
+                                            <span class="text-red-500 italic">Cliente no encontrado</span>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="flex flex-col gap-1">
-                                            @if($item->company->mainWarehouse)
+                                            @if($item->company && $item->company->mainWarehouse)
                                                 <div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
@@ -170,11 +174,11 @@ x-init="
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                                                 </svg>
-                                                {{ $item->company->billingEmail ?: 'Sin correo' }}
+                                                {{ ($item->company->billingEmail ?? null) ?: 'Sin correo' }}
                                             </div>
 
                                             @php
-                                                $contact = $item->company->activeContacts->first();
+                                                $contact = $item->company ? $item->company->activeContacts->first() : null;
                                                 $phone = $contact ? $contact->primaryPhone : null;
                                             @endphp
                                             @if($phone)

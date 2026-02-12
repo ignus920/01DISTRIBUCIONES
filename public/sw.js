@@ -1,7 +1,7 @@
-const CACHE_NAME = 'quoter-cache-v15';
+const CACHE_NAME = 'quoter-cache-v18';
 // Lista de recursos críticos para precargar
 const PRECACHE_ASSETS = [
-    '/build/assets/app-OdaYl3l1.css',
+    '/build/assets/app-0b7ZjQm8.css',
     '/build/assets/app-Cp30cTxS.js',
     '/Logo_DosilERPFinal.png',
     '/logo.png',
@@ -58,13 +58,17 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch(async () => {
-                    // Intentar encontrar la URL exacta o fallback a la lista móvil
-                    // Usamos ignoreSearch: true para ignorar parámetros GET (?search=...)
-                    const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
-                    if (cachedResponse) return cachedResponse;
+                    // 1. Intentar coincidencia exacta (incluyendo query params si están cacheados)
+                    const cachedExact = await caches.match(event.request);
+                    if (cachedExact) return cachedExact;
 
-                    // Fallback robusto: Si falla cualquier navegación en la app o en la raíz
-                    if (url.pathname.includes('/tenant/quoter') || url.pathname === '/') {
+                    // 2. Intentar coincidencia ignorando search params
+                    const cachedNoSearch = await caches.match(event.request, { ignoreSearch: true });
+                    if (cachedNoSearch) return cachedNoSearch;
+
+                    // 3. Fallback crítico: Si es cualquier ruta del quoter, servir la lista móvil
+                    if (url.pathname.includes('/tenant/quoter')) {
+                        console.log('🔄 SW: Sirviendo fallback offline para:', url.pathname);
                         return caches.match('/tenant/quoter/mobile', { ignoreSearch: true });
                     }
 
