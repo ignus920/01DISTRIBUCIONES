@@ -2,10 +2,10 @@
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-900 overflow-hidden shadow-sm sm:rounded-lg mb-6">
             <div class="p-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                <div class="grid grid-cols-1 xl:grid-cols-5 gap-8 items-start">
+                <div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
 
                     <!-- Columna Izquierda: Bienvenida y Filtros -->
-                    <div class="lg:col-span-1 flex flex-col gap-4">
+                    <div class="xl:col-span-5 flex flex-col gap-4">
                         <div>
                             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Bienvenido, {{ $user->name }}</h2>
                             <p class="text-sm text-gray-500 dark:text-gray-400">Resumen de operaciones y estadísticas</p>
@@ -19,13 +19,13 @@
                                 <div class="flex flex-col">
                                     <span class="text-[9px] font-bold uppercase text-gray-400">Desde</span>
                                     <input type="date" wire:model.live="startDate" 
-                                        class="bg-transparent border-none text-xs font-semibold text-gray-700 dark:text-gray-200 focus:ring-0 p-0 w-24">
+                                        class="bg-transparent border-none text-xs font-semibold text-gray-700 dark:text-gray-200 focus:ring-0 p-0 w-full min-w-[110px]">
                                 </div>
                                 <div class="h-8 w-[1px] bg-gray-300 dark:bg-gray-600 mx-1"></div>
                                 <div class="flex flex-col">
                                     <span class="text-[9px] font-bold uppercase text-gray-400">Hasta</span>
                                     <input type="date" wire:model.live="endDate" 
-                                        class="bg-transparent border-none text-xs font-semibold text-gray-700 dark:text-gray-200 focus:ring-0 p-0 w-24">
+                                        class="bg-transparent border-none text-xs font-semibold text-gray-700 dark:text-gray-200 focus:ring-0 p-0 w-full min-w-[110px]">
                                 </div>
                             </div>
                         </div>
@@ -33,7 +33,7 @@
                     </div>
 
                     <!-- Columna Derecha: Accesos Rápidos (Ampliado) -->
-                    <div class="lg:col-span-3">
+                    <div class="xl:col-span-7">
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             @foreach($enabledFeatures as $key => $feature)
                             <a href="{{ $feature['url'] }}" 
@@ -148,7 +148,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- Gráfico Diario -->
             <div class="bg-white dark:bg-gray-900 overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 dark:border-gray-800"
-                x-data="dailyChart" x-on:update-charts.window="update($event.detail.daily)">
+                x-data="dailyChart()" x-on:update-charts.window="update($event.detail.daily)">
                 <div class="p-6 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between h-20">
                     <div class="flex items-center gap-3" x-show="!selectedLabel">
                         <div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
@@ -170,7 +170,7 @@
 
             <!-- Gráfico Mensual -->
             <div class="bg-white dark:bg-gray-900 overflow-hidden shadow-sm sm:rounded-2xl border border-gray-100 dark:border-gray-800"
-                x-data="monthlyChart" x-on:update-charts.window="update($event.detail.monthly)">
+                x-data="monthlyChart()" x-on:update-charts.window="update($event.detail.monthly)">
                 <div class="p-6 border-b border-gray-50 dark:border-gray-800 flex items-center justify-between h-20">
                     <div class="flex items-center gap-3" x-show="!selectedLabel">
                         <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -215,19 +215,17 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener('alpine:init', () => {
-        // Formateador global
+    (function() {
+        // Evitar múltiples inicializaciones si el script se carga varias veces
+        if (window.dashboardChartsInitialized) return;
+        window.dashboardChartsInitialized = true;
+
         const moneyFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
-        // Objeto base para estilos premium
         const commonOptions = {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                axis: 'x',
-                intersect: false
-            },
+            interaction: { mode: 'index', axis: 'x', intersect: false },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -240,7 +238,7 @@
                             let label = context.dataset.label || '';
                             if (label) label += ': ';
                             if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(context.parsed.y);
+                                label += moneyFormatter.format(context.parsed.y);
                             }
                             return label;
                         }
@@ -268,23 +266,20 @@
             }
         };
 
-        Alpine.data('dailyChart', () => {
-            let chartInstance = null;
-
+        window.initDailyChart = function() {
+            let chartInstance = null; // Variable privada fuera del objeto reactivo de Alpine
             return {
                 selectedLabel: null,
                 selectedValue: null,
-                moneyFormatter: new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }),
-                formatMoney(value) {
-                    return this.moneyFormatter.format(value);
-                },
                 init() {
-                    const ctx = document.getElementById('dailySalesChart').getContext('2d');
+                    const canvas = document.getElementById('dailySalesChart');
+                    if (!canvas) return;
+                    
+                    const ctx = canvas.getContext('2d');
                     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
                     gradient.addColorStop(0, 'rgba(79, 70, 229, 0.4)');
                     gradient.addColorStop(1, 'rgba(79, 70, 229, 0)');
-                    const self = this;
-
+                    
                     chartInstance = new Chart(ctx, {
                         type: 'line',
                         data: {
@@ -301,13 +296,7 @@
                                 pointBackgroundColor: '#fff',
                                 pointBorderColor: '#4f46e5',
                                 pointBorderWidth: 2,
-                                pointHoverRadius: 10,
-                                pointHoverBorderWidth: 4,
-                                pointHoverBackgroundColor: '#ffffff',
-                                pointHoverBorderColor: '#4f46e5',
-                                pointHitRadius: 50,
-                                hoverRadius: 10,
-                                hoverBorderWidth: 4
+                                pointHoverRadius: 10
                             }]
                         },
                         options: {
@@ -315,11 +304,8 @@
                             onHover: (e, elements, chart) => {
                                 if (elements && elements.length > 0) {
                                     const index = elements[0].index;
-                                    self.selectedLabel = chart.data.labels[index];
-                                    self.selectedValue = chart.data.datasets[0].data[index];
-                                } else {
-                                    // Opcional: limpiar al salir
-                                    // self.selectedLabel = null;
+                                    this.selectedLabel = chart.data.labels[index];
+                                    this.selectedValue = chart.data.datasets[0].data[index];
                                 }
                             }
                         }
@@ -330,23 +316,23 @@
                     chartInstance.data.labels = data.labels;
                     chartInstance.data.datasets[0].data = data.values;
                     chartInstance.update();
+                },
+                formatMoney(value) {
+                    return moneyFormatter.format(value);
                 }
             };
-        });
+        };
 
-        Alpine.data('monthlyChart', () => {
-            let chartInstance = null;
-
+        window.initMonthlyChart = function() {
+            let chartInstance = null; // Variable privada fuera del objeto reactivo de Alpine
             return {
                 selectedLabel: null,
                 selectedValue: null,
-                moneyFormatter: new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }),
-                formatMoney(value) {
-                    return this.moneyFormatter.format(value);
-                },
                 init() {
-                    const ctx = document.getElementById('monthlySalesChart').getContext('2d');
-                    const self = this;
+                    const canvas = document.getElementById('monthlySalesChart');
+                    if (!canvas) return;
+
+                    const ctx = canvas.getContext('2d');
                     chartInstance = new Chart(ctx, {
                         type: 'bar',
                         data: {
@@ -361,15 +347,11 @@
                         },
                         options: {
                             ...commonOptions,
-                            scales: {
-                                ...commonOptions.scales,
-                                x: { ...commonOptions.scales.x, grid: { display: false } }
-                            },
                             onHover: (e, elements, chart) => {
                                 if (elements && elements.length > 0) {
                                     const index = elements[0].index;
-                                    self.selectedLabel = chart.data.labels[index];
-                                    self.selectedValue = chart.data.datasets[0].data[index];
+                                    this.selectedLabel = chart.data.labels[index];
+                                    this.selectedValue = chart.data.datasets[0].data[index];
                                 }
                             }
                         }
@@ -380,9 +362,24 @@
                     chartInstance.data.labels = data.labels;
                     chartInstance.data.datasets[0].data = data.values;
                     chartInstance.update();
+                },
+                formatMoney(value) {
+                    return moneyFormatter.format(value);
                 }
             };
+        };
+
+        // Registrar en Alpine solo si se está iniciando
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('dailyChart', window.initDailyChart);
+            Alpine.data('monthlyChart', window.initMonthlyChart);
         });
-    });
+
+        // Forzar registro si Alpine ya existe (Livewire 3 suele ya tenerlo listo)
+        if (window.Alpine) {
+            Alpine.data('dailyChart', window.initDailyChart);
+            Alpine.data('monthlyChart', window.initMonthlyChart);
+        }
+    })();
 </script>
 @endpush

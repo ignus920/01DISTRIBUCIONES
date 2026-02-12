@@ -44,7 +44,7 @@ class VntQuote extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(VntCompany::class, 'customerId');
+        return $this->belongsTo(VntWarehouse::class, 'customerId');
     }
 
     public function warehouse(): BelongsTo
@@ -78,8 +78,14 @@ class VntQuote extends Model
             return 'Cliente no encontrado';
         }
 
-        // Usar firstName y lastName que sí existen en vnt_contacts
-        return trim($this->customer->firstName . ' ' . $this->customer->lastName) ?: 'Sin nombre';
+        // Si ahora customer es un VntWarehouse, buscamos el nombre en su compañía
+        $company = $this->customer->company;
+        
+        if (!$company) {
+            return $this->customer->name ?: 'Sucursal sin nombre';
+        }
+
+        return trim($company->businessName ?: ($company->firstName . ' ' . $company->lastName)) ?: 'Sin nombre';
     }
 
     public function getWarehouseNameAttribute()

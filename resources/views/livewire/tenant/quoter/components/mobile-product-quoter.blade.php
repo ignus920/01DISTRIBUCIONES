@@ -83,17 +83,6 @@
                 this.isOnline = true;
                 console.log('🌐 Conexión recuperada');
                 
-                // Notificar visualmente al usuario con un toast de SweetAlert
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Conexión Recuperada!',
-                    text: 'Sincronizando datos pendientes...',
-                    toast: true,
-                    position: 'top-end',
-                    timer: 3000,
-                    showConfirmButton: false
-                });
-
                 // Limpiar términos de búsqueda local para refrescar la lista
                 this.localSearch = '';
                 await $wire.set('search', '', true); 
@@ -105,10 +94,11 @@
                     } catch (e) { console.error('Error al sincronizar carrito:', e); }
                 }
 
-                // Enviar pedidos guardados localmente a la cola del servidor
-                await this.syncPendingOrders();
-                
-                // Si estamos online y el carrito local está vacío (porque acabamos de vender), 
+                this.selectedLocalCustomer = null; 
+                await this.persistState();
+            });
+
+            window.addEventListener('customer-selected', async (event) => {
                 // forzar limpieza del servidor para que no nos devuelva los items "fantasmas".
                 if (this.localCart.length === 0 && this.isOnline) {
                         await $wire.syncLocalCart([]);
@@ -505,15 +495,79 @@
             return allPrices;
         },
 
+        editOfflineCustomer(customerData = null) {
+            const data = customerData || this.selectedLocalCustomer;
+            if (!data) return;
+            
+            console.log('✏️ Editando cliente (Híbrido):', data);
+            
+            // Mapeo inteligente de campos (servidor vs local)
+            this.newOfflineCustomer = {
+                id: data.id || data.company_id,
+                typeIdentificationId: data.typeIdentificationId || 1,
+                identification: data.identification || '',
+                businessName: data.businessName || (data.firstName ? (data.firstName + ' ' + (data.lastName || '')) : ''),
+                phone: data.business_phone || data.phone || '',
+                address: data.address || '',
+                billingEmail: data.billingEmail || '',
+                createUser: data.createUser === 1,
+                route_id: data.route_id || @js($newCustomerRouteId)
+            };
+            this.showOfflineCreateForm = true;
+        },
+
         async saveOfflineCustomer() {
             if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
                 Swal.fire('Error', 'Nombre y Documento son obligatorios', 'error');
                 return;
             }
-            const db = await this.getDb();
-            if (!db) return;
+
+            // MODAL LOADING
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Guardando datos del cliente',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
             try {
-                const tempId = 'temp-' + Date.now(); 
+                // CASO 1: ONLINE - Guardar en el servidor via Livewire
+                if (this.isOnline && !this.forceOffline) {
+                    console.log('🌐 Guardando cliente en modo ONLINE...');
+                    try {
+                        const result = await $wire.saveSimplifiedCustomer(this.newOfflineCustomer);
+                        
+                        if (result && result.id) {
+                            Swal.close();
+                            console.log('✅ Cliente guardado en servidor:', result);
+                            
+                            this.showOfflineCreateForm = false;
+                            this.newOfflineCustomer = { id: null, typeIdentificationId: 1, identification: '', businessName: '', phone: '', address: '', billingEmail: '', createUser: false, route_id: @js($newCustomerRouteId) };
+                            return;
+                        } else {
+                            // Si el servidor retorna null, es un error controlado (validación) 
+                            // El servidor ya disparó el toast de error.
+                            Swal.close();
+                            return;
+                        }
+                    } catch (netError) {
+                        console.warn('❌ Fallo de red en guardado online, intentando offline como respaldo...', netError);
+                        // No retornamos, dejamos que fluya al Caso 2 (Offline)
+                    }
+                }
+
+                // CASO 2: OFFLINE - Guardar en IndexedDB
+                console.log('📴 Guardando cliente en modo OFFLINE...');
+                const db = await this.getDb();
+                if (!db) {
+                     Swal.close();
+                     Swal.fire('Error', 'No hay conexión a la base de datos local.', 'error');
+                     return;
+                }
+
+                const isEdit = this.newOfflineCustomer.id && String(this.newOfflineCustomer.id).startsWith('temp-');
+                const tempId = isEdit ? this.newOfflineCustomer.id : 'temp-' + Date.now(); 
+                
                 const cleanCustomer = {
                     id: tempId,
                     identification: this.newOfflineCustomer.identification,
@@ -521,22 +575,37 @@
                     firstName: this.newOfflineCustomer.businessName.toUpperCase(),
                     lastName: '',
                     address: this.newOfflineCustomer.address || 'Sin dirección',
-                    business_phone: this.newOfflineCustomer.phone || '',
+                    business_phone: this.newOfflineCustomer.phone || '0000000',
                     typeIdentificationId: parseInt(this.newOfflineCustomer.typeIdentificationId),
                     billingEmail: this.newOfflineCustomer.billingEmail || '',
                     createUser: this.newOfflineCustomer.createUser ? 1 : 0,
                     isTemporary: true,
                     sincronizado: 0,
                     term_id: 1,
-                    price_list_id: 1
+                    price_list_id: 1,
+                    route_id: this.newOfflineCustomer.route_id || null
                 };
-                await db.clientes.add(cleanCustomer);
-                this.localCustomers.unshift(cleanCustomer);
+                
+                // Usar put para actualizar si existe
+                await db.clientes.put(cleanCustomer);
+                
+                // Asegurar que el cliente se agregue a la lista local y se seleccione
+                this.localCustomers = [cleanCustomer];
                 this.selectedLocalCustomer = cleanCustomer;
+                
+                // Limpiar formulario y cerrar modal
                 this.showOfflineCreateForm = false;
                 this.newOfflineCustomer = { id: null, typeIdentificationId: 1, identification: '', businessName: '', phone: '', address: '', billingEmail: '', createUser: false, route_id: @js($newCustomerRouteId) };
-                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cliente creado localmente', showConfirmButton: false, timer: 2000 });
-            } catch (e) { console.error('❌ Error save offline customer:', e); }
+                
+                await this.persistState();
+                Swal.close();
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: isEdit ? 'Cliente actualizado localmente' : 'Cliente guardado localmente', showConfirmButton: false, timer: 2000 });
+
+            } catch (e) { 
+                console.error('❌ Error crítico en saveOfflineCustomer:', e);
+                Swal.close();
+                Swal.fire('Error', 'Ocurrió un error inesperado al guardar.', 'error');
+            }
         },
 
         async searchLocalCustomer(query) {
@@ -566,12 +635,12 @@
 
 
     {{-- Contenedor con lógica offline --}}
-    <div x-data="quoterOffline" 
+    <div wire:key="mobile-quoter-root-container" x-data="quoterOffline" 
          class="fixed inset-0 bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden transition-all duration-300"
          :class="showOfflineCreateForm ? 'z-[9999]' : 'z-[35]'">
         
         <!-- Banner de estado Offline -->
-        <div x-show="!isOnline || forceOffline" 
+        <div wire:key="mobile-offline-banner" x-show="!isOnline || forceOffline" 
              style="display: none;"
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="-translate-y-full"
@@ -644,21 +713,21 @@
                         </svg>
 
                         <!-- Indicador Online -->
-                        <template x-if="isOnline">
+                        <div x-show="isOnline" class="contents" wire:key="hdr-online-indicator">
                             @if($this->quoterCount > 0)
-                            <span class="absolute -top-2 -right-1.5 bg-red-600 text-white text-[11px] font-black rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm animate-pulse">
+                            <span wire:key="online-badge-{{ $this->quoterCount }}" class="absolute -top-2 -right-1.5 bg-red-600 text-white text-[11px] font-black rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm animate-pulse">
                                 {{ $this->quoterCount }}
                             </span>
                             @endif
-                        </template>
+                        </div>
 
                         <!-- Indicador Offline -->
-                        <template x-if="!isOnline">
-                            <span x-show="localCart.length > 0" 
+                        <div x-show="!isOnline" class="contents" wire:key="hdr-offline-indicator">
+                            <span wire:key="offline-badge-items" x-show="localCart.length > 0" 
                                   class="absolute -top-2 -right-1.5 bg-orange-600 text-white text-[11px] font-black rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm"
                                   x-text="localCart.reduce((sum, item) => sum + item.quantity, 0)">
                             </span>
-                        </template>
+                        </div>
                     </button>
 
                     <!-- Mobile menu button -->
@@ -767,7 +836,13 @@
 
     <!-- Lista de productos UNIFICADA -->
     <div class="flex-1 overflow-y-auto pb-20">
-        <div class="px-3 py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+       <div wire:ignore wire:key="mobile-product-grid-container" class="px-3 py-4 grid
+    grid-cols-3
+    min-[640px]:grid-cols-3
+    md:grid-cols-4
+    lg:grid-cols-5
+    xl:grid-cols-6
+    gap-3">
             <template x-for="product in displayProducts" :key="product.id">
                 <div class="relative flex flex-col bg-white dark:bg-gray-800 rounded-xl border-2 transition-all duration-300 overflow-hidden"
                      :class="getProductQuantity(product.id) > 0 
@@ -783,7 +858,7 @@
                     </div>
 
                     <!-- Imagen del producto -->
-                    <div class="aspect-square bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center p-2 relative group">
+                    <div wire:key="product-img-{{ $p->id ?? 'idx' }}" class="aspect-square bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center p-2 relative group">
                         <template x-if="product.image_url">
                             <img class="w-full h-full object-contain rounded-lg transition-transform duration-300 group-hover:scale-110"
                                 :src="product.image_url"
@@ -809,41 +884,46 @@
                         <!-- Precios / Selector de cantidad -->
                         <div class="mt-auto pt-2">
                             <!-- Selector si ya está seleccionado (Tarjeta Verde Unificada) -->
-                            <div x-show="getProductQuantity(product.id) > 0" class="w-full bg-green-600 dark:bg-green-700/90 text-white rounded-lg p-2 shadow-lg animate-in zoom-in duration-200">
+                            <div wire:key="product-active-box-real" x-show="getProductQuantity(product.id) > 0" class="w-full bg-green-600 dark:bg-green-700/90 text-white rounded-lg p-2 shadow-lg animate-in zoom-in duration-200">
                                     
-                                    <!-- Header: Label P1/P2 y Precio -->
-                                    <div class="flex justify-between items-center mb-2 px-1">
+                                    <!-- Header: Label P1/P2 y Precio (Más compacto) -->
+                                    <div class="flex justify-between items-center mb-1.5 px-0.5">
                                          <div class="flex flex-col leading-none">
-                                            <span class="text-[9px] uppercase font-bold opacity-80" x-text="product.price_label || 'Precio'"></span>
-                                            <span class="text-sm font-black tracking-tight" x-text="'$' + (product.selected_price ? Number(product.selected_price).toLocaleString() : Number(product.price).toLocaleString())"></span>
+                                            <span class="text-[8px] uppercase font-bold opacity-80" x-text="product.price_label || 'Precio'"></span>
+                                            <span class="text-xs font-black tracking-tight" x-text="'$' + (product.selected_price ? Number(product.selected_price).toLocaleString() : Number(product.price).toLocaleString())"></span>
                                          </div>
                                     </div>
 
-                                    <!-- Controles de Cantidad (Integrados en verde) -->
-                                    <div class="flex items-center justify-between bg-black/20 rounded-md p-1">
-                                        <button @click="isOnline ? $wire.decreaseQuantity(product.id) : updateLocalQuantity(product.id, -1)"
-                                                class="w-8 h-8 flex items-center justify-center text-white hover:bg-black/20 rounded-md transition-colors active:scale-90">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M20 12H4"></path></svg>
-                                        </button>
-                                        
-                                        <!-- Input de cantidad manual (Blanco Transparente) -->
-                                        <input type="tel" 
-                                               :value="getProductQuantity(product.id)"
-                                               @change="isOnline ? $wire.updateQuantity(product.id, $event.target.value) : setLocalQuantity(product.id, $event.target.value)"
-                                               @click.stop
-                                               class="w-12 text-center font-black text-lg text-white bg-transparent border-none focus:ring-0 p-0 appearance-none placeholder-white/50"
-                                               inputmode="numeric">
+                                    <!-- Flex Columna para Cantidad y Botones -->
+                                    <div class="flex flex-col gap-1.5">
+                                        <!-- Cantidad arriba (Fondo oscuro sutil) -->
+                                        <div class="flex justify-center items-center bg-black/10 rounded-md py-0.5">
+                                             <input type="tel" 
+                                                   :value="getProductQuantity(product.id)"
+                                                   @change="isOnline ? $wire.updateQuantity(product.id, $event.target.value) : setLocalQuantity(product.id, $event.target.value)"
+                                                   @click.stop
+                                                   class="w-full text-center font-black text-xl text-white bg-transparent border-none focus:ring-0 p-0 appearance-none placeholder-white/50"
+                                                   inputmode="numeric">
+                                        </div>
 
-                                        <button @click="isOnline ? $wire.increaseQuantity(product.id) : updateLocalQuantity(product.id, 1)"
-                                                class="w-8 h-8 flex items-center justify-center bg-white text-green-700 rounded-md shadow-sm active:scale-105 transition-transform hover:bg-gray-100">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                                        </button>
+                                        <!-- Botones abajo (Distribuidos) -->
+                                        <div class="flex gap-1.5">
+                                            <button @click="isOnline ? $wire.decreaseQuantity(product.id) : updateLocalQuantity(product.id, -1)"
+                                                    class="flex-1 h-9 flex items-center justify-center bg-black/20 text-white hover:bg-black/30 rounded-md transition-colors active:scale-95 shadow-sm">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M20 12H4"></path></svg>
+                                            </button>
+                                            
+                                            <button @click="isOnline ? $wire.increaseQuantity(product.id) : updateLocalQuantity(product.id, 1)"
+                                                    class="flex-1 h-9 flex items-center justify-center bg-white text-green-700 rounded-md shadow-md active:scale-95 transition-transform hover:bg-gray-100">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Precios para seleccionar -->
-                            <div x-show="getProductQuantity(product.id) === 0" class="space-y-1.5">
+                            <div wire:key="product-prices-box-real" x-show="getProductQuantity(product.id) === 0" class="space-y-1.5">
                                     <template x-for="(price, label) in getVisiblePrices(product.all_prices || {})" :key="label">
                                         <button @click="isOnline ? $wire.addToQuoter(product.id, price, label) : addToLocalCart(product, price, label)"
                                                 class="w-full py-2 px-2 text-center rounded-lg border-2 border-green-100 dark:border-green-800 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 hover:bg-green-100 active:scale-95 transition-all flex flex-col items-center justify-center">
@@ -882,7 +962,7 @@
     @endif
 
     <!-- Modal del carrito (Unificado Offline/Online) -->
-    <div x-show="showCart || showCartModal" 
+    <div wire:key="mobile-cart-modal-container" x-show="showCart || showCartModal" 
          x-cloak
          class="fixed inset-0 z-50 flex items-stretch overflow-hidden"
          style="display: none;">
@@ -955,9 +1035,9 @@
                             </div>
                             @if(auth()->user()->profile_id != 17)
                             <div class="flex items-center ml-2">
-                                <!-- Botón Editar -->
+                                <!-- Botón Editar (Híbrido) -->
                                 <button
-                                    wire:click="editCustomer"
+                                    @click="isOnline ? $wire.editCustomer() : editOfflineCustomer(serverSelectedCustomer)"
                                     wire:loading.attr="disabled"
                                     wire:loading.class="opacity-50 cursor-wait"
                                     class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 mr-4"
@@ -1047,8 +1127,7 @@
                         </div>
 
                         <!-- Resultados Offline (Solo si hay coincidencias) -->
-                        <template x-for="item in [1]" :key="item">
-                        <div x-show="(!isOnline || forceOffline) && localCustomers.length > 0" 
+                        <div wire:ignore wire:key="mobile-offline-customer-list" x-show="(!isOnline || forceOffline) && localCustomers.length > 0" 
                              class="absolute z-[60] left-0 right-0 w-full max-h-60 overflow-y-auto border border-orange-200 dark:border-orange-900/30 rounded-lg bg-white dark:bg-gray-800 mt-1 shadow-xl">
                             <template x-for="customer in localCustomers" :key="customer.id">
                                 <div 
@@ -1059,7 +1138,6 @@
                                 </div>
                             </template>
                         </div>
-                        </template>
 
                         <div x-effect="
                             const query = isOnline ? serverCustomerSearch : localSearch;
@@ -1078,63 +1156,57 @@
 
 
                         <!-- Caja de Cliente seleccionado Offline -->
-                        <template x-if="(!isOnline || forceOffline) && selectedLocalCustomer">
+                        <div x-show="(!isOnline || forceOffline) && selectedLocalCustomer" class="contents" wire:key="selected-local-cust-box">
                             <div class="bg-green-100 dark:bg-green-900/40 border border-green-200 dark:border-green-800 rounded-lg p-3 mt-1 flex justify-between items-center animate-in zoom-in duration-200">
                                 <div class="flex-1">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="bg-green-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Memoria Local</span>
-                                        <span class="text-[10px] font-bold text-green-700 dark:text-green-400 capitalize" x-text="selectedLocalCustomer.identification"></span>
+                                        <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span class="text-[10px] font-bold text-green-700 dark:text-green-300 uppercase tracking-wider">Cliente Offline</span>
                                     </div>
-                                    <div class="font-bold text-gray-900 dark:text-white text-sm" x-text="(selectedLocalCustomer.businessName || (selectedLocalCustomer.firstName + ' ' + selectedLocalCustomer.lastName)).toLowerCase()"></div>
-                                    <div class="text-[10px] text-green-600 dark:text-green-400" x-text="selectedLocalCustomer.address || 'Sin dirección registrada'"></div>
+                                    <div class="text-gray-900 dark:text-white font-black text-sm" x-text="selectedLocalCustomer?.businessName ? (selectedLocalCustomer?.businessName || (selectedLocalCustomer?.firstName + ' ' + selectedLocalCustomer?.lastName)) : (selectedLocalCustomer ? (selectedLocalCustomer.firstName + ' ' + selectedLocalCustomer.lastName) : '')"></div>
+                                    <div class="text-[10px] text-gray-500 dark:text-gray-400 font-mono" x-text="selectedLocalCustomer?.identification || ''"></div>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <!-- Botón Editar Local -->
-                                    <button @click="
-                                        newOfflineCustomer = {
-                                            id: null, // Es local, no tiene ID de servidor
-                                            typeIdentificationId: selectedLocalCustomer.typeIdentificationId || 1,
-                                            identification: selectedLocalCustomer.identification,
-                                            businessName: selectedLocalCustomer.businessName || (selectedLocalCustomer.firstName + ' ' + selectedLocalCustomer.lastName),
-                                            phone: selectedLocalCustomer.phone || '',
-                                            address: selectedLocalCustomer.address || '',
-                                            billingEmail: selectedLocalCustomer.billingEmail || '',
-                                            createUser: false,
-                                            route_id: selectedLocalCustomer.route_id || @js($newCustomerRouteId)
-                                        };
-                                        showOfflineCreateForm = true;
-                                    " class="text-blue-600 hover:text-blue-800 dark:text-blue-400 p-1.5 hover:bg-blue-100/50 rounded-full transition-colors" title="Editar local">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="flex items-center gap-1">
+                                    <!-- Botón Editar Offline -->
+                                    <button @click="editOfflineCustomer()" class="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/30 rounded-full transition-colors" title="Editar datos locales">
+                                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
                                     </button>
-
-                                    <button @click="selectedLocalCustomer = null" class="text-green-600 hover:text-green-800 dark:text-green-400 p-1.5 hover:bg-green-200/50 rounded-full transition-colors">
+                                    
+                                    <!-- Botón Quitar -->
+                                    <button @click="selectedLocalCustomer = null" class="p-2 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-800/50 rounded-full transition-colors">
                                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
-                        </template>
+                        </div>
 
                         <!-- Resultados Online (Livewire) -->
-                        <template x-if="isOnline">
+                        <div x-show="isOnline" class="contents" wire:key="online-client-results-box">
                             <div>
                                 @if(count($customerSearchResults) > 0)
                                 <div id="customerSearchResultsMobile" class="max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2 shadow-md">
-                                    @foreach($customerSearchResults as $index => $customer)
-                                    <div
-                                        wire:click="selectCustomer({{ $customer['id'] }})"
-                                        class="customer-result-mobile px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0 transition-colors duration-150">
-                                        <div class="font-mono font-bold text-gray-900 dark:text-white">{{ $customer['identification'] }}</div>
-                                        <div class="text-gray-600 dark:text-gray-300">{{ $customer['display_name'] }}</div>
+                                    @foreach($customerSearchResults as $customer)
+                                    <div wire:click="selectCustomer({{ $customer['id'] }})" 
+                                         wire:key="customer-item-{{ $customer['id'] }}"
+                                         class="px-4 py-3 text-xs hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0 flex flex-col gap-1">
+                                        <div class="font-mono font-bold text-gray-900 dark:text-white text-sm">{{ $customer['identification'] }}</div>
+                                        <div class="text-gray-600 dark:text-gray-300 capitalize">{{ strtolower($customer['display_name']) }}</div>
                                     </div>
                                     @endforeach
                                 </div>
                                 @endif
+                                
+                                @if(strlen($customerSearch) >= 2 && count($customerSearchResults) === 0)
+                                    <div class="text-center py-4 text-gray-500 text-xs">No se encontraron clientes</div>
+                                @endif
                             </div>
-                        </template>
+                        </div>
                     </div>
                     @endif
 
@@ -1158,7 +1230,7 @@
                 <div class="flex-1 overflow-y-auto px-4 py-4 min-h-0">
                     
                     <!-- Estado Vacío -->
-                    <template x-if="localCart.length === 0">
+                    <div x-show="localCart.length === 0" class="contents" wire:key="cart-empty-msg">
                         <div class="text-center py-8">
                             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -1166,12 +1238,12 @@
                             <p class="text-gray-500 dark:text-gray-400">Carrito vacío</p>
                             <p x-show="!isOnline" class="text-xs text-orange-500 mt-2">Modo Offline</p>
                         </div>
-                    </template>
+                    </div>
                     
                     <!-- Lista de Items (ÚNICA para Online y Offline) -->
                     <div class="space-y-4" wire:ignore>
                         <template x-for="(item, index) in localCart" :key="item.id">
-                            <div class="relative overflow-hidden rounded-xl mb-3 touch-pan-y shadow-sm border"
+                           <div wire:key="cart-item-{{ $item['id'] ?? 'idx' }}" class="relative overflow-hidden rounded-xl mb-3 touch-pan-y shadow-sm border"
                                  :class="!isOnline ? 'border-orange-200 dark:border-orange-900/30 bg-white dark:bg-gray-700' : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'"
                                  @touchstart="if(!swipeStates[item.id]) swipeStates[item.id] = {startX: 0, currentX: 0}; swipeStates[item.id].startX = $event.touches[0].clientX"
                                  @touchmove="let diff = $event.touches[0].clientX - swipeStates[item.id].startX; swipeStates[item.id].currentX = diff > 0 ? Math.min(80, diff) : Math.max(-80, diff)"
@@ -1236,7 +1308,7 @@
                 </div>
 
                 <!-- Footer del modal -->
-                <div x-show="localCart.length > 0" class="px-4 py-4 border-t border-gray-200 dark:border-gray-700 space-y-4 flex-shrink-0 bg-white dark:bg-gray-800">
+                <div wire:key="cart-modal-footer-box" x-show="localCart.length > 0" class="px-4 py-4 border-t border-gray-200 dark:border-gray-700 space-y-4 flex-shrink-0 bg-white dark:bg-gray-800">
 
                     <!-- Observaciones -->
                     @if(auth()->user()->profile_id != 17)
@@ -1261,7 +1333,7 @@
                             </svg>
                         </button>
 
-                        <div x-show="showObservations" x-transition class="mt-3">
+                        <div wire:key="cart-observations-input-box" x-show="showObservations" x-transition class="mt-3">
                             <textarea
                                 wire:model="observaciones"
                                 rows="4"
@@ -1273,14 +1345,14 @@
                     @endif
 
                     <!-- Total -->
-                    <div class="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
+                    <div wire:key="cart-modal-total-display" class="flex justify-between items-center text-lg font-bold text-gray-900 dark:text-white">
                         <span>Total:</span>
-                        <template x-if="isOnline">
-                            <span>${{ number_format($totalAmount) }}</span>
-                        </template>
-                        <template x-if="!isOnline">
-                            <span x-text="'$' + localCart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString()"></span>
-                        </template>
+                        <div x-show="isOnline" class="contents" wire:key="total-online-box">
+                            <span wire:key="total-val-online">${{ number_format($totalAmount) }}</span>
+                        </div>
+                        <div x-show="!isOnline" class="contents" wire:key="total-offline-box">
+                            <span wire:key="total-val-offline" x-text="'$' + localCart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString()"></span>
+                        </div>
                     </div>
 
                     <!-- Botones ---->
@@ -1370,9 +1442,9 @@
 
                     @else
 
-                    <div class="space-y-2">
+                    <div wire:key="checkout-actions-container" class="space-y-2">
 
-                        <template x-if="isOnline ? !@js($selectedCustomer) : !selectedLocalCustomer">
+                        <div x-show="isOnline ? !@js($selectedCustomer) : !selectedLocalCustomer" class="contents" wire:key="checkout-warn-box">
                             <button disabled
                                 class="w-full bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 font-medium py-3 px-4 rounded-lg cursor-not-allowed flex items-center justify-center">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1381,48 +1453,46 @@
                                 </svg>
                                 Seleccione un Cliente
                             </button>
-                        </template>
+                        </div>
 
                         <!-- MODO ONLINE (CON CLIENTE) -->
-                        <template x-if="isOnline && @js($selectedCustomer)">
+                        <div x-show="isOnline && @js($selectedCustomer)" class="contents" wire:key="save-online-btn-box">
                             <div class="w-full">
                                 <!-- BOTÓN GUARDAR (ONLINE) -->
                                 <button wire:click="saveQuote"
                                     wire:loading.attr="disabled"
-                                    wire:target="saveQuote"
-                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center disabled:opacity-50 shadow-lg shadow-indigo-200 dark:shadow-none">
-
-                                    <svg wire:loading.remove wire:target="saveQuote" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1" />
-                                    </svg>
-
-                                    <svg wire:loading wire:target="saveQuote" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                        <path class="opacity-75" fill="currentColor"
-                                            d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-
-                                    <span wire:loading.remove wire:target="saveQuote">Guardar Cotización</span>
-                                    <span wire:loading wire:target="saveQuote">Guardando...</span>
+                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center shadow-lg active:scale-95 transition-all">
+                                    <span wire:loading.remove wire:target="saveQuote" class="flex items-center">
+                                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        {{ $isEditing ? 'Actualizar Orden' : 'Finalizar Pedido' }}
+                                    </span>
+                                    <span wire:loading wire:target="saveQuote" class="flex items-center">
+                                        <svg class="animate-spin h-5 w-5 mr-3 text-white" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Guardando...
+                                    </span>
                                 </button>
                             </div>
-                        </template>
+                        </div>
 
                         <!-- MODO OFFLINE (CON CLIENTE) -->
-                        <template x-if="(!isOnline || forceOffline) && selectedLocalCustomer">
+                        <div x-show="(!isOnline || forceOffline) && selectedLocalCustomer" class="contents" wire:key="save-offline-btn-box">
                             <button @click="saveLocalOrder()"
                                 class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center shadow-lg active:scale-95 transition-all">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                                 </svg>
-                                <span>Finalizar Venta Local</span>
+                                Guardar Orden Offline
                             </button>
-                        </template>
+                        </div>
 
                         @if(auth()->user()->profile_id == 17)
                         <!-- Botones TAT (Perfil 17 - SOLO ONLINE) -->
-                        <template x-if="isOnline">
+                        <div x-show="isOnline" class="contents" wire:key="tat-profile-btns">
                             <div class="flex flex-col gap-2 w-full">
                                 <!-- Botón Favoritos -->
                                 @if(!$isEditingRestock)
@@ -1430,7 +1500,7 @@
                                     wire:loading.attr="disabled"
                                     wire:target="saveRestockRequest"
                                     class="w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center disabled:opacity-50 text-sm">
-
+ 
                                     <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                     </svg>
@@ -1439,18 +1509,18 @@
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-
+ 
                                     <span wire:loading.remove wire:target="saveRestockRequest">Favoritos</span>
                                     <span wire:loading wire:target="saveRestockRequest">...</span>
                                 </button>
                                 @endif
-
+ 
                                 <!-- Botón Confirmar -->
                                 <button wire:click="saveRestockRequest(true)"
                                     wire:loading.attr="disabled"
                                     wire:target="saveRestockRequest"
                                     class="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center disabled:opacity-50 text-sm">
-
+ 
                                     <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
@@ -1459,12 +1529,12 @@
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-
+ 
                                     <span wire:loading.remove wire:target="saveRestockRequest">Confirmar pedido</span>
                                     <span wire:loading wire:target="saveRestockRequest">...</span>
                                 </button>
                             </div>
-                        </template>
+                        </div>
                         @if($isEditingRestock)
                         <button wire:click="saveRestockRequest"
                             wire:loading.attr="disabled"
@@ -1497,7 +1567,8 @@
 
 @script
 <script>
-    $wire.on('show-toast', (data) => {
+    window.addEventListener('show-toast', (event) => {
+        const data = event.detail;
         const payload = Array.isArray(data) ? data[0] : data;
         console.log('Mobile Toast triggered:', payload);
         Swal.fire({

@@ -10,6 +10,7 @@ use App\Models\Auth\Tenant;
 use App\Models\Tenant\Customer\VntCompany;
 use App\Models\Tenant\Quoter\VntQuote;
 use App\Models\Tenant\Quoter\VntDetailQuote;
+use App\Models\Tenant\Customer\VntWarehouse;
 use \App\Models\Tenant\Items\Category;
 use Illuminate\Support\Facades\Log;
 use App\Models\Tenant\Quoter\TatRestockList;
@@ -389,19 +390,27 @@ class ProductQuoter extends Component
                 });
 
             // 2. Obtener lista de clientes con datos extendidos para selección completa offline
-            $allCustomers = VntCompany::query()
-                ->select('id', 'businessName', 'firstName', 'lastName', 'identification', 'billingEmail', 'typeIdentificationId')
-                ->with([
-                    'mainWarehouse' => function($q) {
-                        $q->select('id', 'companyId', 'address', 'district', 'cityId');
-                    },
-                    'activeContacts' => function($q) {
-                        $q->select('vnt_contacts.id', 'vnt_contacts.warehouseId', 'vnt_contacts.business_phone', 'vnt_contacts.personal_phone');
-                    }
-                ])
-                ->get()
+            $allCustomersQuery = VntCompany::query()
+                ->select('vnt_companies.*')
+                ->with(['mainWarehouse', 'activeContacts']);
+
+            // FILTRADO DE CLIENTES POR RUTA (Solo Perfil 4)
+            if (auth()->user()->profile_id == 4) {
+                Log::info("🔍 Filtrando clientes para vendedor offline (todas sus rutas)", [
+                    'salesman_id' => auth()->id()
+                ]);
+
+                $allCustomersQuery->join('tat_companies_routes as tcr', 'tcr.company_id', '=', 'vnt_companies.id')
+                    ->join('tat_routes as tr', 'tr.id', '=', 'tcr.route_id')
+                    ->where('tr.salesman_id', auth()->id())
+                    ->whereNull('tcr.deleted_at')
+                    ->whereNull('tr.deleted_at');
+            }
+
+            $allCustomers = $allCustomersQuery->get()
                 ->map(fn($c) => [
-                    'id' => $c->id,
+                    'id' => $c->mainWarehouse->id ?? $c->id, // ID de sucursal para guardado (punto de venta)
+                    'company_id' => $c->id,
                     'businessName' => $c->businessName,
                     'firstName' => $c->firstName,
                     'lastName' => $c->lastName,
@@ -445,11 +454,6 @@ class ProductQuoter extends Component
             // D. Fin: Avisar que todo terminó correctamente
             $this->dispatch('sync-finished', [
                 'total' => $totalProducts
-            ]);
-
-            $this->dispatch('show-toast', [
-                'type' => 'success',
-                'message' => 'Sincronizacion finalizada'
             ]);
 
         } catch (\Exception $e) {
@@ -1124,7 +1128,8 @@ class ProductQuoter extends Component
             // Validaciones básicas antes de procesar
             if (empty($data['identification'])) throw new \Exception('La Identificación es obligatoria');
             if (empty($data['businessName'])) throw new \Exception('El Nombre/Razón Social es obligatorio');
-            if (empty($data['phone'])) throw new \Exception('El Teléfono es obligatorio');
+            // Teléfono opcional para registro rápido
+            $phone = $data['phone'] ?? $data['business_phone'] ?? '0000000';
 
             Log::info('🏗️ Iniciando creación de cliente simplificado', ['identification' => $data['identification']]);
 
@@ -1136,18 +1141,18 @@ class ProductQuoter extends Component
                 'businessName' => $data['businessName'],
                 'firstName' => $data['businessName'], // Usado como fallback si es natural
                 'billingEmail' => $data['billingEmail'] ?? null,
-                'business_phone' => $data['phone'],
-                'personal_phone' => $data['phone'],
+                'business_phone' => $phone,
+                'personal_phone' => $phone,
                 'typePerson' => ($data['typeIdentificationId'] == 2) ? 'Juridica' : 'Natural',
                 'status' => 1,
                 'type' => 'CLIENTE',
-                'routeId' => (isset($data['routeId']) && $data['routeId']) ? $data['routeId'] : null,
+                'routeId' => $data['route_id'] ?? $data['routeId'] ?? null,
                 'regimeId' => 2,
                 'fiscalResponsabilityId' => 1,
                 // Campos adicionales para propagar a vnt_customers y vnt_warehouses
-                'address' => $data['address'] ?? null,
-                'cityId' => $data['cityId'] ?? null,
-                'district' => $data['district'] ?? null,
+                'address' => $data['address'] ?? 'Sin dirección',
+                'cityId' => $data['cityId'] ?? 1,
+                'district' => $data['district'] ?? 'Sin barrio',
             ];
 
             // Preparar sucursal (sucursal principal)
@@ -1155,8 +1160,8 @@ class ProductQuoter extends Component
                 [
                     'name' => 'Sucursal Principal',
                     'address' => $data['address'] ?? 'Sin dirección',
-                    'district' => $data['district'] ?? null,
-                    'cityId' => $data['cityId'] ?: 1,
+                    'district' => $data['district'] ?? 'Sin barrio',
+                    'cityId' => (isset($data['cityId']) && $data['cityId']) ? $data['cityId'] : 1,
                     'main' => 1,
                     'status' => 1
                 ]
@@ -1167,6 +1172,19 @@ class ProductQuoter extends Component
             $company = $companyService->create($companyData, $warehouses);
 
             Log::info('✅ Cliente Procesado (Empresa + Sucursal + Cliente)', ['id' => $company->id]);
+
+            // ASOCIACIÓN CRÍTICA: Vincular el cliente a la ruta del vendedor
+            // Sin esto, el vendedor (perfil 4) no podrá "ver" ni seleccionar al cliente por las reglas de seguridad
+            $routeIdToAssoc = $data['route_id'] ?? $data['routeId'] ?? $this->newCustomerRouteId;
+            if ($routeIdToAssoc) {
+                Log::info('🔗 Asociando cliente a ruta', ['company_id' => $company->id, 'route_id' => $routeIdToAssoc]);
+                
+                // Usar DB::table para asegurar inserción rápida en la tabla pivot
+                DB::table('tat_companies_routes')->updateOrInsert(
+                    ['company_id' => $company->id, 'route_id' => $routeIdToAssoc],
+                    ['created_at' => now(), 'updated_at' => now()]
+                );
+            }
 
             // Formatear respuesta para el frontend
             $result = [
@@ -1211,10 +1229,13 @@ class ProductQuoter extends Component
         // Si es vendedor (perfil 4), buscar solo en sus rutas asignadas
         if (auth()->user()->profile_id == 4) {
             $customers = DB::select("
-                SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, 
+                       vc.typeIdentificationId, vw.id as warehouse_id, vc.id as company_id, vw.address,
+                       (SELECT business_phone FROM vnt_contacts WHERE warehouseId = vw.id AND status = 1 LIMIT 1) as phone
                 FROM tat_routes tr
                 INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
                 INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+                LEFT JOIN vnt_warehouses vw ON vw.companyId = vc.id AND vw.main = 1
                 WHERE tr.salesman_id = ? AND vc.id = ?
                 LIMIT 1
             ", [auth()->id(), $customerId]);
@@ -1224,14 +1245,18 @@ class ProductQuoter extends Component
                 SELECT
                     NULL as salesman_id,
                     NULL as sale_day,
-                    vc.id as company_id,
                     vc.businessName,
                     vc.billingEmail,
                     vc.firstName,
                     vc.lastName,
                     vc.identification,
-                    vc.id
+                    vc.typeIdentificationId,
+                    vw.id as warehouse_id,
+                    vc.id as company_id,
+                    vw.address,
+                    (SELECT business_phone FROM vnt_contacts WHERE warehouseId = vw.id AND status = 1 LIMIT 1) as phone
                 FROM vnt_companies vc
+                LEFT JOIN vnt_warehouses vw ON vw.companyId = vc.id AND vw.main = 1
                 WHERE vc.id = ? AND vc.status = 1 AND vc.deleted_at IS NULL
                 LIMIT 1
             ", [$customerId]);
@@ -1249,12 +1274,16 @@ class ProductQuoter extends Component
             $customer = (array) $customers[0];
             // Seleccionar el cliente recién creado
             $this->selectedCustomer = [
-                'id' => $customer['id'],
+                'id' => $customer['warehouse_id'] ?? $customer['company_id'],
+                'company_id' => $customer['company_id'],
                 'businessName' => $customer['businessName'],
                 'firstName' => $customer['firstName'],
                 'lastName' => $customer['lastName'],
                 'identification' => $customer['identification'],
                 'billingEmail' => $customer['billingEmail'],
+                'phone' => $customer['phone'] ?? '',
+                'address' => $customer['address'] ?? '',
+                'typeIdentificationId' => $customer['typeIdentificationId'] ?? 1,
             ];
 
             // Limpiar estados del formulario de creación/edición
@@ -1295,8 +1324,9 @@ class ProductQuoter extends Component
     {
         $this->ensureTenantConnection();
 
-        // Verificar si es el cliente que está actualmente seleccionado
-        if ($this->selectedCustomer && $this->selectedCustomer['id'] == $customerId) {
+        // Verificar si es el cliente que está actualmente seleccionado (usando company_id para comparar)
+        $currentCompanyId = $this->selectedCustomer['company_id'] ?? $this->selectedCustomer['id'];
+        if ($this->selectedCustomer && $currentCompanyId == $customerId) {
             // Buscar el cliente actualizado validando que pertenece a las rutas del vendedor
             $customer = DB::select("
                 SELECT tr.salesman_id, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
@@ -1511,17 +1541,20 @@ class ProductQuoter extends Component
 
             // Cargar información del cliente
             if ($quote->customerId) {
-                $customer = VntCompany::find($quote->customerId);
-                if ($customer) {
+                // Ahora customerId es un ID de sucursal (VntWarehouse)
+                $warehouse = VntWarehouse::with('company')->find($quote->customerId);
+                if ($warehouse) {
+                    $company = $warehouse->company;
                     $this->selectedCustomer = [
-                        'id' => $customer->id,
-                        'businessName' => $customer->businessName,
-                        'firstName' => $customer->firstName,
-                        'lastName' => $customer->lastName,
-                        'identification' => $customer->identification,
-                        'billingEmail' => $customer->billingEmail,
+                        'id' => $warehouse->id, // ID de sucursal
+                        'company_id' => $company->id ?? null,
+                        'businessName' => $company->businessName ?? '',
+                        'firstName' => $company->firstName ?? '',
+                        'lastName' => $company->lastName ?? '',
+                        'identification' => $company->identification ?? '',
+                        'billingEmail' => $company->billingEmail ?? '',
                     ];
-                    Log::info('👤 Cliente cargado', ['customer_id' => $customer->id]);
+                    Log::info('👤 Cliente (Sucursal) cargado', ['warehouse_id' => $warehouse->id]);
                 }
             }
 
@@ -2518,18 +2551,24 @@ class ProductQuoter extends Component
             }
 
             $customer = DB::select("
-                SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                SELECT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, 
+                       vc.typeIdentificationId, vw.id as warehouse_id, vc.id as company_id, vw.address,
+                       (SELECT business_phone FROM vnt_contacts WHERE warehouseId = vw.id AND status = 1 LIMIT 1) as phone
                 FROM tat_routes tr
                 INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
                 INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
+                LEFT JOIN vnt_warehouses vw ON vw.companyId = vc.id AND vw.main = 1
                 WHERE tr.salesman_id = ? AND vc.id = ? $whereSaleDay
                 LIMIT 1
             ", $params);
         } else {
             // Para administradores, buscar directamente en vnt_companies
             $customer = DB::select("
-                SELECT vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
+                SELECT vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, 
+                       vc.typeIdentificationId, vw.id as warehouse_id, vc.id as company_id, vw.address,
+                       (SELECT business_phone FROM vnt_contacts WHERE warehouseId = vw.id AND status = 1 LIMIT 1) as phone
                 FROM vnt_companies vc
+                LEFT JOIN vnt_warehouses vw ON vw.companyId = vc.id AND vw.main = 1
                 WHERE vc.id = ? AND vc.status = 1 AND vc.deleted_at IS NULL
                 LIMIT 1
             ", [$customerId]);
@@ -2538,12 +2577,16 @@ class ProductQuoter extends Component
         if (!empty($customer)) {
             $customer = (array) $customer[0];
             $this->selectedCustomer = [
-                'id' => $customer['id'],
+                'id' => $customer['warehouse_id'] ?? $customer['company_id'], // Usamos el ID de sucursal como ID principal
+                'company_id' => $customer['company_id'], // Mantenemos el ID de empresa para otros procesos
                 'businessName' => $customer['businessName'],
                 'firstName' => $customer['firstName'],
                 'lastName' => $customer['lastName'],
                 'identification' => $customer['identification'],
                 'billingEmail' => $customer['billingEmail'],
+                'phone' => $customer['phone'] ?? '',
+                'address' => $customer['address'] ?? '',
+                'typeIdentificationId' => $customer['typeIdentificationId'] ?? 1,
                 'sale_day' => $customer['sale_day'] ?? null,
             ];
             $this->customerSearch = '';
@@ -2643,12 +2686,17 @@ class ProductQuoter extends Component
             if (!$this->selectedCustomer && $quoteId) {
                 $quote = VntQuote::find($quoteId);
                 if ($quote && $quote->customerId) {
-                    $customer = VntCompany::find($quote->customerId);
-                    if ($customer) {
+                    $warehouse = VntWarehouse::with('company')->find($quote->customerId);
+                    if ($warehouse) {
+                        $company = $warehouse->company;
                         $this->selectedCustomer = [
-                            'id' => $customer->id,
-                            'businessName' => $customer->businessName,
-                            // ... otros campos si son necesarios para la remisión
+                            'id' => $warehouse->id,
+                            'company_id' => $company->id ?? null,
+                            'businessName' => $company->businessName ?? '',
+                            'firstName' => $company->firstName ?? '',
+                            'lastName' => $company->lastName ?? '',
+                            'identification' => $company->identification ?? '',
+                            'billingEmail' => $company->billingEmail ?? '',
                         ];
                     }
                 }
@@ -3005,9 +3053,11 @@ class ProductQuoter extends Component
                 ]);
             }
 
-            // 3. Seleccionar el nuevo cliente en el cotizador
+            // 3. Seleccionar el nuevo cliente en el cotizador (Usando ID de sucursal)
+            $warehouseId = $newCompany->mainWarehouse->id ?? $newCompany->id;
             $this->selectedCustomer = [
-                'id' => $newCompany->id,
+                'id' => $warehouseId,
+                'company_id' => $newCompany->id,
                 'businessName' => $newCompany->businessName,
                 'firstName' => $newCompany->firstName,
                 'lastName' => $newCompany->lastName,
@@ -3048,7 +3098,8 @@ class ProductQuoter extends Component
         $this->ensureTenantConnection();
 
         try {
-            $company = VntCompany::with(['mainWarehouse.activeContacts'])->find($this->selectedCustomer['id']);
+            $companyId = $this->selectedCustomer['company_id'] ?? $this->selectedCustomer['id'];
+            $company = VntCompany::with(['mainWarehouse.activeContacts'])->find($companyId);
             
             if (!$company) {
                 $this->dispatch('show-toast', ['type' => 'error', 'message' => 'No se encontró el cliente']);

@@ -78,6 +78,9 @@ class Remissions extends Component
                 ->when($this->search, function ($query) {
                     $this->applyBaseFilters($query);
                 })
+                ->when(auth()->user()->profile_id == 4, function ($query) {
+                    $query->where('userId', auth()->id());
+                })
                 ->where('status', 'REGISTRADO') // Solo se facturan las registradas
                 ->pluck('id')
                 ->map(fn($id) => (string) $id)
@@ -167,7 +170,7 @@ class Remissions extends Component
         $query->where(function($q) {
             $q->where('consecutive', 'like', '%' . $this->search . '%')
                 ->orWhere('status', 'like', '%' . $this->search . '%')
-                ->orWhereHas('quote.customer', function ($sub) {
+                ->orWhereHas('quote.customer.company', function ($sub) {
                     $sub->where('businessName', 'like', '%' . $this->search . '%')
                       ->orWhere('firstName', 'like', '%' . $this->search . '%')
                       ->orWhere('lastName', 'like', '%' . $this->search . '%');
@@ -176,13 +179,13 @@ class Remissions extends Component
 
         // Búsqueda avanzada
         if ($this->searchNit) {
-            $query->whereHas('quote.customer', function($q) {
+            $query->whereHas('quote.customer.company', function($q) {
                 $q->where('identification', 'like', '%' . $this->searchNit . '%');
             });
         }
 
         if ($this->searchName) {
-            $query->whereHas('quote.customer', function($q) {
+            $query->whereHas('quote.customer.company', function($q) {
                 $q->where('businessName', 'like', '%' . $this->searchName . '%')
                   ->orWhere('firstName', 'like', '%' . $this->searchName . '%')
                   ->orWhere('lastName', 'like', '%' . $this->searchName . '%');
@@ -426,6 +429,9 @@ class Remissions extends Component
         $remissions = InvRemissions::with(['quote.customer', 'quote.warehouse', 'quote.branch', 'details'])
             ->where(function($query) {
                 $this->applyBaseFilters($query);
+            })
+            ->when(auth()->user()->profile_id == 4, function ($query) {
+                $query->where('userId', auth()->id());
             })
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage);

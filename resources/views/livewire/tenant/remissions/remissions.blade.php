@@ -98,7 +98,8 @@
     </div>
 
     <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 transition-colors">
-        <div class="overflow-x-auto">
+        <!-- Vista de Tabla (Desktop) -->
+        <div class="hidden lg:block overflow-x-auto">
             <table class="w-full">
                 <thead>
                     <tr class="border-b border-gray-200 dark:border-slate-700">
@@ -160,7 +161,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($remissions as $remission)
+                    @foreach($remissions as $remission)
                         <tr class="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                             <td class="px-4 py-4 text-center">
                                 @if(!in_array($remission->status, ['DEVUELTO', 'ANULADO', 'VENCIDO']))
@@ -206,8 +207,7 @@
                                             $nextTick(() => {
                                                 const rect = $el.getBoundingClientRect();
                                                 top = rect.bottom + window.scrollY;
-                                                // Ajustar para que no se salga por la derecha
-                                                left = rect.right - 192; // 192px es w-48
+                                                left = rect.right - 192; 
                                             });
                                         "
                                         class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
@@ -215,8 +215,6 @@
                                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                                         </svg>
                                     </button>
-                                    
-                                    <!-- Menú Desplegable con Fixed Positioning (Portal) -->
                                     <div x-show="open"
                                         x-transition:enter="transition ease-out duration-100"
                                         x-transition:enter-start="transform opacity-0 scale-95"
@@ -242,7 +240,6 @@
                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                                 Imprimir
                                             </button>
-
                                             @if(!in_array($remission->status, ['ANULADO', 'ENTREGADO']))
                                                 <button @click="open = false; confirmAnnul({{ $remission->id }}, '{{ $remission->consecutive }}')" 
                                                     class="w-full text-left px-4 py-2 text-sm text-red-800 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center">
@@ -255,16 +252,115 @@
                                 </div>
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-slate-400">
-                                No se encontraron remisiones.
-                            </td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
+
+        <!-- Vista de Tarjetas (Mobile) -->
+        <!-- Vista de Tarjetas (Mobile) -->
+        <div class="lg:hidden p-4 space-y-4">
+            @forelse($remissions as $remission)
+                <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+                    <!-- Header Tarjeta Dark -->
+                    <div class="bg-slate-900 dark:bg-slate-950 px-4 py-3 flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="text-white font-bold text-base">Remisión #{{ $remission->consecutive }}</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter">{{ $remission->created_at->format('d/m/Y') }}</p>
+                            <p class="text-[10px] text-slate-500 font-medium">{{ $remission->created_at->format('H:i') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <div class="space-y-4 mb-6">
+                            <!-- Cliente -->
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">CLIENTE</p>
+                                    <p class="text-sm font-bold text-gray-900 dark:text-white leading-tight">
+                                        {{ $remission->quote->customer_name ?? 'N/A' }}
+                                    </p>
+                                    @if(isset($remission->quote->customer->billingEmail))
+                                        <p class="text-xs text-gray-500 truncate max-w-[200px]">{{ $remission->quote->customer->billingEmail }}</p>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- Estado y Sucursal -->
+                            <div class="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50 dark:border-slate-700/50">
+                                <div>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">ESTADO</p>
+                                    <span class="inline-block px-3 py-1 text-[10px] font-bold rounded-full
+                                        @if($remission->status === 'REGISTRADO') bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300
+                                        @elseif($remission->status === 'ANULADO') bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300
+                                        @else bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 @endif">
+                                        {{ $remission->status }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 text-right">SUCURSAL</p>
+                                    <p class="text-[11px] text-gray-700 dark:text-slate-300 font-medium text-right flex items-center justify-end gap-1">
+                                        <span>🏢 {{ $remission->quote->warehouse->name ?? 'N/A' }}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Vendedor -->
+                            <div class="pt-2 border-t border-gray-50 dark:border-slate-700/50">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">VENDEDOR</p>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    </div>
+                                    <p class="text-xs text-gray-700 dark:text-slate-300 font-medium">
+                                        {{ $remission->user->name ?? 'N/A' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Acciones -->
+                        <div class="flex items-center gap-2 border-t border-gray-100 dark:border-slate-700 pt-4 mt-2">
+                            <button wire:click="viewDetails({{ $remission->id }})" 
+                                class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2.5 text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm shadow-indigo-200">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                Detalle
+                            </button>
+
+                            <button wire:click="editarRemision({{ $remission->id }})"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white p-2.5 rounded-xl transition-all active:scale-95 shadow-sm shadow-yellow-100"
+                                title="Editar remisión">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </button>
+                            
+                            <button wire:click="printRemission({{ $remission->id }})"
+                                class="bg-blue-500 hover:bg-blue-600 text-white p-2.5 rounded-xl transition-all active:scale-95 shadow-sm shadow-blue-100"
+                                title="Imprimir remisión">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            </button>
+
+                            @if(!in_array($remission->status, ['ANULADO', 'ENTREGADO']))
+                                <button @click="confirmAnnul({{ $remission->id }}, '{{ $remission->consecutive }}')"
+                                    class="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-xl transition-all active:scale-95 shadow-sm shadow-red-100"
+                                    title="Anular remisión">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @empty
+                <div class="bg-white dark:bg-slate-800 p-12 text-center rounded-xl border-2 border-dashed border-gray-100 dark:border-slate-700">
+                    <div class="w-16 h-16 bg-gray-50 dark:bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v4m16 0l-4-4m-8 4l4-4"/></svg>
+                    </div>
+                    <p class="text-gray-500 font-medium italic">No se encontraron remisiones</p>
+                </div>
+            @endforelse
+        </div>
+    </div>
 
         <script>
             function confirmAnnul(id, consecutive) {
@@ -293,8 +389,6 @@
                 {{ $remissions->links() }}
             </div>
         @endif
-    </div>
-
     <!-- Modal de Detalle de Remisión -->
     <div x-data="{ show: @entangle('showDetailModal') }"
          x-show="show"
@@ -446,7 +540,6 @@
                 @endif
             </div>
         </div>
-    </div>
     </div>
 </div>
 
