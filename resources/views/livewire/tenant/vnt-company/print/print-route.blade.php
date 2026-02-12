@@ -162,22 +162,27 @@
         <tbody>
             @foreach($items as $item)
             @php
-                $contact = $item->company->activeContacts->first();
+                $company = $item->company;
+                $contact = $company ? $company->activeContacts->first() : null;
                 $phone = $contact ? $contact->primaryPhone : null;
             @endphp
             <tr>
                 <td class="text-center">{{ $item->sales_order }}</td>
                 <td>
-                    <strong>{{ $item->company->businessName ?: ($item->company->firstName . ' ' . $item->company->lastName) }}</strong>
-                    <br><small>{{ $item->company->billingEmail ?: 'Sin email' }}</small>
+                    @if($company)
+                        <strong>{{ $company->businessName ?: ($company->firstName . ' ' . $company->lastName) }}</strong>
+                        <br><small>{{ $company->billingEmail ?: 'Sin email' }}</small>
+                    @else
+                        <span class="text-red-600">Cliente no encontrado</span>
+                    @endif
                 </td>
                 <td class="text-center">
                     {{ $phone ?: 'S.T.' }}
                 </td>
                 <td>
                     {{ $item->route->zones->name ?? 'N/A' }}
-                    @if($item->company->mainWarehouse)
-                        <br><small>{{ $item->company->mainWarehouse->address }}</small>
+                    @if($company && $company->mainWarehouse)
+                        <br><small>{{ $company->mainWarehouse->address }}</small>
                     @endif
                 </td>
                 <td style="height: 40px;"></td>

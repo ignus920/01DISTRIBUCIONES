@@ -1134,12 +1134,17 @@ class ProductQuoter extends Component
             Log::info('🏗️ Iniciando creación de cliente simplificado', ['identification' => $data['identification']]);
 
             // Preparar datos para el CompanyService
+            // Si es CC, priorizamos firstName y lastName. Si es NIT, businessName.
+            $firstName = !empty($data['firstName']) ? $data['firstName'] : $data['businessName'];
+            $lastName = !empty($data['lastName']) ? $data['lastName'] : '';
+
             $companyData = [
                 'typeIdentificationId' => (int) ($data['typeIdentificationId'] ?: 1),
                 'identification' => $data['identification'],
                 'checkDigit' => $data['verification_digit'] ?? null,
                 'businessName' => $data['businessName'],
-                'firstName' => $data['businessName'], // Usado como fallback si es natural
+                'firstName' => $firstName,
+                'lastName' => $lastName,
                 'billingEmail' => $data['billingEmail'] ?? null,
                 'business_phone' => $phone,
                 'personal_phone' => $phone,
@@ -1191,7 +1196,7 @@ class ProductQuoter extends Component
                 'id' => $company->id,
                 'identification' => $company->identification,
                 'businessName' => $company->businessName,
-                'display_name' => $company->businessName
+                'display_name' => $company->businessName ?: ($company->firstName . ' ' . $company->lastName)
             ];
 
             // Seleccionar automáticamente en el cotizador
@@ -1545,12 +1550,22 @@ class ProductQuoter extends Component
                 $warehouse = VntWarehouse::with('company')->find($quote->customerId);
                 if ($warehouse) {
                     $company = $warehouse->company;
+                    $firstName = $company->firstName ?? '';
+                    $lastName = $company->lastName ?? '';
+
+                    // Fallback para clientes antiguos
+                    if (empty($firstName) && ($company->typeIdentificationId ?? 1) == 1) {
+                        $parts = explode(' ', trim($company->businessName ?? ''), 2);
+                        $firstName = $parts[0] ?? ($company->businessName ?? '');
+                        $lastName = $parts[1] ?? '';
+                    }
+
                     $this->selectedCustomer = [
                         'id' => $warehouse->id, // ID de sucursal
                         'company_id' => $company->id ?? null,
                         'businessName' => $company->businessName ?? '',
-                        'firstName' => $company->firstName ?? '',
-                        'lastName' => $company->lastName ?? '',
+                        'firstName' => $firstName,
+                        'lastName' => $lastName,
                         'identification' => $company->identification ?? '',
                         'billingEmail' => $company->billingEmail ?? '',
                     ];
@@ -2931,11 +2946,15 @@ class ProductQuoter extends Component
             $companyService = app(CompanyService::class);
 
             // 1. Preparar datos para el CompanyService
+            $firstName = !empty($customerData['firstName']) ? $customerData['firstName'] : $customerData['businessName'];
+            $lastName = !empty($customerData['lastName']) ? $customerData['lastName'] : '';
+
             $companyData = [
                 'typeIdentificationId' => $customerData['typeIdentificationId'] ?: 1,
                 'identification' => $customerData['identification'],
                 'businessName' => $customerData['businessName'],
-                'firstName' => $customerData['businessName'],
+                'firstName' => $firstName,
+                'lastName' => $lastName,
                 'billingEmail' => $customerData['billingEmail'] ?? null,
                 'business_phone' => $customerData['phone'] ?? null,
                 'typePerson' => ($customerData['typeIdentificationId'] == 2) ? 'Juridica' : 'Natural',
@@ -3112,16 +3131,30 @@ class ProductQuoter extends Component
             // Obtener ruta asignada si existe
             $routeInfo = TatCompanyRoute::where('company_id', $company->id)->first();
 
+            $firstName = $company->firstName;
+            $lastName = $company->lastName;
+
+            // Fallback para clientes antiguos que solo tienen businessName
+            if (empty($firstName) && $company->typeIdentificationId == 1) {
+                $parts = explode(' ', trim($company->businessName), 2);
+                $firstName = $parts[0] ?? $company->businessName;
+                $lastName = $parts[1] ?? '';
+            }
+
             $customerData = [
                 'id' => $company->id,
                 'typeIdentificationId' => $company->typeIdentificationId,
                 'identification' => $company->identification,
                 'businessName' => $company->businessName,
+                'firstName' => $firstName,
+                'lastName' => $lastName,
                 'phone' => $phone,
                 'address' => $mainWarehouse?->address,
                 'billingEmail' => $company->billingEmail,
                 'route_id' => $routeInfo?->route_id,
             ];
+
+            Log::debug("💼 [EDICIÓN] Objeto customerData preparado:", $customerData);
 
             // Despachar evento para que Alpine cargue los datos
             $this->dispatch('load-customer-data', customer: $customerData);

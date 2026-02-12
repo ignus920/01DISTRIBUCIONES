@@ -65,13 +65,33 @@
                     </div>
                 </div>
 
-                <div>
+                <!-- Nombres (Dinámico) -->
+                <div x-show="newOfflineCustomer.typeIdentificationId == 1" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Primer Nombre <span class="text-red-500">*</span>
+                        </label>
+                        <input x-model="newOfflineCustomer.firstName" type="text"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 uppercase font-bold"
+                            placeholder="Nombre del cliente">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Primer Apellido <span class="text-red-500">*</span>
+                        </label>
+                        <input x-model="newOfflineCustomer.lastName" type="text"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 uppercase font-bold"
+                            placeholder="Apellido del cliente">
+                    </div>
+                </div>
+
+                <div x-show="newOfflineCustomer.typeIdentificationId == 2">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Nombre / Razón Social <span class="text-red-500">*</span>
+                        Razón Social <span class="text-red-500">*</span>
                     </label>
                     <input x-model="newOfflineCustomer.businessName" type="text"
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 uppercase font-bold text-lg"
-                        placeholder="Nombre completo del cliente">
+                        placeholder="Razón social de la empresa">
                 </div>
 
                 <!-- Selección de Ruta (Solo Administradores perfil 2) -->

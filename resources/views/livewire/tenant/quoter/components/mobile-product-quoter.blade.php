@@ -19,6 +19,8 @@
             typeIdentificationId: 1,
             identification: '',
             businessName: '',
+            firstName: '',
+            lastName: '',
             phone: '',
             address: '',
             billingEmail: '',
@@ -66,7 +68,9 @@
                     typeIdentificationId: data.typeIdentificationId || 1,
                     identification: data.identification || '',
                     businessName: data.businessName || '',
-                    phone: data.phone || '',
+                    firstName: data.firstName || '',
+                    lastName: data.lastName || '',
+                    phone: data.phone || data.business_phone || '',
                     address: data.address || '',
                     billingEmail: data.billingEmail || '',
                     createUser: false,
@@ -506,7 +510,9 @@
                 id: data.id || data.company_id,
                 typeIdentificationId: data.typeIdentificationId || 1,
                 identification: data.identification || '',
-                businessName: data.businessName || (data.firstName ? (data.firstName + ' ' + (data.lastName || '')) : ''),
+                businessName: data.businessName || '',
+                firstName: data.firstName || '',
+                lastName: data.lastName || '',
                 phone: data.business_phone || data.phone || '',
                 address: data.address || '',
                 billingEmail: data.billingEmail || '',
@@ -517,9 +523,24 @@
         },
 
         async saveOfflineCustomer() {
-            if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
-                Swal.fire('Error', 'Nombre y Documento son obligatorios', 'error');
+            // Validación dinámica según tipo de identificación
+            const isCC = this.newOfflineCustomer.typeIdentificationId == 1;
+            const hasIdentification = !!this.newOfflineCustomer.identification;
+            const hasName = isCC 
+                ? (this.newOfflineCustomer.firstName && this.newOfflineCustomer.lastName)
+                : !!this.newOfflineCustomer.businessName;
+
+            if (!hasIdentification || !hasName) {
+                const message = isCC 
+                    ? 'Identificación, Nombre y Apellido son obligatorios' 
+                    : 'Identificación y Razón Social son obligatorios';
+                Swal.fire('Error', message, 'error');
                 return;
+            }
+
+            // Concatenar nombre si es C.C. para mantener consistencia en businessName
+            if (isCC) {
+                this.newOfflineCustomer.businessName = (this.newOfflineCustomer.firstName + ' ' + (this.newOfflineCustomer.lastName || '')).trim();
             }
 
             // MODAL LOADING
@@ -542,7 +563,7 @@
                             console.log('✅ Cliente guardado en servidor:', result);
                             
                             this.showOfflineCreateForm = false;
-                            this.newOfflineCustomer = { id: null, typeIdentificationId: 1, identification: '', businessName: '', phone: '', address: '', billingEmail: '', createUser: false, route_id: @js($newCustomerRouteId) };
+                            this.newOfflineCustomer = { id: null, typeIdentificationId: 1, identification: '', businessName: '', firstName: '', lastName: '', phone: '', address: '', billingEmail: '', createUser: false, route_id: @js($newCustomerRouteId) };
                             return;
                         } else {
                             // Si el servidor retorna null, es un error controlado (validación) 
@@ -572,8 +593,8 @@
                     id: tempId,
                     identification: this.newOfflineCustomer.identification,
                     businessName: this.newOfflineCustomer.businessName.toUpperCase(),
-                    firstName: this.newOfflineCustomer.businessName.toUpperCase(),
-                    lastName: '',
+                    firstName: (this.newOfflineCustomer.firstName || this.newOfflineCustomer.businessName).toUpperCase(),
+                    lastName: (this.newOfflineCustomer.lastName || '').toUpperCase(),
                     address: this.newOfflineCustomer.address || 'Sin dirección',
                     business_phone: this.newOfflineCustomer.phone || '0000000',
                     typeIdentificationId: parseInt(this.newOfflineCustomer.typeIdentificationId),
@@ -595,7 +616,7 @@
                 
                 // Limpiar formulario y cerrar modal
                 this.showOfflineCreateForm = false;
-                this.newOfflineCustomer = { id: null, typeIdentificationId: 1, identification: '', businessName: '', phone: '', address: '', billingEmail: '', createUser: false, route_id: @js($newCustomerRouteId) };
+                this.newOfflineCustomer = { id: null, typeIdentificationId: 1, identification: '', businessName: '', firstName: '', lastName: '', phone: '', address: '', billingEmail: '', createUser: false, route_id: @js($newCustomerRouteId) };
                 
                 await this.persistState();
                 Swal.close();
@@ -1444,7 +1465,7 @@
 
                     <div wire:key="checkout-actions-container" class="space-y-2">
 
-                        <div x-show="isOnline ? !@js($selectedCustomer) : !selectedLocalCustomer" class="contents" wire:key="checkout-warn-box">
+                        <div x-show="isOnline ? !serverSelectedCustomer : !selectedLocalCustomer" class="contents" wire:key="checkout-warn-box">
                             <button disabled
                                 class="w-full bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 font-medium py-3 px-4 rounded-lg cursor-not-allowed flex items-center justify-center">
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1456,7 +1477,7 @@
                         </div>
 
                         <!-- MODO ONLINE (CON CLIENTE) -->
-                        <div x-show="isOnline && @js($selectedCustomer)" class="contents" wire:key="save-online-btn-box">
+                        <div x-show="isOnline && serverSelectedCustomer" class="contents" wire:key="save-online-btn-box">
                             <div class="w-full">
                                 <!-- BOTÓN GUARDAR (ONLINE) -->
                                 <button wire:click="saveQuote"

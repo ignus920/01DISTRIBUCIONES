@@ -226,6 +226,7 @@ class UserRapForm extends Component
      */
     public function edit(int $userId): void
     {
+        $this->ensureTenantConnection();
         // Limpiar completamente el estado anterior
         $this->resetForm();
         $this->resetErrorBag();
@@ -394,6 +395,7 @@ class UserRapForm extends Component
      */
     public function save(): void
     {
+        $this->ensureTenantConnection();
         try {
             // Clear previous error message
             $this->errorMessage = '';
@@ -544,16 +546,23 @@ class UserRapForm extends Component
             $fullName = $this->concatenateFullName();
 
             // Update User fields (excluding password)
-            $user->update([
-                'name' => $fullName,
-                'phone' => $this->phone,
-                'profile_id' => $this->profile_id,
-                'avatar' => $this->avatar,
-                'two_factor_enabled' => $this->two_factor_enabled,
-                'two_factor_type' => $this->two_factor_type,
-            ]);
+        $user->update([
+            'name' => $fullName,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'profile_id' => $this->profile_id,
+            'avatar' => $this->avatar,
+            'two_factor_enabled' => $this->two_factor_enabled,
+            'two_factor_type' => $this->two_factor_type,
+        ]);
 
-            DB::commit();
+        // Actualizar el rol en la relación con el tenant
+        $sessionTenant = $this->getTenantId();
+        UserTenant::where('user_id', $user->id)
+            ->where('tenant_id', $sessionTenant)
+            ->update(['role' => $this->profile_id]);
+
+        DB::commit();
             
             // Set success message before closing
             $this->successMessage = 'Usuario actualizado exitosamente';

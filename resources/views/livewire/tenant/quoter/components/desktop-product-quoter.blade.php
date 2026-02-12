@@ -855,6 +855,8 @@ $header = 'Seleccionar productos';
                 typeIdentificationId: 1,
                 identification: '',
                 businessName: '',
+                firstName: '',
+                lastName: '',
                 phone: '',
                 address: '',
                 billingEmail: '',
@@ -871,7 +873,9 @@ $header = 'Seleccionar productos';
                         typeIdentificationId: data.typeIdentificationId || 1,
                         identification: data.identification || '',
                         businessName: data.businessName || '',
-                        phone: data.phone || '',
+                        firstName: data.firstName || '',
+                        lastName: data.lastName || '',
+                        phone: data.phone || data.business_phone || '',
                         address: data.address || '',
                         billingEmail: data.billingEmail || '',
                         createUser: false, // Por seguridad no activamos creación de usuario en edición si no se pide
@@ -881,9 +885,23 @@ $header = 'Seleccionar productos';
                 });
             },
             async saveOfflineCustomer() { // Mantenemos el nombre por compatibilidad con el componente include
-                if (!this.newOfflineCustomer.identification || !this.newOfflineCustomer.businessName) {
-                    Swal.fire('Error', 'Identificación y Nombre son obligatorios', 'error');
+                const isCC = this.newOfflineCustomer.typeIdentificationId == 1;
+                const hasIdentification = !!this.newOfflineCustomer.identification;
+                const hasName = isCC 
+                    ? (this.newOfflineCustomer.firstName && this.newOfflineCustomer.lastName)
+                    : !!this.newOfflineCustomer.businessName;
+
+                if (!hasIdentification || !hasName) {
+                    const message = isCC 
+                        ? 'Identificación, Nombre y Apellido son obligatorios' 
+                        : 'Identificación y Razón Social son obligatorios';
+                    Swal.fire('Error', message, 'error');
                     return;
+                }
+
+                // Concatenar nombre si es C.C. para mantener consistencia en businessName
+                if (isCC) {
+                    this.newOfflineCustomer.businessName = (this.newOfflineCustomer.firstName + ' ' + (this.newOfflineCustomer.lastName || '')).trim();
                 }
 
                 try {
@@ -895,6 +913,8 @@ $header = 'Seleccionar productos';
                             typeIdentificationId: 1,
                             identification: '',
                             businessName: '',
+                            firstName: '',
+                            lastName: '',
                             phone: '',
                             address: '',
                             billingEmail: '',

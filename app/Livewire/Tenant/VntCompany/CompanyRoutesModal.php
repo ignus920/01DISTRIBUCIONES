@@ -217,6 +217,7 @@ class CompanyRoutesModal extends Component
             }
 
             $items = TatCompanyRoute::query()
+                ->whereHas('company')
                 ->with([
                     'company.mainWarehouse', 
                     'company.activeContacts',

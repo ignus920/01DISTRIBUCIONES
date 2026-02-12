@@ -195,7 +195,7 @@
                                 <div class="flex items-center">
                                     <div class="ml-4">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ ($user->contact && $user->contact->firstName) ? $user->contact->firstName . ' ' . $user->contact->lastName : ($user->name ?? 'N/A') }}
+                                            {{ $user->name ?: 'N/A' }}
                                         </div>
                                     </div>
                                 </div>
@@ -452,7 +452,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Primer Nombre <span class="text-red-500">*</span>
                             </label>
-                            <input wire:model.defer="firstName" type="text"
+                            <input wire:model="firstName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('firstName') border-red-500 @enderror"
                                 placeholder="Ej: Juan">
                             @error('firstName') 
@@ -465,7 +465,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Segundo Nombre
                             </label>
-                            <input wire:model.defer="secondName" type="text"
+                            <input wire:model="secondName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('secondName') border-red-500 @enderror"
                                 placeholder="Ej: Carlos">
                             @error('secondName') 
@@ -478,7 +478,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Primer Apellido <span class="text-red-500">*</span>
                             </label>
-                            <input wire:model.defer="lastName" type="text"
+                            <input wire:model="lastName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('lastName') border-red-500 @enderror"
                                 placeholder="Ej: Pérez">
                             @error('lastName') 
@@ -491,7 +491,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Segundo Apellido
                             </label>
-                            <input wire:model.defer="secondLastName" type="text"
+                            <input wire:model="secondLastName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('secondLastName') border-red-500 @enderror"
                                 placeholder="Ej: García">
                             @error('secondLastName') 
@@ -504,7 +504,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Correo <span class="text-red-500">*</span>
                             </label>
-                            <input wire:model.defer="email" type="email"
+                            <input wire:model="email" type="email"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('email') border-red-500 @enderror"
                                 placeholder="Ej: juan.perez@empresa.com">
                             @error('email') 
@@ -517,7 +517,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Teléfono
                             </label>
-                            <input wire:model.defer="phone" type="text"
+                            <input wire:model="phone" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('phone') border-red-500 @enderror"
                                 placeholder="Ej: +57 300 123 4567">
                             @error('phone') 
@@ -539,7 +539,7 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Contraseña <span class="text-red-500">*</span>
                                 </label>
-                                <input wire:model.defer="password" type="password"
+                                <input wire:model="password" type="password"
                                     autocomplete="new-password"
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password') border-red-500 @enderror"
                                     placeholder="Mínimo 8 caracteres">
@@ -553,7 +553,7 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Confirmar Contraseña <span class="text-red-500">*</span>
                                 </label>
-                                <input wire:model.defer="password_confirmation" type="password"
+                                <input wire:model="password_confirmation" type="password"
                                     autocomplete="new-password"
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password_confirmation') border-red-500 @enderror"
                                     placeholder="Repite la contraseña">
@@ -608,7 +608,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Sucursal <span class="text-red-500">*</span>
                             </label>
-                            <select wire:model.defer="warehouseId"
+                            <select wire:model="warehouseId"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('warehouseId') border-red-500 @enderror">
                                 <option value="">Seleccionar sucursal</option>
                                 @foreach($warehouses as $warehouse)
