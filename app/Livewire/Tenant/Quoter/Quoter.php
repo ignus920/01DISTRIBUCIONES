@@ -144,7 +144,8 @@ class Quoter extends Component
             Log::info('🔄 Cargando cotización...');
             $this->selectedQuote = VntQuote::with([
                 'detalles.item',
-                'customer',
+                'customer.company.routes.route',
+                'customer.city',
                 'warehouse',
                 'branch'
             ])->findOrFail($id);
@@ -549,7 +550,15 @@ class Quoter extends Component
         //dd(Auth::id());
         // Cargar cotizaciones con sus relaciones
 
-        $quotes = VntQuote::with(['customer', 'warehouse.contacts', 'branch', 'detalles', 'user'])
+        $quotes = VntQuote::with([
+            'customer.company.routes.route',
+            'customer.city',
+            'customer.contacts',
+            'warehouse.contacts',
+            'branch',
+            'detalles',
+            'user'
+        ])
             ->when(Auth::user()->profile_id != 2, function ($query) {
                 return $query->where('userId', Auth::id());
             })
