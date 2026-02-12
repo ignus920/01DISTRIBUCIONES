@@ -27,7 +27,8 @@ class CompanyRoutesModal extends Component
             }
 
             return TatCompanyRoute::query()
-                ->with(['company', 'route.zones', 'route.salesman'])
+                ->whereHas('company') // CRÍTICO: Evitar registros cuyos clientes fueron borrados
+                ->with(['company.activeContacts', 'company.mainWarehouse', 'route.zones', 'route.salesman'])
                 ->where('route_id', $this->filterRouteId)
                 ->orderBy('sales_order', 'asc')
                 ->get();
