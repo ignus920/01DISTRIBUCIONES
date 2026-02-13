@@ -9,7 +9,7 @@ class VntCompany extends Model
 {
     use HasFactory;
 
-    protected $connection = 'tenant';
+    protected $connection = 'mysql';
     protected $table = 'vnt_companies';
 
     protected $fillable = [

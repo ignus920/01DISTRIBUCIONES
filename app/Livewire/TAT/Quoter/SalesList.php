@@ -12,6 +12,7 @@ use App\Models\Auth\Tenant;
 use App\Services\Tenant\TenantManager;
 use App\Traits\HasCompanyConfiguration;
 use App\Models\Central\VntWarehouse;
+use App\Models\Central\VntCompany;
 
 class SalesList extends Component
 {
@@ -25,6 +26,9 @@ class SalesList extends Component
     public $showDetailModal = false;
     public $selectedQuote = null;
 
+    // Información de la empresa para mostrar en la interfaz
+    public $companyInfo = null;
+
     protected $paginationTheme = 'tailwind';
 
     public function mount()
@@ -32,6 +36,9 @@ class SalesList extends Component
         // Usar la misma lógica que QuoterView para obtener company_id
         $user = Auth::user();
         $this->companyId = $this->getUserCompanyId($user);
+
+        // Obtener información de la empresa para mostrar en la interfaz
+        $this->loadCompanyInfo();
     }
 
     /**
@@ -54,6 +61,34 @@ class SalesList extends Component
         }
 
         return null;
+    }
+
+    /**
+     * Cargar información de la empresa para mostrar en la interfaz
+     */
+    protected function loadCompanyInfo()
+    {
+        try {
+            $user = Auth::user();
+            if ($user && $user->contact_id) {
+                $contact = DB::table('vnt_contacts')
+                    ->where('id', $user->contact_id)
+                    ->first();
+
+                if ($contact && isset($contact->warehouseId)) {
+                    // Simular una quote temporal para usar el método getCompanyInfo
+                    $tempQuote = (object) ['warehouseId' => $contact->warehouseId];
+                    $this->companyInfo = $this->getCompanyInfo($tempQuote);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error cargando información de empresa: ' . $e->getMessage());
+            $this->companyInfo = (object) [
+                'businessName' => 'EMPRESA',
+                'billingAddress' => 'Dirección no disponible',
+                'phone' => '1234567890'
+            ];
+        }
     }
 
     public function updatingSearch()
@@ -398,32 +433,80 @@ class SalesList extends Component
     {
         Log::info('🏢 getCompanyInfo llamado');
 
-        // Intentar obtener información del warehouse desde la base central
+        // Intentar obtener información del warehouse y su empresa desde la base central
         if ($quote && $quote->warehouseId) {
-            Log::info('🏢 Obteniendo warehouse desde base central', ['warehouse_id' => $quote->warehouseId]);
+            Log::info('🏢 Obteniendo warehouse con empresa desde base central', ['warehouse_id' => $quote->warehouseId]);
 
             try {
-                // Consultar directamente desde la base central usando el modelo VntWarehouse
+                // Primero obtener el warehouse para sacar el companyId
                 $warehouse = VntWarehouse::find($quote->warehouseId);
 
-                if ($warehouse) {
-                    Log::info('🏢 Warehouse encontrado en central', [
-                        'id' => $warehouse->id,
-                        'name' => $warehouse->name,
-                        'address' => $warehouse->address
+                if ($warehouse && $warehouse->companyId) {
+                    Log::info('🏢 Warehouse encontrado, obteniendo empresa', [
+                        'warehouse_id' => $warehouse->id,
+                        'warehouse_name' => $warehouse->name,
+                        'warehouse_address' => $warehouse->address,
+                        'company_id' => $warehouse->companyId
+                    ]);
+
+                    // Consulta directa a vnt_companies usando companyId
+                    Log::info('🔍 Ejecutando consulta: VntCompany::find(' . $warehouse->companyId . ')');
+                    $company = VntCompany::find($warehouse->companyId);
+
+                    if ($company) {
+                        Log::info('🏢 Empresa encontrada en vnt_companies', [
+                            'company_id' => $company->id,
+                            'businessName' => $company->businessName ?? 'NULL',
+                            'firstName' => $company->firstName ?? 'NULL',
+                            'lastName' => $company->lastName ?? 'NULL',
+                            'identification' => $company->identification ?? 'NULL',
+                            'billingEmail' => $company->billingEmail ?? 'NULL',
+                            'all_company_data' => $company->toArray()
+                        ]);
+
+                        // Intentar obtener teléfono del primer contacto del warehouse
+                        $phone = '1234567890'; // Default
+                        $contacts = DB::table('vnt_contacts')
+                            ->where('warehouseId', $warehouse->id)
+                            ->whereNotNull('personal_phone')
+                            ->first();
+
+                        if ($contacts && $contacts->personal_phone) {
+                            $phone = $contacts->personal_phone;
+                            Log::info('📞 Teléfono obtenido del contacto', ['phone' => $phone]);
+                        }
+
+                        $companyData = [
+                            'businessName' => $company->businessName ?? $warehouse->name ?? 'Empresa',
+                            'firstName' => $company->firstName ?? 'Admin',
+                            'lastName' => $company->lastName ?? 'Sistema',
+                            'identification' => $company->identification ?? '123456789',
+                            'billingAddress' => $warehouse->address ?? 'Dirección no disponible',
+                            'phone' => $phone,
+                            'billingEmail' => $company->billingEmail ?? 'contacto@empresa.com'
+                        ];
+
+                        Log::info('🏢 Datos empresa obtenidos correctamente', $companyData);
+                    } else {
+                        Log::warning('⚠️ No se encontró la empresa con ID: ' . $warehouse->companyId);
+                        throw new \Exception('Empresa no encontrada');
+                    }
+                } elseif ($warehouse) {
+                    Log::warning('⚠️ Warehouse encontrado pero sin empresa asociada o companyId nulo', [
+                        'warehouse_id' => $warehouse->id,
+                        'warehouse_name' => $warehouse->name,
+                        'company_id' => $warehouse->companyId ?? 'NULL'
                     ]);
 
                     $companyData = [
-                        'businessName' => $warehouse->name ?? 'EMPRESA DE PRUEBA',
+                        'businessName' => $warehouse->name ?? 'EMPRESA',
                         'firstName' => 'Admin',
                         'lastName' => 'Sistema',
                         'identification' => '123456789',
-                        'billingAddress' => $warehouse->address ?? 'Dirección de prueba',
+                        'billingAddress' => $warehouse->address ?? 'Dirección no disponible',
                         'phone' => '1234567890',
-                        'billingEmail' => 'test@empresa.com'
+                        'billingEmail' => 'contacto@empresa.com'
                     ];
-
-                    Log::info('🏢 Datos empresa obtenidos del warehouse central', $companyData);
                 } else {
                     Log::warning('⚠️ Warehouse no encontrado en central con ID: ' . $quote->warehouseId);
                     throw new \Exception('Warehouse no encontrado');
@@ -433,32 +516,136 @@ class SalesList extends Component
 
                 // Datos por defecto si hay error
                 $companyData = [
-                    'businessName' => 'EMPRESA DE PRUEBA',
+                    'businessName' => 'EMPRESA',
                     'firstName' => 'Admin',
                     'lastName' => 'Sistema',
                     'identification' => '123456789',
-                    'billingAddress' => 'Dirección de prueba',
+                    'billingAddress' => 'Dirección no disponible',
                     'phone' => '1234567890',
-                    'billingEmail' => 'test@empresa.com'
+                    'billingEmail' => 'contacto@empresa.com'
                 ];
             }
         } else {
-            Log::warning('⚠️ No se encontró warehouseId en la cotización, usando datos por defecto');
+            Log::warning('⚠️ No se encontró warehouseId en la cotización, intentando usar companyId actual');
 
-            // Datos por defecto si no hay warehouse
-            $companyData = [
-                'businessName' => 'EMPRESA DE PRUEBA',
-                'firstName' => 'Admin',
-                'lastName' => 'Sistema',
-                'identification' => '123456789',
-                'billingAddress' => 'Dirección de prueba',
-                'phone' => '1234567890',
-                'billingEmail' => 'test@empresa.com'
-            ];
+            // Usar el companyId del usuario actual cuando no hay warehouseId en la quote
+            if ($this->companyId || $this->currentCompanyId) {
+                $companyIdToUse = $this->currentCompanyId ?? $this->companyId;
+                Log::info('🏢 Usando companyId actual para obtener datos de empresa', ['company_id' => $companyIdToUse]);
+
+                try {
+                    $company = VntCompany::find($companyIdToUse);
+
+                    if ($company) {
+                        Log::info('🏢 Empresa encontrada usando companyId actual', [
+                            'company_id' => $company->id,
+                            'businessName' => $company->businessName ?? 'NULL',
+                            'identification' => $company->identification ?? 'NULL'
+                        ]);
+
+                        // Intentar obtener warehouse principal de esta empresa
+                        $warehouse = VntWarehouse::where('companyId', $companyIdToUse)->where('main', 1)->first();
+                        if (!$warehouse) {
+                            $warehouse = VntWarehouse::where('companyId', $companyIdToUse)->first();
+                        }
+
+                        $phone = '1234567890'; // Default
+                        if ($warehouse) {
+                            $contacts = DB::connection('mysql')->table('vnt_contacts')
+                                ->where('warehouseId', $warehouse->id)
+                                ->whereNotNull('personal_phone')
+                                ->first();
+
+                            if ($contacts && $contacts->personal_phone) {
+                                $phone = $contacts->personal_phone;
+                                Log::info('📞 Teléfono obtenido del contacto', ['phone' => $phone]);
+                            }
+                        }
+
+                        $companyData = [
+                            'businessName' => $company->businessName ?? ($company->firstName . ' ' . $company->lastName),
+                            'firstName' => $company->firstName ?? 'Admin',
+                            'lastName' => $company->lastName ?? 'Sistema',
+                            'identification' => $company->identification ?? '123456789',
+                            'billingAddress' => $warehouse->address ?? 'Dirección no disponible',
+                            'phone' => $phone,
+                            'billingEmail' => $company->billingEmail ?? 'contacto@empresa.com'
+                        ];
+
+                        Log::info('🏢 Datos empresa obtenidos usando companyId actual', $companyData);
+                    } else {
+                        Log::warning('⚠️ No se encontró empresa con companyId: ' . $companyIdToUse);
+                        throw new \Exception('Empresa no encontrada con companyId actual');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('❌ Error obteniendo empresa con companyId: ' . $e->getMessage());
+
+                    // Datos por defecto si hay error
+                    $companyData = [
+                        'businessName' => 'EMPRESA',
+                        'firstName' => 'Admin',
+                        'lastName' => 'Sistema',
+                        'identification' => '123456789',
+                        'billingAddress' => 'Dirección no disponible',
+                        'phone' => '1234567890',
+                        'billingEmail' => 'contacto@empresa.com'
+                    ];
+                }
+            } else {
+                Log::warning('⚠️ No se encontró companyId, usando datos por defecto');
+
+                // Datos por defecto si no hay companyId
+                $companyData = [
+                    'businessName' => 'EMPRESA',
+                    'firstName' => 'Admin',
+                    'lastName' => 'Sistema',
+                    'identification' => '123456789',
+                    'billingAddress' => 'Dirección no disponible',
+                    'phone' => '1234567890',
+                    'billingEmail' => 'contacto@empresa.com'
+                ];
+            }
         }
 
         Log::info('🏢 Datos empresa preparados', $companyData);
 
         return (object) $companyData;
+    }
+
+    /**
+     * Método de debug para verificar datos de empresa
+     */
+    public function debugCompanyData($quoteId)
+    {
+        $quote = Quote::find($quoteId);
+
+        if (!$quote) {
+            Log::info('❌ Quote no encontrada: ' . $quoteId);
+            return;
+        }
+
+        Log::info('🔍 DEBUG - Datos de la cotización:', [
+            'quote_id' => $quote->id,
+            'warehouse_id' => $quote->warehouseId
+        ]);
+
+        // Verificar warehouse
+        $warehouse = DB::table('vnt_warehouses')->where('id', $quote->warehouseId)->first();
+        Log::info('🔍 DEBUG - Datos del warehouse:', [
+            'warehouse' => $warehouse ? (array)$warehouse : 'NO ENCONTRADO'
+        ]);
+
+        if ($warehouse && $warehouse->companyId) {
+            // Verificar empresa
+            $company = DB::table('vnt_companies')->where('id', $warehouse->companyId)->first();
+            Log::info('🔍 DEBUG - Datos de la empresa:', [
+                'company' => $company ? (array)$company : 'NO ENCONTRADA'
+            ]);
+        }
+
+        $this->dispatch('show-toast', [
+            'type' => 'info',
+            'message' => 'Debug ejecutado, revisa los logs'
+        ]);
     }
 }

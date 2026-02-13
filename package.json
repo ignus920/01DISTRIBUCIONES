@@ -20,6 +20,7 @@
         "vite-plugin-pwa": "^1.2.0"
     },
     "dependencies": {
-        "heroicons": "^2.2.0"
+        "heroicons": "^2.2.0",
+        "vite-PLUGIN-PWA": "npm:vite-plugin-pwa@^1.2.0"
     }
 }
