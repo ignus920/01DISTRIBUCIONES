@@ -514,16 +514,14 @@ class TenantManager
 
     public function setConnection(Tenant $tenant): void
     {
+        // Single-tenant centralizado: usar la BD definida en .env
         Config::set('database.connections.tenant', [
             'driver' => 'mysql',
-            'host' => $tenant->db_host,
-            'port' => $tenant->db_port,
-            'database' => 'desarrollo',
-            'username' => $tenant->db_user,
-            'password' => $tenant->db_password,
-            'username' => $tenant->db_user,
-            'password' => $tenant->db_password,
-
+            'host' => config('database.connections.mysql.host'),
+            'port' => config('database.connections.mysql.port'),
+            'database' => config('database.connections.mysql.database'),
+            'username' => config('database.connections.mysql.username'),
+            'password' => config('database.connections.mysql.password'),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
@@ -533,11 +531,8 @@ class TenantManager
 
         DB::purge('tenant');
         DB::reconnect('tenant');
-        
-            //'database' => $tenant->db_name,
-            //'username' => $tenant->db_user,
-            //'password' => $tenant->db_password,
     }
+
 
     public function delete(Tenant $tenant, bool $deleteDatabase = false): void
     {

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VntContact extends Model
 {
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'vnt_contacts';
 
     protected $fillable = [
@@ -16,7 +16,7 @@ class VntContact extends Model
         'lastName',
         'secondLastName',
         'email',
-        'phone_contact',
+        'business_phone',
         'contact',
         'status',
         'integrationDataId',
@@ -37,5 +37,10 @@ class VntContact extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(VntWarehouse::class, 'warehouseId');
+    }
+
+    public function position(): BelongsTo
+    {
+        return $this->belongsTo(CnfPosition::class, 'positionId');
     }
 }

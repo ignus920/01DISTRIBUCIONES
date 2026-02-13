@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CnfCountry extends Model
 {
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'countries';
 
     protected $fillable = [

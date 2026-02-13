@@ -6,6 +6,8 @@ use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\Auth\Tenant;
 use App\Traits\HasCompanyConfiguration;
 
@@ -13,100 +15,193 @@ class Dashboard extends Component
 {
     use HasCompanyConfiguration;
 
-    public $tenant;
-    public $user;
+    /** @var Tenant|null */
+    public $tenant = null;
+
+    /** @var \App\Models\User|null */
+    public $user = null;
+
+    /** @var array */
     public $stats = [];
 
-    public function mount()
+    /**
+     * Método mount
+     * ⚠️ En Livewire SIEMPRE se inicializan propiedades usadas en Blade
+     */
+    public function mount(): void
     {
+        // ✅ Inicialización defensiva (OBLIGATORIA)
+        $this->stats = [
+            'total_ventas_hoy' => 0,
+            'total_clientes'   => 0,
+            'total_productos'  => 0,
+            'ventas_mes'       => 0,
+        ];
+
         $this->user = Auth::user();
 
-        // Obtener tenant actual de la sesión
+        // Seguridad adicional
+        if (!$this->user) {
+            $this->redirect(route('login'), navigate: true);
+            return;
+        }
+
+        // Redirigir transportadores (profile_id = 13) a entregas
+        if ($this->user->profile_id == 13) {
+            $this->redirect(route('tenant.deliveries'), navigate: true);
+            return;
+        }
+
+        // Tenant desde sesión
         $tenantId = Session::get('tenant_id');
 
         if (!$tenantId) {
-            return redirect()->route('tenant.select');
+            $this->redirect(route('tenant.select'), navigate: true);
+            return;
         }
 
         $this->tenant = Tenant::find($tenantId);
 
         if (!$this->tenant) {
             Session::forget('tenant_id');
-            return redirect()->route('tenant.select')->withErrors(['tenant' => 'Tenant no encontrado']);
+            $this->redirect(route('tenant.select'), navigate: true);
+            return;
         }
 
-        // IMPORTANTE: Inicializar configuración de empresa
+        // Inicializar configuración de empresa
         $this->initializeCompanyConfiguration();
 
-        // Cargar estadísticas básicas
+        // Cargar estadísticas
         $this->loadStats();
     }
 
-    protected function loadStats()
+    /**
+     * Carga estadísticas del dashboard
+     */
+    protected function loadStats(): void
     {
-        // Aquí puedes cargar estadísticas de la base del tenant
-        // Por ahora dejamos datos de ejemplo
+        $companyId = $this->getUserCompanyId();
+
+        if (!$companyId) {
+            // Ya están en cero, no hacemos nada más
+            return;
+        }
+
         $this->stats = [
-            'total_ventas_hoy' => 0,
-            'total_clientes' => 0,
-            'total_productos' => 0,
-            'ventas_mes' => 0,
+            'total_ventas_hoy' => 0, // TODO: query real
+            'total_clientes'   => 0, // TODO: query real
+            'total_productos'  => $this->getCompanyProductsCount($companyId),
+            'ventas_mes'       => 0, // TODO: query real
         ];
     }
 
-    public function switchTenant()
+    /**
+     * Obtiene el company_id del usuario autenticado
+     */
+    protected function getUserCompanyId(): ?int
     {
-        Session::forget('tenant_id');
-        return redirect()->route('tenant.select');
-    }
+        if (!$this->user) {
+            return null;
+        }
 
-    public function logout()
-    {
-        Session::forget('tenant_id');
-        Auth::logout();
-        return redirect()->route('login');
+        // Caso 1: usuario con contact_id
+        if ($this->user->contact_id) {
+            $contact = DB::table('vnt_contacts')
+                ->where('id', $this->user->contact_id)
+                ->first();
+
+            if ($contact && isset($contact->warehouseId)) {
+                $warehouse = DB::table('vnt_warehouses')
+                    ->where('id', $contact->warehouseId)
+                    ->first();
+
+                return $warehouse?->companyId;
+            }
+        }
+
+        // Caso 2: resolver por email (fallback)
+        $company = DB::table('vnt_companies')
+            ->join('vnt_warehouses', 'vnt_companies.id', '=', 'vnt_warehouses.companyId')
+            ->join('vnt_contacts', 'vnt_warehouses.id', '=', 'vnt_contacts.warehouseId')
+            ->where('vnt_contacts.email', $this->user->email)
+            ->select('vnt_companies.id as company_id')
+            ->first();
+
+        return $company?->company_id;
     }
 
     /**
-     * Verifica si debe mostrarse una funcionalidad específica según configuración
+     * Cuenta productos activos de la empresa
+     */
+    protected function getCompanyProductsCount(int $companyId): int
+    {
+        try {
+            return DB::table('tat_items')
+                ->where('company_id', $companyId)
+                ->where('status', 1)
+                ->count();
+        } catch (\Throwable $e) {
+            Log::error('Dashboard | Error contando productos', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return 0;
+        }
+    }
+
+    /**
+     * Cambiar de tenant
+     */
+    public function switchTenant(): void
+    {
+        Session::forget('tenant_id');
+        $this->redirect(route('tenant.select'), navigate: true);
+    }
+
+    /**
+     * Logout seguro
+     */
+    public function logout(): void
+    {
+        Session::forget('tenant_id');
+        Auth::logout();
+        $this->redirect(route('login'), navigate: true);
+    }
+
+    /**
+     * Verifica si una funcionalidad está habilitada
      */
     public function canShowFeature(string $optionId): bool
     {
-        // Usar el trait para verificar si la opción está habilitada
         return $this->shouldShowField('TODAS', $optionId);
     }
 
     /**
-     * Obtener las funcionalidades habilitadas para mostrar accesos rápidos
+     * Funcionalidades habilitadas
      */
     public function getEnabledFeatures(): array
     {
-        $allFeatures = [
-            'ventas' => ['option_id' => '3', 'name' => 'Nueva Venta', 'route' => 'tenant.quoter'],
-            'clientes' => ['option_id' => '5', 'name' => 'Clientes', 'route' => 'tenant.customers'],
-            'productos' => ['option_id' => '15', 'name' => 'Productos', 'route' => '/items/items'],
-            'caja' => ['option_id' => '28', 'name' => 'Cajas', 'route' => '#'],
-            'inventario' => ['option_id' => '16', 'name' => 'Inventario', 'route' => '#'],
-            'reportes' => ['option_id' => '45', 'name' => 'Reportes', 'route' => '#'],
+        $features = [
+            'ventas'     => ['option_id' => '3',  'name' => 'Nueva Venta', 'route' => 'tenant.quoter.products'],
+            'clientes'   => ['option_id' => '5',  'name' => 'Clientes',    'route' => 'tenant.customers'],
+            'productos'  => ['option_id' => '15', 'name' => 'Productos',   'route' => '#'],
+            'caja'       => ['option_id' => '28', 'name' => 'Cajas',       'route' => '#'],
+            'inventario' => ['option_id' => '16', 'name' => 'Inventario',  'route' => '#'],
+            'reportes'   => ['option_id' => '45', 'name' => 'Reportes',    'route' => '#'],
         ];
 
-        $enabledFeatures = [];
-
-        foreach ($allFeatures as $key => $feature) {
-            if ($this->canShowFeature($feature['option_id'])) {
-                $enabledFeatures[$key] = $feature;
-            }
-        }
-
-        return $enabledFeatures;
+        return collect($features)
+            ->filter(fn ($feature) => $this->canShowFeature($feature['option_id']))
+            ->toArray();
     }
 
     #[Layout('layouts.app')]
     public function render()
     {
         return view('livewire.tenant.dashboard', [
-            'tenant' => $this->tenant,
-            'stats' => $this->stats,
+            'tenant'          => $this->tenant,
+            'stats'           => $this->stats,
             'enabledFeatures' => $this->getEnabledFeatures(),
         ]);
     }

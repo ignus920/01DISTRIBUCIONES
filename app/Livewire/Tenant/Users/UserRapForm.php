@@ -15,19 +15,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use App\Services\UserExportService;
+use App\Traits\Livewire\WithExport;
+use App\Models\Central\CnfPosition;
+use App\Models\Central\VntCompany;
 use App\Traits\HasCompanyConfiguration;
-use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
-
+use App\Services\Tenant\TenantManager;
 
 class UserRapForm extends Component
 {
-    use WithPagination, HasCompanyConfiguration;
+    use WithPagination, HasCompanyConfiguration, WithExport;
     
     protected $listeners = ['positionUpdated', 'refresh-users' => 'refreshUsers'];
-    
-    protected UserExportService $exportService;
     // Table properties
     public $search = '';
     public $perPage = 10;
@@ -76,13 +75,6 @@ class UserRapForm extends Component
     public $newPassword = '';
     public $confirmPassword = '';
 
-    /**
-     * Boot method to inject dependencies
-     */
-    public function boot(UserExportService $exportService): void
-    {
-        $this->exportService = $exportService;
-    }
 
     /**
      * Mount component and load initial data
@@ -116,9 +108,18 @@ class UserRapForm extends Component
      */
     private function loadProfiles(): void
     {
+        $centralDbName = config('database.connections.central.database');
+        
         $this->profiles = UsrProfile::where('status', 1)
-            ->orderBy('name')
-            ->get();
+           ->where('name', '!=', 'Tienda')
+           ->whereExists(function($query) use ($centralDbName) {
+               $query->select(DB::raw(1))
+                   ->from("{$centralDbName}.usr_profile_merchant as upm")
+                   ->whereColumn('upm.profile_id', 'usr_profiles.id')
+                   ->where('upm.merchant_type_id', 4);
+           })
+           ->orderBy('name')
+           ->get();
     }
 
     /**
@@ -225,6 +226,7 @@ class UserRapForm extends Component
      */
     public function edit(int $userId): void
     {
+        $this->ensureTenantConnection();
         // Limpiar completamente el estado anterior
         $this->resetForm();
         $this->resetErrorBag();
@@ -393,6 +395,7 @@ class UserRapForm extends Component
      */
     public function save(): void
     {
+        $this->ensureTenantConnection();
         try {
             // Clear previous error message
             $this->errorMessage = '';
@@ -412,12 +415,12 @@ class UserRapForm extends Component
             }
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Validation errors are automatically handled by Livewire
-            // The modal stays open so user can see and fix errors
+            // Log validation errors for debugging
             Log::info('Validation error in save method', [
                 'errors' => $e->errors(),
             ]);
-            // Don't throw - let Livewire handle validation display
+            // Re-throw the exception so Livewire can display the errors in the form
+            throw $e;
         } catch (\Exception $e) {
             // Other errors are handled in create/update methods
             // This catch is for any unexpected errors
@@ -461,7 +464,7 @@ class UserRapForm extends Component
                 'lastName' => $this->lastName,
                 'secondLastName' => $this->secondLastName,
                 'email' => $this->email,
-                'phone_contact' => $this->phone,
+                'business_phone' => $this->phone,
                 'warehouseId' => $this->warehouseId,
                 'positionId' => $this->positionId,
                 'status' => true,
@@ -534,7 +537,7 @@ class UserRapForm extends Component
                 'lastName' => $this->lastName,
                 'secondLastName' => $this->secondLastName,
                 'email' => $this->email,
-                'phone_contact' => $this->phone,
+                'business_phone' => $this->phone,
                 'warehouseId' => $this->warehouseId,
                 'positionId' => $this->positionId,
             ]);
@@ -543,16 +546,23 @@ class UserRapForm extends Component
             $fullName = $this->concatenateFullName();
 
             // Update User fields (excluding password)
-            $user->update([
-                'name' => $fullName,
-                'phone' => $this->phone,
-                'profile_id' => $this->profile_id,
-                'avatar' => $this->avatar,
-                'two_factor_enabled' => $this->two_factor_enabled,
-                'two_factor_type' => $this->two_factor_type,
-            ]);
+        $user->update([
+            'name' => $fullName,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'profile_id' => $this->profile_id,
+            'avatar' => $this->avatar,
+            'two_factor_enabled' => $this->two_factor_enabled,
+            'two_factor_type' => $this->two_factor_type,
+        ]);
 
-            DB::commit();
+        // Actualizar el rol en la relación con el tenant
+        $sessionTenant = $this->getTenantId();
+        UserTenant::where('user_id', $user->id)
+            ->where('tenant_id', $sessionTenant)
+            ->update(['role' => $this->profile_id]);
+
+        DB::commit();
             
             // Set success message before closing
             $this->successMessage = 'Usuario actualizado exitosamente';
@@ -586,9 +596,6 @@ class UserRapForm extends Component
         $sessionTenant = $this->getTenantId();
 
         return User::query()
-            ->whereHas('tenants', function ($query) use ($sessionTenant) {
-                $query->where('tenants.id', $sessionTenant);
-            })
             ->with(['profile', 'contact.warehouse.company'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -643,26 +650,70 @@ class UserRapForm extends Component
                 throw new \Exception('Usuario sin contacto asociado');
             }
             
+            // dd($userId);
             // 4. Buscar relación UserTenant
             $userTenant = UserTenant::where('user_id', $userId)
                 ->where('tenant_id', $tenantId)
-                ->firstOrFail();
-            
+                ->first();
+
+            // Si no existe la relación, crearla
+            if (!$userTenant) {
+                $userTenant = UserTenant::create([
+                    'user_id' => $userId,
+                    'tenant_id' => $tenantId,
+                    'role' => $user->profile_id,
+                    'is_active' => true
+                ]);
+            }
+            // dd($userTenant);
             // 5. Iniciar transacción
             DB::beginTransaction();
             
             // 6. Calcular nuevo estado (toggle)
             $newStatus = !$user->contact->status;
-            
+
             if ($this->canCreateOrUpdateUsers(true, $newStatus)) {
                 DB::rollBack();
                 $this->errorMessage = 'No tienes permisos para crear usuarios';
                 return;
             }
-            
-            // 7. Actualizar vnt_contacts
-            $user->contact->update(['status' => $newStatus]);
-            
+
+            // 7. Verificar si el usuario es de perfil "Tienda" (profile_id = 17)
+            if ($user->profile_id == 17) {
+                // Usuario de tienda: buscar empresa asociada y actualizar todo
+                $company = VntCompany::with(['warehouses.contacts', 'contacts'])->where('billingEmail', $user->email)->first();
+
+                if ($company) {
+                    // Toggle company status
+                    $newStatus = $company->status ? 0 : 1;
+                    $company->update(['status' => $newStatus]);
+
+                    // Update all warehouses status
+                    foreach ($company->warehouses as $warehouse) {
+                        $warehouse->update(['status' => $newStatus]);
+                        // Update all contacts for this warehouse
+                        foreach ($warehouse->contacts as $contact) {
+                            $contact->update(['status' => $newStatus]);
+                        }
+                    }
+
+                    // Update all contacts directly from company (vnt_contacts)
+                    foreach ($company->contacts as $contact) {
+                        $contact->update(['status' => $newStatus]);
+                    }
+                } else {
+                    // Si no se encuentra la empresa para usuario tienda, solo actualizar contacto
+                    Log::warning('Usuario tienda sin empresa asociada', [
+                        'user_id' => $userId,
+                        'email' => $user->email
+                    ]);
+                    $user->contact->update(['status' => $newStatus]);
+                }
+            } else {
+                // Usuario de otros perfiles: solo actualizar contacto
+                $user->contact->update(['status' => $newStatus]);
+            }
+
             // 8. Actualizar user_tenants
             $userTenant->update(['is_active' => $newStatus]);
             
@@ -799,70 +850,82 @@ class UserRapForm extends Component
     /**
      * Export users to Excel format
      */
-    public function exportExcel()
+    // Metodos para WithExport
+    public function getExportData()
     {
-        try {
-            $result = $this->exportService->exportToExcel($this->search);
-            
-            if (!$result['success']) {
-                $this->errorMessage = $result['message'];
-                return;
-            }
-            
-            return $result['download'];
-            
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al exportar: ' . $e->getMessage();
-            Log::error('Export Excel failed in component', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $this->ensureTenantConnection();
+        return User::query()
+            ->with(['profile', 'contact.warehouse.company', 'contact.position'])
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('email', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->orderBy('id', 'desc')
+            ->get();
     }
 
-    /**
-     * Export users to PDF format
-     */
-    public function exportPdf()
+    public function getExportHeadings(): array
     {
-        try {
-            $result = $this->exportService->exportToPdf($this->search);
-            
-            if (!$result['success']) {
-                $this->errorMessage = $result['message'];
-                return;
-            }
-            
-            return $result['download'];
-            
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al exportar: ' . $e->getMessage();
-            Log::error('Export PDF failed in component', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        return [
+            'ID',
+            'Nombre Completo',
+            'Email',
+            'Teléfono',
+            'Perfil',
+            'Sucursal',
+            'Empresa',
+            'Cargo',
+            'Fecha Registro'
+        ];
     }
 
-    /**
-     * Export users to CSV format
-     */
-    public function exportCsv()
+    public function getExportMapping($user): array
     {
-        try {
-            $result = $this->exportService->exportToCsv($this->search);
-            
-            if (!$result['success']) {
-                $this->errorMessage = $result['message'];
-                return;
-            }
-            
-            return $result['download'];
-            
-        } catch (\Exception $e) {
-            $this->errorMessage = 'Error al exportar: ' . $e->getMessage();
-            Log::error('Export CSV failed in component', [
-                'error' => $e->getMessage(),
+        $contact = $user->contact;
+        $fullName = $user->name;
+        $warehouse = '';
+        $company = '';
+        $position = '';
+
+        if ($contact) {
+            $nameParts = array_filter([
+                $contact->firstName,
+                $contact->secondName,
+                $contact->lastName,
+                $contact->secondLastName
             ]);
+            if (!empty($nameParts)) {
+                $fullName = implode(' ', $nameParts);
+            }
+
+            if ($contact->warehouse) {
+                $warehouse = $contact->warehouse->name ?? '';
+                if ($contact->warehouse->company) {
+                    $company = $contact->warehouse->company->name ?? '';
+                }
+            }
+
+            $position = $contact->position->name ?? '';
         }
+
+        return [
+            $user->id,
+            $fullName,
+            $user->email,
+            $user->phone ?? '',
+            $user->profile->name ?? '',
+            $warehouse,
+            $company,
+            $position,
+            $user->created_at ? $user->created_at->format('Y-m-d H:i') : ''
+        ];
+    }
+
+    public function getExportFilename(): string
+    {
+        return 'usuarios_' . date('Y-m-d_His');
     }
 
     public function render()

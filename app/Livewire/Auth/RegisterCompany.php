@@ -60,10 +60,10 @@ class RegisterCompany extends Component
 
     public function mount()
     {
-        $this->merchant_types = VntMerchantType::where('status', 1)->get();
+        // $this->merchant_types = VntMerchantType::where('status', 1)->get();
         // Los módulos no se cargan automáticamente - son administrados por administradores globales
         $this->countries = CnfCountry::where('status', 1)->get();
-        $this->plains = VntPlain::where('status', 1)->get();
+        // $this->plains = VntPlain::where('status', 1)->get();
     }
 
     public function updatedMerchantTypeId()

@@ -13,17 +13,18 @@ class VntDetailQuote extends Model
 
     protected $fillable = [
         'quantity',
-        'tax',
-        'value',
+        'tax_percentage',
+        'price',
         'quoteId',
         'itemId',
         'description',
-        'priceList'
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'price' => 'float',
+        'tax_percentage' => 'int'
     ];
 
     public function cotizacion(): BelongsTo
@@ -35,4 +36,18 @@ class VntDetailQuote extends Model
     {
         return $this->belongsTo(Items::class, 'itemId');
     }
+
+    // Accessors para mantener compatibilidad con PaymentQuote
+    public function getValueAttribute()
+    {
+        return $this->attributes['price'] ?? 0;
+    }
+
+    public function getTaxAttribute()
+    {
+        return $this->attributes['tax_percentage'] ?? 0;
+    }
+
+    // Nota: No necesitamos accessor para description porque ya existe como campo
+    // Si lo necesitas, usa un nombre diferente para evitar conflictos
 }

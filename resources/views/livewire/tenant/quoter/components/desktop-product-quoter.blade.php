@@ -3,18 +3,43 @@
 $header = 'Seleccionar productos';
 @endphp
 
-<div>
+<div x-data="quoterDesktop()" 
+     @customer-selected.window="showOfflineCreateForm = false"
+     :class="{ 'relative z-[9999]': showOfflineCreateForm }">
     <div class="flex">
         <!-- Área principal de productos -->
         <div class="flex-1 p-6">
             <!-- Botón de regresar -->
             <div class="mb-6">
-                <a href="{{ route('tenant.quoter') }}" class="inline-flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 font-medium" wire:navigate.hover>
+                @if(auth()->check() && auth()->user()->profile_id == 17)
+                <a href="{{ route('tenant.tat.restock.list') }}" class="inline-flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 font-medium">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Regresar a Solicitudes
+                </a>
+                @else
+                <a href="{{ route('tenant.quoter') }}" class="inline-flex items-center text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 font-medium">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                     </svg>
-                    Regresar cotizaciones
+                    Regresar a cotizaciones
                 </a>
+
+                 
+                @endif
+   <!-- Boton solo para ruteros -->
+                @if(auth()->check() && auth()->user()->profile_id == 4)
+                <button wire:click="openRoutes"
+                                class="inline-flex items-center px-4 py-2 rounded-lg font-semibold text-xs uppercase transition-all duration-200 bg-cyan-600 hover:bg-cyan-700 dark:bg-cyan-500 dark:hover:bg-cyan-600 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                                    </path>
+                                </svg>
+                                Ruteros
+                            </button>
+                 @endif
             </div>
 
             <!-- Barra de búsqueda y filtros -->
@@ -119,8 +144,24 @@ $header = 'Seleccionar productos';
                             $allPrices = $product->all_prices;
                             @endphp
                             @if(!empty($allPrices))
-                            <div class="mb-2 grid grid-cols-2 gap-1">
-                                @foreach($allPrices as $label => $price)
+                            @php
+                            $userProfileId = auth()->user()->profile_id;
+                            $filteredPrices = collect($allPrices);
+                            
+                            if ($userProfileId == 17) {
+                                // Perfil Tienda (TAT): Solo Precio Regular
+                                $filteredPrices = $filteredPrices->filter(fn($price, $label) => $label === 'Precio Regular');
+                            } elseif ($userProfileId == 4) {
+                                // Perfil Vendedor: Solo Precio Base (P1)
+                                $filteredPrices = $filteredPrices->filter(fn($price, $label) => 
+                                    strtolower($label) === 'p1' || strtolower($label) === 'precio base'
+                                );
+                            }
+                            
+                            $priceCount = $filteredPrices->count();
+                            @endphp
+                            <div class="mb-2 grid {{ $priceCount == 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-1">
+                                @foreach($filteredPrices as $label => $price)
                                 @php
                                 $isDisabled = $isSelected;
                                 @endphp
@@ -141,10 +182,9 @@ $header = 'Seleccionar productos';
                                     <!-- Spinner de carga -->
                                     <svg wire:loading wire:target="addToQuoter" class="w-3 h-3 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2-647z"></path>
+                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                 </button>
-
                                 @endforeach
                             </div>
                             @else
@@ -221,6 +261,7 @@ $header = 'Seleccionar productos';
                                     Identificación: {{ $selectedCustomer['identification'] }}
                                 </p>
                             </div>
+                            @if(auth()->user()->profile_id != 17)
                             <div class="flex items-center ml-2">
                                 <!-- Botón Editar -->
                                 <button
@@ -253,78 +294,93 @@ $header = 'Seleccionar productos';
                                     </svg>
                                 </button>
                             </div>
+                            @endif
                         </div>
                     </div>
                     @endif
 
-                    @if($showCreateCustomerButton || $showCreateCustomerForm)
-                    <!-- Formulario para crear/editar cliente -->
 
-                    @if (!$editingCustomerId)
-                    <div class="flex items-center justify-between">
-                        <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Crear Cliente</label>
-                        <button
-                            x-on:click="show = false"
-                            wire:click="clearCustomer"
-                            class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 ml-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+
+                    @if(auth()->user()->profile_id != 17)
+                    <!-- Lógica de Formulario Automático (Unificado: Online/Offline) -->
+                    <div
+                        wire:key="auto-form-logic-{{ strlen($customerSearch) }}-{{ count($customerSearchResults) }}-{{ $selectedCustomer ? 'sel' : 'no' }}" 
+                        x-init="
+                            // Alpine se reinicia cada vez que wire:key cambia
+                            console.log('Init Auto-Form', {
+                                len: @js(strlen($customerSearch)),
+                                results: @js(count($customerSearchResults)),
+                                selected: @js($selectedCustomer ? true : false)
+                            });
+
+                            if (@js(strlen($customerSearch) >= 3) && @js(count($customerSearchResults) === 0) && !@js($selectedCustomer)) {
+                                if (!showOfflineCreateForm) {
+                                    console.log('Opening form automatically (Desktop)');
+                                    showOfflineCreateForm = true;
+                                    newOfflineCustomer.identification = @js($customerSearch);
+                                    // newOfflineCustomer.businessName = ''; // Ya no se copia el valor de búsqueda al nombre
+                                }
+                            } else if (@js(count($customerSearchResults) > 0) || @js($selectedCustomer)) {
+                                showOfflineCreateForm = false;
+                            }
+                        "
+                    ></div>
+
+                    <div class="mt-2">
+                        @include('livewire.tenant.quoter.components.customer-quick-form')
                     </div>
                     @endif
 
-                    @if (!$editingCustomerId)
-                    <div class="border border-gray-200 dark:border-gray-600 rounded-lg p-2">
-                        @endif
-                        <livewire:tenant.vnt-company.vnt-company-form
-                            :reusable="true"
-                            :companyId="$editingCustomerId"
-                            key="customer-form-{{ $editingCustomerId ?? 'new' }}" />
-                        @if (!$editingCustomerId)
-                    </div>
-                    @endif
-
-
-                    @endif
-
-                    @if(!$selectedCustomer && !$showCreateCustomerForm && !$showCreateCustomerButton)
+                    @if(!$selectedCustomer && !$showCreateCustomerForm && !$showCreateCustomerButton && auth()->user()->profile_id != 17)
                     <!-- Formulario de búsqueda -->
                     <div class="space-y-2">
                         <label class="text-xs font-medium text-gray-700 dark:text-gray-300">Buscar Cliente</label>
-                        <div x-data="{ searching: false }" class="flex gap-2">
+                        <div>
 
                             <!-- Input de búsqueda -->
                             <input
-                                wire:model.defer="customerSearch"
+                                wire:model.live.debounce.300ms="customerSearch"
                                 type="text"
-                                placeholder="NIT o cédula..."
-                                class="flex-1 px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                placeholder="Buscar por nombre o cédula... (↑↓ navegar, Enter seleccionar)"
+                                class="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                onkeydown="handleCustomerSearchKeydownDesktop(event)"
+                                id="customerSearchInputDesktop">
 
-                            <!-- Botón con respuesta instantánea -->
-                            <button
-                                @click="searching = true; $wire.searchCustomer().then(() => searching = false)"
-                                :class="searching ? 'opacity-50 cursor-wait' : ''"
-                                class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">
-
-                                <!-- Ícono normal -->
-                                <svg x-show="!searching" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-
-                                <!-- Ícono loading instantáneo (no espera Livewire) -->
-                                <svg x-show="searching" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor"
-                                        d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                            </button>
 
                         </div>
 
+                        <!-- Resultados de búsqueda -->
+                        @if(count($customerSearchResults) > 0)
+                        <div id="customerSearchResultsDesktop" class="max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-2">
+                            @foreach($customerSearchResults as $index => $customer)
+                            <div
+                                wire:click="selectCustomer({{ $customer['id'] }})"
+                                data-customer-id="{{ $customer['id'] }}"
+                                data-index="{{ $index }}"
+                                class="customer-result-desktop px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer border-b border-gray-100 dark:border-gray-600 last:border-b-0 transition-colors duration-150">
+                                <div class="font-mono font-bold text-gray-900 dark:text-white">{{ $customer['identification'] }}</div>
+                                <div class="text-gray-600 dark:text-gray-300">{{ $customer['display_name'] }}</div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+
+
+                    </div>
+                    @endif
+
+                    {{-- Información para usuarios de tienda (profile_id 17) cuando no hay cliente seleccionado --}}
+                    @if(!$selectedCustomer && auth()->user()->profile_id == 17)
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-4">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            <div class="flex-1">
+                                <h4 class="font-medium text-blue-800 dark:text-blue-200 text-sm">{{ auth()->user()->name }}</h4>
+                                <p class="text-xs text-blue-600 dark:text-blue-300">{{ auth()->user()->email }}</p>
+                            </div>
+                        </div>
                     </div>
                     @endif
                 </div>
@@ -355,7 +411,7 @@ $header = 'Seleccionar productos';
                                 @if(isset($item['price_label']))
                                 <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Precio: {{ $item['price_label'] }}</p>
                                 @endif
-                            
+
                             </div>
                             <button wire:click="removeFromQuoter({{ $index }})"
                                 class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ml-2">
@@ -415,10 +471,11 @@ $header = 'Seleccionar productos';
             </div>
 
             <!-- Footer del cotizador - Fijo en la parte inferior -->
-            @if(!empty($quoterItems))
+            @if(!empty($quoterItems) )
             <div class="border-t border-gray-200 dark:border-gray-700 p-6 flex-shrink-0 bg-white dark:bg-gray-800 sticky bottom-0">
                 <div class="space-y-4">
                     <!-- Observaciones - Acordeón -->
+                    @if(auth()->user()->profile_id != 17)
                     <div x-data="{ open: @entangle('showObservations') }" class="w-full">
 
                         <button
@@ -451,6 +508,7 @@ $header = 'Seleccionar productos';
                         </div>
 
                     </div>
+                    @endif
 
 
                     <!-- Total -->
@@ -462,47 +520,92 @@ $header = 'Seleccionar productos';
 
                     @if($isEditing)
                     <!-- Botones para edición -->
-                    <div class="flex gap-2">
-                        <button wire:click="updateQuote"
-                            wire:loading.attr="disabled"
-                            wire:target="updateQuote"
-                            class="flex-1  bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap">
+                    <div class="flex flex-col gap-4">
 
-                            <svg wire:loading.remove wire:target="updateQuote" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                            </svg>
+                        <!-- Fila superior: botones principales -->
+                        <div class="flex gap-2">
+                            <button wire:click="updateQuote"
+                                wire:loading.attr="disabled"
+                                wire:target="updateQuote"
+                                class="flex-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap">
 
-                            <svg wire:loading wire:target="updateQuote" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                                <!-- Ícono normal (se oculta durante la carga) -->
+                                <svg wire:loading.remove wire:target="updateQuote" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
 
-                            <span wire:loading.remove wire:target="updateQuote">Actualizar Cotización</span>
-                            <span wire:loading wire:target="updateQuote">Actualizando...</span>
-                        </button>
+                                <!-- Ícono de carga (se muestra durante la carga) -->
+                                <svg wire:loading wire:target="updateQuote" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
 
-                        <button wire:click="cancelEditing"
-                            wire:loading.attr="disabled"
-                            wire:target="cancelEditing"
-                            class="flex-1 bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap">
+                                <!-- Texto del botón -->
+                                <span wire:loading.remove wire:target="updateQuote">
+                                    @if($editingRemissionId)
+                                        Editar Remisión
+                                    @else
+                                        Actualizar Cotización
+                                    @endif
+                                </span>
+                                <span wire:loading wire:target="updateQuote">Actualizando...</span>
+                            </button>
 
-                            <svg wire:loading.remove wire:target="cancelEditing" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
+                            <button type="button" wire:click="cancelEditing"
+                                wire:loading.attr="disabled"
+                                wire:target="cancelEditing"
+                                class="flex-1 bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap">
 
-                            <svg wire:loading wire:target="cancelEditing" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                                Cancelar
+                            </button>
+                        </div>
 
-                            <span wire:loading.remove wire:target="cancelEditing">Cancelar</span>
-                            <span wire:loading wire:target="cancelEditing">Cancelando...</span>
-                        </button>
+                        </div>
+
+                        <!-- Fila inferior: acción final (Solo para Distribuidores durante edición) -->
+                        @if(auth()->user()->profile_id != 17)
+                            @if($quoteHasRemission)
+                                <div class="w-full px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400
+                                        border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800
+                                        rounded-lg flex items-center justify-center cursor-not-allowed">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Remisión ya generada
+                                </div>
+                            @else
+                                <button type="button" wire:click.prevent="confirmarPedido"
+                                    wire:loading.attr="disabled"
+                                    wire:target="confirmarPedido"
+                                    class="w-full px-4 py-3 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-md rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                    
+                                    <!-- Ícono normal -->
+                                    <svg wire:loading.remove wire:target="confirmarPedido" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                                    </svg>
+
+                                    <!-- Ícono de carga -->
+                                    <svg wire:loading wire:target="confirmarPedido" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+
+                                    <!-- Texto -->
+                                    <span wire:loading.remove wire:target="confirmarPedido">Confirmar pedido</span>
+                                    <span wire:loading wire:target="confirmarPedido">Confirmando...</span>
+                                </button>
+                            @endif
+                        @endif
+
                     </div>
+
 
                     @else
                     <!-- Botón crear nueva cotización -->
-                    @if(!$selectedCustomer)
+                    @if(!$selectedCustomer && auth()->user()->profile_id != 17)
                     <!-- Botón deshabilitado cuando no hay cliente -->
                     <button disabled
                         class="w-full bg-gray-400 dark:bg-gray-600 text-gray-200 dark:text-gray-400 font-medium py-3 px-4 rounded-lg cursor-not-allowed flex items-center justify-center">
@@ -511,8 +614,9 @@ $header = 'Seleccionar productos';
                         </svg>
                         Seleccione un Cliente
                     </button>
-                    @else
-                    <!-- Botón activo con estado de carga -->
+                    @elseif($selectedCustomer || auth()->user()->profile_id == 17)
+                    @if(auth()->user()->profile_id != 17)
+                    <!-- Botón Crear Cotización (solo para distribuidores) -->
                     <button wire:click="saveQuote"
                         wire:loading.attr="disabled"
                         wire:target="saveQuote"
@@ -534,10 +638,296 @@ $header = 'Seleccionar productos';
                         <span wire:loading wire:target="saveQuote">Guardando...</span>
                     </button>
                     @endif
+
+                    @if(auth()->user()->profile_id == 17)
+                    <!-- Botones TAT para Perfil 17 (Siempre visibles) -->
+                    <div class="flex flex-col gap-2 w-full">
+                        <!-- Botón para agregar a lista preliminar -->
+                        @if(!$isEditingRestock)
+                        <button wire:click="saveRestockRequest(false)"
+                            wire:loading.attr="disabled"
+                            wire:target="saveRestockRequest"
+                            class="w-full bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+
+                            <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+
+                            <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+
+                            <span wire:loading.remove wire:target="saveRestockRequest">Agregar al carrito</span>
+                            <span wire:loading wire:target="saveRestockRequest">Agregando...</span>
+                        </button>
+                        @endif
+
+                        <!-- Botón Confirmar Lista Preliminar -->
+                        <button wire:click="saveRestockRequest(true)"
+                            wire:loading.attr="disabled"
+                            wire:target="saveRestockRequest"
+                            class="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+
+                            <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+
+                            <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+
+                            <span wire:loading.remove wire:target="saveRestockRequest">Confirmar pedido</span>
+                            <span wire:loading wire:target="saveRestockRequest">Procesando...</span>
+                        </button>
+                    </div>
+                    @endif
+                    @endif
+
+                    @if($isEditingRestock)
+                    <button wire:click="saveRestockRequest"
+                        wire:loading.attr="disabled"
+                        wire:target="saveRestockRequest"
+                        class="mt-2 w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+
+                        <svg wire:loading.remove wire:target="saveRestockRequest" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        
+                        <svg wire:loading wire:target="saveRestockRequest" class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+
+                        <span wire:loading.remove wire:target="saveRestockRequest">Actualizar Carrito</span>
+                        <span wire:loading wire:target="saveRestockRequest">Actualizando...</span>
+                    </button>
+                    @endif
                     @endif
                 </div>
             </div>
             @endif
         </div>
     </div>
+
+
+       <!-- Routes Modal -->
+    @if($showRoutesModal)
+        @livewire('tenant.vnt-company.company-routes-modal', ['showModal' => true], key('routes-modal'))
+    @endif
 </div>
+
+
+@push('scripts')
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        window.addEventListener('show-toast', (event) => {
+            const data = event.detail;
+            const payload = Array.isArray(data) ? data[0] : data;
+            console.log('Toast triggered:', payload); // Debug
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 6000,
+                timerProgressBar: true,
+                icon: payload.type || 'info',
+                title: payload.message
+            });
+        });
+
+        window.addEventListener('confirm-add-duplicate', (event) => {
+            const data = event.detail;
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                title: 'Producto ya confirmado',
+                text: payload.message + "\n¿Deseas agregarlo de todas formas?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, agregar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    console.log('Calling forceAddToQuoter directly:', payload);
+                    // Usamos call directo para evitar problemas de mapeo de eventos
+                    Livewire.find('{{ $this->getId() }}').call('forceAddToQuoter',
+                        payload.productId,
+                        payload.selectedPrice,
+                        payload.priceLabel
+                    );
+                }
+            });
+        });
+
+        Livewire.on('confirm-load-order', (data) => {
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                title: 'Orden Existente',
+                text: payload.message,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, cargar orden',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Livewire.find('{{ $this->getId() }}').call('loadRestockForEditing', payload.orderNumber);
+                }
+            });
+        });
+    });
+
+    // Variables para navegación por teclado en búsqueda de clientes (Desktop)
+    window.selectedCustomerIndexDesktop = window.selectedCustomerIndexDesktop || -1;
+    window.customerResultsDesktop = window.customerResultsDesktop || [];
+
+    // Función para manejar navegación por teclado en búsqueda de clientes (Desktop)
+    function handleCustomerSearchKeydownDesktop(event) {
+        const resultsContainer = document.getElementById('customerSearchResultsDesktop');
+
+        if (!resultsContainer) return;
+
+        customerResultsDesktop = Array.from(resultsContainer.querySelectorAll('.customer-result-desktop'));
+
+        if (customerResultsDesktop.length === 0) return;
+
+        switch (event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                selectedCustomerIndexDesktop = Math.min(selectedCustomerIndexDesktop + 1, customerResultsDesktop.length - 1);
+                updateCustomerSelectionDesktop();
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                selectedCustomerIndexDesktop = Math.max(selectedCustomerIndexDesktop - 1, -1);
+                updateCustomerSelectionDesktop();
+                break;
+
+            case 'Enter':
+                event.preventDefault();
+                if (selectedCustomerIndexDesktop >= 0 && customerResultsDesktop[selectedCustomerIndexDesktop]) {
+                    const customerId = customerResultsDesktop[selectedCustomerIndexDesktop].dataset.customerId;
+                    // Disparar el evento de Livewire para seleccionar cliente
+                    Livewire.find('{{ $this->getId() }}').call('selectCustomer', customerId);
+                }
+                break;
+
+            case 'Escape':
+                event.preventDefault();
+                selectedCustomerIndexDesktop = -1;
+                updateCustomerSelectionDesktop();
+                break;
+        }
+    }
+
+    // Función para actualizar la selección visual (Desktop)
+    function updateCustomerSelectionDesktop() {
+        customerResultsDesktop.forEach((result, index) => {
+            result.classList.remove('bg-green-100', 'dark:bg-green-800', 'border-green-500');
+
+            if (index === selectedCustomerIndexDesktop) {
+                result.classList.add('bg-green-100', 'dark:bg-green-800', 'border-green-500');
+                // Scroll hacia el elemento seleccionado si está fuera de vista
+                result.scrollIntoView({
+                    block: 'nearest',
+                    behavior: 'smooth'
+                });
+            }
+        });
+    }
+
+    // Reset de selección cuando cambian los resultados (Desktop)
+    document.addEventListener('livewire:updated', () => {
+        window.selectedCustomerIndexDesktop = -1;
+        window.customerResultsDesktop = [];
+    });
+
+    function quoterDesktop() {
+        return {
+            showOfflineCreateForm: false,
+            newOfflineCustomer: {
+                id: null,
+                typeIdentificationId: 1,
+                identification: '',
+                businessName: '',
+                firstName: '',
+                lastName: '',
+                phone: '',
+                address: '',
+                billingEmail: '',
+                createUser: false,
+                route_id: @js($newCustomerRouteId)
+            },
+            init() {
+                // Escuchar evento de carga de datos para edición
+                window.addEventListener('load-customer-data', (event) => {
+                    const data = event.detail.customer || event.detail[0]?.customer || event.detail;
+                    console.log('Cargando datos para edición:', data);
+                    this.newOfflineCustomer = {
+                        id: data.id || null,
+                        typeIdentificationId: data.typeIdentificationId || 1,
+                        identification: data.identification || '',
+                        businessName: data.businessName || '',
+                        firstName: data.firstName || '',
+                        lastName: data.lastName || '',
+                        phone: data.phone || data.business_phone || '',
+                        address: data.address || '',
+                        billingEmail: data.billingEmail || '',
+                        createUser: false, // Por seguridad no activamos creación de usuario en edición si no se pide
+                        route_id: data.route_id || @js($newCustomerRouteId)
+                    };
+                    this.showOfflineCreateForm = true;
+                });
+            },
+            async saveOfflineCustomer() { // Mantenemos el nombre por compatibilidad con el componente include
+                const isCC = this.newOfflineCustomer.typeIdentificationId == 1;
+                const hasIdentification = !!this.newOfflineCustomer.identification;
+                const hasName = isCC 
+                    ? (this.newOfflineCustomer.firstName && this.newOfflineCustomer.lastName)
+                    : !!this.newOfflineCustomer.businessName;
+
+                if (!hasIdentification || !hasName) {
+                    const message = isCC 
+                        ? 'Identificación, Nombre y Apellido son obligatorios' 
+                        : 'Identificación y Razón Social son obligatorios';
+                    Swal.fire('Error', message, 'error');
+                    return;
+                }
+
+                // Concatenar nombre si es C.C. para mantener consistencia en businessName
+                if (isCC) {
+                    this.newOfflineCustomer.businessName = (this.newOfflineCustomer.firstName + ' ' + (this.newOfflineCustomer.lastName || '')).trim();
+                }
+
+                try {
+                    const response = await @this.saveQuickCustomer(this.newOfflineCustomer);
+                    if (response && response.success) {
+                        this.showOfflineCreateForm = false;
+                        this.newOfflineCustomer = {
+                            id: null,
+                            typeIdentificationId: 1,
+                            identification: '',
+                            businessName: '',
+                            firstName: '',
+                            lastName: '',
+                            phone: '',
+                            address: '',
+                            billingEmail: '',
+                            createUser: false,
+                            route_id: @js($newCustomerRouteId)
+                        };
+                    }
+                } catch (e) {
+                    console.error('Error guardando cliente rápido:', e);
+                    Swal.fire('Error', 'No se pudo guardar el cliente', 'error');
+                }
+            }
+        }
+    }
+</script>
+@endpush

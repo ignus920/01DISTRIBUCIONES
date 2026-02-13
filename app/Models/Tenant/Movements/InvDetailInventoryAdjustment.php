@@ -19,6 +19,7 @@ class InvDetailInventoryAdjustment extends Model
         'inventoryAdjustmentId',
         'itemId',
         'unitMeasurementId',
+        'cost',
     ];
 
     protected function casts(): array
@@ -26,6 +27,7 @@ class InvDetailInventoryAdjustment extends Model
         return [
             'id' => 'integer',
             'quantity' => 'integer',
+            'cost' => 'double',
             'inventoryAdjustmentId' => 'integer',
             'itemId' => 'integer',
             'unitMeasurementId' => 'integer',

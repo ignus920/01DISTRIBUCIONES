@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Movements;
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use App\Models\Tenant\Movements\InvInventoryAdjustment;
 use App\Models\Tenant\Movements\InvDetailInventoryAdjustment;
 use App\Models\Tenant\Movements\InvReason;
@@ -19,6 +20,9 @@ use Illuminate\Support\Facades\Auth;
 
 class MovementForm extends Component
 {
+    //  Properties of component
+    public $reusable = false;
+
     // Modal state
     public $showModal = false;
     public $showDetailsModal = false;
@@ -44,18 +48,100 @@ class MovementForm extends Component
         'itemId' => '',
         'quantity' => '',
         'unitMeasurementId' => '',
+        'cost' => 0,
+        'supplierId' => ''
     ];
     
     // Messages
     public $successMessage = '';
     public $errorMessage = '';
     
-    protected $listeners = ['showMovementDetails'];
+    // Processing state
+    public $isProcessing = false;
+    
+    protected $listeners = [
+        'showMovementDetails',
+        'storeSelected',
+        'reasonSelected',
+        'itemSelected',
+        'unitMeasurementSelected',
+        'supplierSelected'
+    ];
 
     public function mount()
     {
         $this->warehouseForm['movementType'] = '';
         $this->movementForm['date'] = now()->format('Y-m-d');
+        $this->setDefaultUnitMeasurement();
+    }
+    
+    /**
+     * Set default unit measurement to "Unidad"
+     */
+    private function setDefaultUnitMeasurement()
+    {
+        $this->ensureTenantConnection();
+        $defaultUnit = UnitMeasurements::where('description', 'Unidad')
+            ->where('status', 1)
+            ->first();
+        
+        if ($defaultUnit) {
+            $this->detailForm['unitMeasurementId'] = $defaultUnit->id;
+        }
+    }
+    
+    /**
+     * Handle store selection from GenericSelect
+     */
+    public function storeSelected($value)
+    {
+        $this->selectedStoreId = $value;
+    }
+    
+    /**
+     * Handle reason selection from GenericSelect
+     */
+    public function reasonSelected($value)
+    {
+        $this->movementForm['reasonId'] = $value;
+    }
+    
+    /**
+     * Handle item selection from GenericSelect
+     */
+    public function itemSelected($value)
+    {
+        $this->detailForm['itemId'] = $value;
+    }
+    
+    /**
+     * Handle unit measurement selection from GenericSelect
+     */
+    public function unitMeasurementSelected($value)
+    {
+        $this->detailForm['unitMeasurementId'] = $value;
+    }
+    
+    /**
+     * Handle supplier selection from GenericSelect
+     */
+    public function supplierSelected($value)
+    {
+        $this->detailForm['supplierId'] = $value;
+        
+        // Buscar el nombre del proveedor para guardarlo también
+        if ($value) {
+            $this->ensureTenantConnection();
+            $supplier = \App\Models\Central\VntContact::select('vnt_contacts.firstName')
+                ->join('vnt_companies', 'vnt_contacts.email', '=', 'vnt_companies.billingEmail')
+                ->where('vnt_companies.id', $value)
+                ->where('vnt_companies.type', 'PROVEEDOR')
+                ->first();
+            
+            $this->detailForm['supplierName'] = $supplier ? $supplier->firstName : '';
+        } else {
+            $this->detailForm['supplierName'] = '';
+        }
     }
 
     /**
@@ -68,7 +154,8 @@ class MovementForm extends Component
             'details.item',
             'details.unitMeasurement',
             'store',
-            'reason'
+            'reason',
+            'supplierContact'
         ])->find($movementId);
         
         if ($movement) {
@@ -81,6 +168,7 @@ class MovementForm extends Component
                 'store_name' => $movement->store->name ?? 'N/A',
                 'reason_name' => $movement->reason->name ?? 'N/A',
                 'user_name' => $movement->user->name ?? 'N/A',
+                'supplier_name' => ($movement->supplier > 0 && $movement->supplierContact) ? $movement->supplierContact->firstName : '-',
                 'status' => $movement->status,
                 'observations' => $movement->observations,
                 'details' => $movement->details->map(function ($detail) {
@@ -103,6 +191,94 @@ class MovementForm extends Component
     {
         $this->showDetailsModal = false;
         $this->movementDetails = [];
+        $this->clearMessages();
+    }
+
+    /**
+     * Annul a movement and revert inventory
+     */
+    public function annulMovement($movementId)
+    {
+        try {
+            $this->ensureTenantConnection();
+            
+            DB::connection('tenant')->beginTransaction();
+            
+            $movement = InvInventoryAdjustment::with('details')->find($movementId);
+            
+            if (!$movement) {
+                $this->errorMessage = 'Movimiento no encontrado';
+                $this->dispatch('annulMovementFailed', message: $this->errorMessage);
+                return;
+            }
+
+            if ($movement->status === 0) {
+                $this->errorMessage = 'Este movimiento ya está anulado';
+                $this->dispatch('annulMovementFailed', message: $this->errorMessage);
+                return;
+            }
+
+            // Revertir el inventario según el tipo de movimiento
+            foreach ($movement->details as $detail) {
+                $itemStore = InvItemsStore::where('itemId', $detail->itemId)
+                    ->where('storeId', $movement->storeId)
+                    ->first();
+                
+                if (!$itemStore) {
+                    DB::connection('tenant')->rollBack();
+                    $this->errorMessage = 'No se encontró el registro de inventario para el item';
+                    $this->dispatch('annulMovementFailed', message: $this->errorMessage);
+                    return;
+                }
+
+                // Obtener la unidad de medida para calcular la cantidad en unidad de consumo
+                $unitMeasurement = UnitMeasurements::find($detail->unitMeasurementId);
+                $quantityInConsumptionUnit = $detail->quantity * ($unitMeasurement ? $unitMeasurement->quantity : 1);
+
+                // Si es ENTRADA, al anular debemos RESTAR del inventario
+                // Si es SALIDA, al anular debemos SUMAR al inventario
+                if ($movement->type === 'entrada') {
+                    // Verificar que hay suficiente stock para restar
+                    if ($itemStore->stock_items_store < $quantityInConsumptionUnit) {
+                        DB::connection('tenant')->rollBack();
+                        $this->errorMessage = 'No hay suficiente stock para anular este movimiento de entrada';
+                        $this->dispatch('annulMovementFailed', message: $this->errorMessage);
+                        return;
+                    }
+                    
+                    // Restar del inventario (revertir la entrada)
+                    $itemStore->stock_items_store -= $quantityInConsumptionUnit;
+                } else {
+                    // Sumar al inventario (revertir la salida)
+                    $itemStore->stock_items_store += $quantityInConsumptionUnit;
+                }
+                
+                $itemStore->save();
+            }
+
+            // Marcar el movimiento como anulado
+            $movement->update(['status' => 0]);
+            
+            DB::connection('tenant')->commit();
+            
+            $this->successMessage = 'Movimiento anulado correctamente y el inventario ha sido actualizado';
+            
+            // Dispatch success event
+            $this->dispatch('annulMovementSuccess', message: $this->successMessage);
+            
+            // Close details modal and refresh list
+            $this->closeDetailsModal();
+            $this->dispatch('refreshMovements', type: $this->movementType);
+            
+        } catch (\Exception $e) {
+            DB::connection('tenant')->rollBack();
+            Log::error('Error al anular movimiento', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $this->errorMessage = 'Error al anular el movimiento: ' . $e->getMessage();
+            $this->dispatch('annulMovementFailed', message: $this->errorMessage);
+        }
     }
     
     public function render()
@@ -143,9 +319,28 @@ class MovementForm extends Component
     {
         return UnitMeasurements::where('status', 1)->get();
     }
+    
+    /**
+     * Computed property for suppliers (proveedores)
+     * Gets contacts from companies marked as suppliers
+     */
+    #[Computed]
+    public function suppliers()
+    {
+        $this->ensureTenantConnection();
+        
+        return \App\Models\Central\VntContact::select('vnt_companies.id', 'vnt_contacts.firstName')
+            ->join('vnt_companies', 'vnt_contacts.email', '=', 'vnt_companies.billingEmail')
+            ->where('vnt_companies.type', 'PROVEEDOR')
+            ->where('vnt_contacts.status', 1)
+            ->whereNull('vnt_contacts.deleted_at')
+            ->distinct()
+            ->get();
+    }
     /**
      * Open modal to create new movement
      */
+    #[On('openMovementForm')]
     public function create()
     {
         $this->showModal = true;
@@ -218,29 +413,75 @@ class MovementForm extends Component
      */
     public function addDetail()
     {
+        // Prevenir múltiples clicks
+        if ($this->isProcessing) {
+            return;
+        }
+        
+        $this->isProcessing = true;
+        
         try {
             // Validate detail form
             $this->ensureTenantConnection();
-             // Hay un error en la validacion
-            //  dd($this->detailForm['itemId']);
-            // $this->validate([
-            //     'detailForm.itemId' => 'required|exists:tenant.items,id',
-            //     'detailForm.quantity' => 'required|numeric|min:0.01',
-            //     'detailForm.unitMeasurementId' => 'required|exists:tenant.unit_measurements,id',
-            // ], [
-            //     'detailForm.itemId.required' => 'Debe seleccionar un item',
-            //     'detailForm.itemId.exists' => 'El item seleccionado no es válido',
-            //     'detailForm.quantity.required' => 'La cantidad es obligatoria',
-            //     'detailForm.quantity.numeric' => 'La cantidad debe ser un número',
-            //     'detailForm.quantity.min' => 'La cantidad debe ser mayor a 0',
-            //     'detailForm.unitMeasurementId.required' => 'Debe seleccionar una unidad de medida',
-            //     'detailForm.unitMeasurementId.exists' => 'La unidad de medida seleccionada no es válida',
-            // ]);
+            
+            // Validación básica para evitar errores con clicks múltiples
+            if (empty($this->detailForm['itemId'])) {
+                $this->errorMessage = 'Debe seleccionar un item';
+                $this->isProcessing = false;
+                return;
+            }
+            
+            if (empty($this->detailForm['quantity']) || $this->detailForm['quantity'] <= 0) {
+                $this->errorMessage = 'La cantidad debe ser mayor a 0';
+                $this->isProcessing = false;
+                return;
+            }
+            
+            if (empty($this->detailForm['unitMeasurementId'])) {
+                $this->errorMessage = 'Debe seleccionar una unidad de medida';
+                $this->isProcessing = false;
+                return;
+            }
+            
+            // Validación condicional del campo cost
+            if ($this->warehouseForm['movementType'] == 'ENTRADA' && $this->movementForm['reasonId'] == 1) {
+                if (empty($this->detailForm['cost']) || $this->detailForm['cost'] <= 0) {
+                    $this->errorMessage = 'El costo unitario es obligatorio y debe ser mayor a 0';
+                    $this->isProcessing = false;
+                    return;
+                }
+                
+                if (!is_numeric($this->detailForm['cost'])) {
+                    $this->errorMessage = 'El costo debe ser un valor numérico';
+                    $this->isProcessing = false;
+                    return;
+                }
+                
+                // Validación del proveedor
+                if (empty($this->detailForm['supplierId'])) {
+                    $this->errorMessage = 'El proveedor es requerido para movimientos de compra';
+                    $this->isProcessing = false;
+                    return;
+                }
+            }
             
             // Get item and unit measurement info with all relationships
             $item = Items::with(['invValues', 'purchasingUnit', 'consumptionUnit'])
-                ->findOrFail($this->detailForm['itemId']);
+                ->find($this->detailForm['itemId']);
+            
+            if (!$item) {
+                $this->errorMessage = 'El item seleccionado no existe';
+                $this->isProcessing = false;
+                return;
+            }
+            
             $unitMeasurement = UnitMeasurements::find($this->detailForm['unitMeasurementId']);
+            
+            if (!$unitMeasurement) {
+                $this->errorMessage = 'La unidad de medida seleccionada no existe';
+                $this->isProcessing = false;
+                return;
+            }
             
             // Get price from inv_values
             $price = $item->invValues->first()->values ?? 0;
@@ -283,6 +524,7 @@ class MovementForm extends Component
                  // for exit             
                 if($adjustedQuantity < 0){
                     $this->errorMessage = 'La bodega no tiene stock suficiente para realizar el movimiento';
+                    $this->isProcessing = false;
                     return;
                 }
 
@@ -304,6 +546,9 @@ class MovementForm extends Component
                     'adjustedQuantity' => $adjustedQuantity,
                     'price' => $price,
                     'total' => $price * $quantity,
+                    'cost' => $this->detailForm['cost'] ?? 0,
+                    'supplierId' => $this->detailForm['supplierId'] ?? 0,
+                    'supplierName' => $this->detailForm['supplierName'] ?? '-',
                 ];
             }
 
@@ -312,6 +557,7 @@ class MovementForm extends Component
             $this->clearMessages();
             
         } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->isProcessing = false;
             throw $e;
         } catch (\Exception $e) {
             $this->errorMessage = 'Error al agregar el item: ' . $e->getMessage();
@@ -319,6 +565,8 @@ class MovementForm extends Component
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+        } finally {
+            $this->isProcessing = false;
         }
     }
     
@@ -405,7 +653,8 @@ class MovementForm extends Component
                     'storeId' => $this->selectedStoreId,
                     'reasonId' => $this->movementForm['reasonId'],
                     'consecutive' => $consecutive,
-                    'userId' => Auth::id()
+                    'userId' => Auth::id(),
+                    'supplier' => !empty($this->details[0]['supplierId']) ? (int)$this->details[0]['supplierId'] : 0,
                 ]);
                 
                 // Create details
@@ -417,6 +666,7 @@ class MovementForm extends Component
                         'itemId' => $detail['itemId'],
                         'quantity' => $detail['quantity'],
                         'unitMeasurementId' => $detail['unitMeasurementId'],
+                        'cost' => $detail['cost'] ?? 0,
                     ]);
 
                     // Update or create stock
@@ -439,20 +689,29 @@ class MovementForm extends Component
                 
                 DB::connection('tenant')->commit();
                 
-                $this->successMessage = 'Movimiento creado exitosamente';
-                
                 Log::info('Movement created successfully', [
                     'movementId' => $movement->id,
                     'type' => $this->warehouseForm['movementType'],
                     'detailsCount' => count($this->details)
                 ]);
                 
-                // Reset form and close modal
-                $this->resetForm();
+                // Close modal first
                 $this->showModal = false;
+                
+                // Reset form
+                $this->resetForm();
+                
+                // Cambiar automáticamente a la vista del tipo de movimiento creado
+                $this->movementType = $selectedType;
                 
                 // Refresh the movement list with the movement type
                 $this->dispatch('refreshMovements', type: $selectedType);
+                
+                // Dispatch success event with browser alert (después de cerrar el modal)
+                $this->dispatch('movementCreated', [
+                    'type' => $selectedType,
+                    'message' => 'Movimiento de ' . ($selectedType === 'entrada' ? 'entrada' : 'salida') . ' creado exitosamente'
+                ]);
                 
             } catch (\Exception $e) {
                 DB::connection('tenant')->rollBack();
@@ -509,7 +768,10 @@ class MovementForm extends Component
             'itemId' => '',
             'quantity' => '',
             'unitMeasurementId' => '',
+            'cost' => 0,
+            'supplierId' => '',
         ];
+        $this->setDefaultUnitMeasurement();
     }
     
     /**

@@ -14,6 +14,8 @@ use Carbon\Carbon;
  */
 class PriceList extends Component
 {
+    use \App\Traits\Livewire\WithExport;
+
     // Propiedades del modelo
     public $pricelist_id, $title, $value, $status, $createAd;
 
@@ -247,5 +249,43 @@ class PriceList extends Component
         return view('livewire.tenant.parameters.price-list', [
             'pricelists' => $pricelists
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection();
+        return PriceListModel::query()
+            ->when($this->search, function ($query) {
+                $query->where('title', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Título', 'Valor', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($pricelist) {
+            return [
+                $pricelist->id,
+                $pricelist->title,
+                $pricelist->value,
+                $pricelist->status ? 'Activo' : 'Inactivo',
+                $pricelist->createAd ? Carbon::parse($pricelist->createAd)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'listas_precios_' . now()->format('Y-m-d_His');
     }
 }

@@ -4,19 +4,21 @@ namespace App\Livewire\Tenant\PettyCash;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\On;
 //Modelos
 use App\Models\Auth\Tenant;
 use App\Models\Tenant\PettyCash\PettyCash as PettyCashModel;
 use App\Models\Tenant\PettyCash\VntDetailPettyCash;
 use App\Models\Tenant\PettyCash\VntReconciliations;
 use App\Models\Tenant\PettyCash\VntDetailReconciliations;
+use App\Models\TAT\PettyCash\TatCompanyPettyCash; // Importar Modelo CORRECTAMENTE
 
 //Servicios
 use Illuminate\Support\Facades\Auth;
 use App\Services\Tenant\TenantManager;
 use App\Traits\HasCompanyConfiguration;
 use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +31,7 @@ class PettyCash extends Component
     public $pettyCash_id;
     public $base;
     public $showDetail = false;
+    public $showReconciliations = false;
     public $showModalSalesFinish = false;
     //public $warehouseId; // Added for dynamic warehouse selection
     public $paymentCounts = [];
@@ -47,7 +50,7 @@ class PettyCash extends Component
 
     protected $listeners = ['refreshPettyCash' => '$refresh'];
 
-    protected $rules =[
+    protected $rules = [
         'base' => 'required|integer',
         //'warehouseId' => 'required|integer', // Added validation for warehouseId
     ];
@@ -57,20 +60,63 @@ class PettyCash extends Component
         'perPage' => ['except' => 10],
     ];
 
-    public function mount(){
+    public function getPettyCashModel()
+    {
+        // Si el usuario es perfil TAT (17)
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatPettyCash();
+        }
+
+        // Si no (Distribuidora), usar modelo estandar (vnt_)
+        return new PettyCashModel();
+    }
+
+    public function getDetailPettyCashModel()
+    {
+        if (auth()->user()->profile_id == 17) {
+            return new \App\Models\TAT\PettyCash\TatDetailPettyCash();
+        }
+
+        // Si no (Distribuidora), usar modelo estandar (vnt_)
+        return new VntDetailPettyCash();
+    }
+
+    public function render()
+    {
         $this->ensureTenantConnection();
-        // Inicializar configuración de empresa
-        $this->initializeCompanyConfiguration();
 
-        // DEBUG: Limpiar caché para testing
-        $this->clearConfigurationCache();
+        // Determinar qué modelo usar para la consulta
+        $model = $this->getPettyCashModel();
 
-        // DEBUG: Log para verificar inicialización
-        Log::info('🔍 PettyCash mount() ejecutado', [
-            'currentCompanyId' => $this->currentCompanyId,
-            'currentPlainId' => $this->currentPlainId,
-            'configService_exists' => $this->configService ? 'YES' : 'NO'
+        $petty_cashes = $model->query()
+            ->select($model->getTable() . '.*', 'u.name')
+            ->join('users as u', 'u.id', '=', $model->getTable() . '.userIdOpen')
+            ->when(auth()->user()->profile_id == 17 && $this->currentCompanyId, function ($query) use ($model) {
+                // Si es perfil TAT y tiene empresa seleccionada
+                $query->join('tat_company_petty_cash', 'tat_company_petty_cash.petty_cash_id', '=', $model->getTable() . '.id')
+                    ->where('tat_company_petty_cash.company_id', $this->currentCompanyId);
+            })
+            ->when($this->search, function ($query) use ($model) {
+                $query->where($model->getTable() . '.consecutive', 'like', '%' . $this->search . '%')
+                    ->orWhere('u.name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->paginate($this->perPage);
+
+        return view('livewire.tenant.petty-cash.petty-cash', [
+            'boxes' => $petty_cashes
         ]);
+    }
+    public function boot()
+    {
+        $this->ensureTenantConnection();
+        $this->initializeCompanyConfiguration();
+    }
+
+    public function mount()
+    {
+        // boot() ya se encarga de inicializar
+        $this->clearConfigurationCache(); // Mantener limpieza de caché si es necesario
     }
 
     public function sortBy($field)
@@ -84,65 +130,83 @@ class PettyCash extends Component
         $this->sortField = $field;
         $this->resetPage();
     }
-    
+
     public function create()
     {
         $this->showModal = true;
     }
 
-    public function save(){
-        try{
-            $this->ensureTenantConnection();
-    
-            $exists=$this->PettyCashExits(6);
-    
+    public function save()
+    {
+        try {
+            // La conexión y configuración ya están inicializadas por boot()
+
+            $exists = $this->PettyCashExits($this->getwarehouse());
+
+            $exists = $this->PettyCashExits($this->getwarehouse());
+
             if ($exists) {
                 $this->addError('base', 'No se puede registrar, hay cajas abiertas');
-            }else{
+            } else {
                 $this->resetErrorBag('base');
                 $this->validate();
-            
-                // Determine the next consecutive number for the given warehouse
-                $lastConsecutive = PettyCashModel::where('warehouseId', 6)->where('user')->max('consecutive');
-            
+
+                // Determine the next consecutive number using dynamic model
+                $model = $this->getPettyCashModel();
+                $lastConsecutive = $model->where('warehouseId', $this->getwarehouse())->where('userIdOpen')->max('consecutive');
+
                 $newConsecutive = $lastConsecutive ? $lastConsecutive + 1 : 1;
-            
+
                 $pettyCashData = [
                     'base' => $this->base,
-                    'consecutive' => $newConsecutive, // Use the calculated consecutive
+                    'consecutive' => $newConsecutive,
                     'status' => 1,
                     'created_at' => Carbon::now(),
                     'userIdOpen' => Auth::id(),
-                    'warehouseId' => 6,//$this->warehouseId, // Use the dynamic warehouseId
+                    'warehouseId' => $this->getwarehouse(),
                     'cashier' => Auth::id(),
                 ];
-            
-                $newPettyCashId=PettyCashModel::create($pettyCashData);
-                $pettyCash_id=$newPettyCashId->id;
+
+                $newPettyCash = $model->create($pettyCashData);
+                $pettyCash_id = $newPettyCash->id;
+
+                // Lógica para TAT: Siempre guardar relación si existe company_id y es usuario TAT
+                // independientemente de la tabla de caja usada.
+                if (auth()->user()->profile_id == 17 && $this->currentCompanyId) {
+                    TatCompanyPettyCash::create([
+                        'company_id' => $this->currentCompanyId,
+                        'petty_cash_id' => $pettyCash_id,
+                        'created_at' => Carbon::now(),
+                    ]);
+                }
+
                 $this->saveDetailPettyCash($pettyCash_id);
                 session()->flash('message', 'Registro realizado exitosamente.');
-            
+
                 $this->resetValidation();
                 $this->resetForm();
-            
+
                 $this->showModal = false;
             }
-        }catch(\Exception $e){
-            session()->flash('error', 'El registro realizó correctamente.'. $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error($e);
+            session()->flash('error', 'Error al registrar la caja.' . $e->getMessage());
         }
     }
 
-    public function PettyCashExits($warehouseId){
+    public function PettyCashExits($warehouseId)
+    {
         $this->ensureTenantConnection();
+        $model = $this->getPettyCashModel();
 
-        return PettyCashModel::where('status', 1)->where('warehouseId', $warehouseId)->exists();
+        return $model->where('status', 1)->where('warehouseId', $warehouseId)->exists();
     }
 
-    public function saveDetailPettyCash($pettyCash_id){
-        try{
+    public function saveDetailPettyCash($pettyCash_id)
+    {
+        try {
             $this->ensureTenantConnection();
-            
-            
+
             $dataDetailPettyCash = [
                 'status' => 1,
                 'value' => $this->base,
@@ -152,20 +216,32 @@ class PettyCash extends Component
                 'methodPaymentId' => 1,
                 'observations' => 'Apertura de caja'
             ];
-    
-            VntDetailPettyCash::create($dataDetailPettyCash);
-        }catch(\Exception $e){
+
+            $detailModel = $this->getDetailPettyCashModel();
+            $detailModel->create($dataDetailPettyCash);
+        } catch (\Exception $e) {
             session()->flash('error', 'Error al registrar el detalle: ' . $e->getMessage());
         }
     }
 
-    public function viewDetail($pettyCash_id){
-        $this->pettyCash_id=$pettyCash_id;
-        $this->showDetail=true;
+    public function viewDetail($pettyCash_id)
+    {
+        $this->pettyCash_id = $pettyCash_id;
+        $this->showDetail = true;
+        $this->showReconciliations = true;
     }
 
-    public function openSalesFinishModal($pettyCash_id){
-        $this->showModalSalesFinish=true;
+    public function viewReconciliations($pettyCash_id)
+    {
+        $this->pettyCash_id = $pettyCash_id;
+        $this->showReconciliations = true;
+        $this->showDetail = false;
+    }
+
+    #[On('openSalesFinishModal')]
+    public function openSalesFinishModal($pettyCash_id)
+    {
+        $this->showModalSalesFinish = true;
         // Inicializar arrays si están vacíos
         if (empty($this->paymentCounts)) {
             $methods = ['1', '2', '3', '4', '10', '11', '12'];
@@ -174,20 +250,22 @@ class PettyCash extends Component
                 $this->paymentValues[$method] = 0;
             }
         }
-        $this->pettyCash_id=$pettyCash_id;
+        $this->pettyCash_id = $pettyCash_id;
     }
 
     public function closePettyCash()
     {
         $this->ensureTenantConnection();
-        $dataPettyCash=[
-            'status' => 0, 
+        $model = $this->getPettyCashModel();
+
+        $dataPettyCash = [
+            'status' => 0,
             'dateClose' => Carbon::now(),
             'userIdClose' => Auth::id(),
             'updated_at' => Carbon::now(),
         ];
 
-        $dataReconciliations=[
+        $dataReconciliations = [
             'reconciliation' => 1,
             'observations' => $this->observations,
             'created_at' => Carbon::now(),
@@ -195,14 +273,14 @@ class PettyCash extends Component
             'userId' => Auth::id()
         ];
 
-        try{
+        try {
             //Cambio estado Caja
-            $pettyCashClose=PettyCashModel::findOrFail($this->pettyCash_id);
+            $pettyCashClose = $model->findOrFail($this->pettyCash_id);
             $pettyCashClose->update($dataPettyCash);
-            
+
             //Registro del cierre
-            $close=VntReconciliations::create($dataReconciliations);
-            
+            $close = VntReconciliations::create($dataReconciliations);
+
             //$this->showModalSalesFinish = false;
             //$this->reset(['paymentCounts', 'paymentValues', 'observations']);
             $this->saveDetailReconciliations($close->id);
@@ -210,19 +288,19 @@ class PettyCash extends Component
 
             $this->showModalSalesFinish = false;
             $this->resetForm();
-
-            return $this->ticketPettyCash($close->id, $this->pettyCash_id);
+            $this->dispatch('refreshReconciliations');
             $this->dispatch('refreshPettyCash');
-
+            return $this->ticketPettyCash($close->id, $this->pettyCash_id);
         } catch (\Exception $e) {
             Log::error($e);
             session()->flash('error', 'Error no se realizó correctamente' . $e->getMessage());
         }
     }
 
-    public function arqueoPettyCash(){
+    public function arqueoPettyCash()
+    {
         $this->ensureTenantConnection();
-        $dataReconciliations=[
+        $dataReconciliations = [
             'reconciliation' => 0,
             'observations' => $this->observations,
             'created_at' => Carbon::now(),
@@ -230,17 +308,17 @@ class PettyCash extends Component
             'userId' => Auth::id()
         ];
 
-        try{
-            $arqueo=VntReconciliations::create($dataReconciliations);
+        try {
+            $arqueo = VntReconciliations::create($dataReconciliations);
             $this->saveDetailReconciliations($arqueo->id);
             session()->flash('message', 'Registro realizado exitosamente');
-            
+
             $this->showModalSalesFinish = false;
             $this->resetForm();
-            return $this->ticketPettyCash($arqueo->id, $this->pettyCash_id);
+            $this->dispatch('refreshReconciliations');
             $this->dispatch('refreshPettyCash');
-
-        }catch (\Exception $e) {
+            return $this->ticketPettyCash($arqueo->id, $this->pettyCash_id);
+        } catch (\Exception $e) {
             Log::error($e);
             session()->flash('error', 'Error no se realizó correctamente' . $e->getMessage());
         }
@@ -249,9 +327,9 @@ class PettyCash extends Component
     public function saveDetailReconciliations($reconciliationId)
     {
         $this->ensureTenantConnection();
-
+        $model = $this->getDetailPettyCashModel();
         // 1. Get all movements for the current petty cash
-        $movements = VntDetailPettyCash::with('reasonsPettyCash')
+        $movements = $model::with('reasonsPettyCash')
             ->where('pettyCashId', $this->pettyCash_id)
             ->where('status', 1)
             ->whereNotIn('reasonPettyCashId', [5])
@@ -283,6 +361,7 @@ class PettyCash extends Component
 
             // Only create a record if there's a user count or a system total to record
             if ($userCount > 0 || $systemTotal != 0) {
+
                 VntDetailReconciliations::create([
                     'reconciliationId' => $reconciliationId,
                     'methodPaymentId' => $methodId,
@@ -295,61 +374,54 @@ class PettyCash extends Component
         }
     }
 
-    public function ticketPettyCash($close_id, $pettyCash_id){
-        $this->ensureTenantConnection();  
+    #[On('ticketPettyCash')]
+    public function ticketPettyCash($close_id, $pettyCash_id)
+    {
+        try {
+            $this->ensureTenantConnection();
+            $model = $this->getPettyCashModel();
+            // Obtener los datos del detalle del cierre/arqueo, compañia, sucursal, cajero, número de caja
+            $detailPettyCash = VntDetailReconciliations::with('reconciliation', 'methodPayments')->where('reconciliationId', $close_id)->get();
+            $infoCompany = $this->cashierPettyCash($close_id);
+            $infoPettyCash = $model->where('id', $pettyCash_id)->get();
 
-        // Obtener los datos del detalle del cierre/arqueo, compañia, sucursal, cajero, número de caja
-        $detailPettyCash = VntDetailReconciliations::with('reconciliation', 'methodPayments')->where('reconciliationId', $close_id)->get();
-        $infoCompany = $this->cashierPettyCash();
-        $infoPettyCash = PettyCashModel::where('id', $pettyCash_id)->get();
+            // Convertir a array y limpiar los datos de las consultas
+            $cleanedDetails = $this->cleanUtf8Data($detailPettyCash->toArray());
+            $cleanedInfoCompany = $this->cleanUtf8Data($infoCompany);
+            $cleanedPettyCash = $this->cleanUtf8Data($infoPettyCash->toArray());
 
-        // Convertir a array y limpiar los datos de las consultas
-        $cleanedDetails = $this->cleanUtf8Data($detailPettyCash->toArray());
-        $cleanedInfoCompany = $this->cleanUtf8Data($infoCompany);
-        $cleanedPettyCash = $this->cleanUtf8Data($infoPettyCash->toArray());
-        
-        $data = [
-            'details' => $cleanedDetails, // Usar los datos limpios
-            'pettyCash' => $cleanedPettyCash,
-            'date' => now()->format('d/m/Y'),
-            'time' => now()->format('H:i:s'),
-            'infoCashier' => $cleanedInfoCompany,
-        ];
+            $data = [
+                'details' => $cleanedDetails, // Usar los datos limpios
+                'pettyCash' => $cleanedPettyCash,
+                'date' => now()->format('d/m/Y'),
+                'time' => now()->format('H:i:s'),
+                'infoCashier' => $cleanedInfoCompany,
+            ];
 
-        // Forzar encabezados UTF-8 en la respuesta
-        $pdf = PDF::loadView('livewire.tenant.petty-cash.petty-cash-pdf', $data)
-            ->setPaper('a4', 'portrait')
-            ->setOption('defaultFont', 'Arial')
-            ->setOption('isHtml5ParserEnabled', true)
-            ->setOption('isRemoteEnabled', true)
-            ->setOption('encoding', 'UTF-8')
-            ->setOption('fontHeightRatio', 0.7); // Ajustar ratio de fuente si es necesario
+            // Forzar encabezados UTF-8 en la respuesta
+            $pdf = Pdf::loadView('livewire.tenant.petty-cash.petty-cash-pdf', $data)
+                ->setPaper('a4', 'portrait')
+                ->setOption('defaultFont', 'Arial')
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('isRemoteEnabled', true)
+                ->setOption('encoding', 'UTF-8')
+                ->setOption('fontHeightRatio', 0.7); // Ajustar ratio de fuente si es necesario
 
-        return response()->streamDownload(function () use ($pdf) {
-            echo $pdf->output();
-        }, 'pettyCash_' . $close_id . '_' . now()->format('Ymd_His') . '.pdf');
+            return response()->streamDownload(function () use ($pdf) {
+                echo $pdf->output();
+            }, 'pettyCash_' . $close_id . '_' . now()->format('Ymd_His') . '.pdf');
+        } catch (\Exception $e) {
+            Log::error($e);
+        }
     }
 
+    public function canOpenPettyCash(): bool
+    {
+        // Si hay una empresa TAT seleccionada (contexto TAT), permitir siempre la apertura
+        if ($this->currentCompanyId) {
+            return true;
+        }
 
-    public function render()
-    {   
-        $this->ensureTenantConnection();
-        $petty_cashes = PettyCashModel::query()
-            ->select('vnt_petty_cash.*', 'u.name')
-            ->join('rap.users as u', 'u.id', '=', 'vnt_petty_cash.userIdOpen')
-            ->when($this->search, function ($query) {
-                $query->where('vnt_petty_cash.consecutive', 'like', '%' . $this->search . '%')
-                    ->orWhere('u.name', 'like', '%' . $this->search . '%');
-            })
-            ->orderBy($this->sortField, $this->sortDirection)
-            ->paginate($this->perPage);
-
-        return view('livewire.tenant.petty-cash.petty-cash', [
-            'boxes'=>$petty_cashes
-        ]);
-    }
-
-    public function canOpenPettyCash(): bool{
         $result = $this->isOptionEnabled(17);
         $value = $this->getOptionValue(17);
 
@@ -371,43 +443,48 @@ class PettyCash extends Component
         $this->showModal = false;
     }
 
-    public function cashierPettyCash()
+    public function cashierPettyCash($close_id)
     {
         // 1. Establecer el contexto del tenant para poder obtener su información.
         $this->ensureTenantConnection();
-        
-        // 2. Obtener dinámicamente el nombre de la base de datos del tenant.
-        $tenantDbName = tenancy()->tenant->getInternalDatabaseNameAttribute();
 
-        // 3. Definir el nombre de la base de datos central (asumimos 'rap' por el código existente y el error).
+        // 2. Definir el nombre de la base de datos central (asumimos 'rap' por el código existente y el error).
         $centralDbName = config('database.connections.central.database');
 
-        // 4. Construir la consulta usando DB::table en la conexión por defecto (que es la central).
+        // 3. Construir la consulta usando DB::table en la conexión por defecto (que es la central).
         //    Se especifica el nombre de la base de datos para CADA tabla para evitar ambigüedades.
-        $data = DB::table("{$centralDbName}.user_tenants", 'uXt')
+        $data = DB::table("{$centralDbName}.users", 'u')
             ->select(
                 'u.name as user_name',
-                'c.businessName as company_name',
                 'w.name as warehouse_name'
             )
             // Join a la tabla en la base de datos del tenant
-            ->join("{$tenantDbName}.vnt_reconciliations as r", 'r.userId', '=', 'uXt.user_id')
-            
+            ->join("{$centralDbName}.vnt_reconciliations as r", 'r.userId', '=', 'u.id')
             // Joins a las tablas en la base de datos central
-            ->join("{$centralDbName}.users as u", 'u.id', '=', 'uXt.user_id')
-            ->join("{$centralDbName}.tenants as t", 't.id', '=', 'uXt.tenant_id')
-            ->join("{$centralDbName}.vnt_companies as c", 'c.id', '=', 't.company_id')
             ->join("{$centralDbName}.vnt_contacts as cnt", 'cnt.id', '=', 'u.contact_id')
             ->join("{$centralDbName}.vnt_warehouses as w", 'w.id', '=', 'cnt.warehouseId') // Asunción sobre r.warehouseId
 
             // Condiciones
-            ->where('uXt.tenant_id', '8fb35c7f-b3b6-4e6b-b240-a4acefb1ab9a')
-            ->where('uXt.user_id', 8)
-            ->where('r.id', 13)
+            ->where('u.id', Auth::id())
+            ->where('r.id', $close_id)
             ->first();
 
         // Para depurar, puedes descomentar la siguiente línea:
         // dd($data);
+        return $data;
+    }
+
+    public function getwarehouse()
+    {
+        $this->ensureTenantConnection();
+
+        $centralDbName = config('database.connections.central.database');
+
+        $data = DB::table("{$centralDbName}.users", 'u')
+            ->join("{$centralDbName}.vnt_contacts as c", 'u.contact_id', '=', 'c.id')
+            ->join("{$centralDbName}.vnt_warehouses as w", 'c.warehouseId', '=', 'w.id')
+            ->where('u.id', Auth::id())
+            ->value('w.id'); // Ejecutar la consulta y obtener el valor
         return $data;
     }
 
@@ -471,8 +548,9 @@ class PettyCash extends Component
         tenancy()->initialize($tenant);
     }
 
-    private function resetForm(){
-        $this->base='';
+    private function resetForm()
+    {
+        $this->base = '';
         $systemValues = [];
         $paymentCounts = [];
         $paymentValues = [];

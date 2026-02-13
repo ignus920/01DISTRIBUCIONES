@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Items;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\Livewire\WithExport;
 //Modelos
 use App\Models\Tenant\Items\Items;
 use App\Models\Tenant\Items\Category;
@@ -14,18 +15,19 @@ use App\Models\Central\VntWarehouse;
 use App\Models\Central\CnfTaxes;
 //Servicios
 use App\Services\Tenant\TenantManager;
-use App\Services\Tenant\Inventory\CategoriesService; 
+use App\Services\Tenant\Inventory\CategoriesService;
 use App\Services\Tenant\Inventory\CommandsServices;
-use App\Services\Tenant\Inventory\BrandsService;
-use App\Services\Tenant\Inventory\HouseService;
 use App\Livewire\Tenant\Items\Services\InvValuesService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Traits\HasCompanyConfiguration;
 
 class ManageItems extends Component
 {
 
-    use WithPagination;
+    use WithPagination, HasCompanyConfiguration, WithExport;
 
     protected $listeners = [
         'command-changed' => 'onCommandSelected',
@@ -37,7 +39,7 @@ class ManageItems extends Component
         'consumption-unit-changed' => 'onConsumptionUnitSelected',
         'category-changed' => 'onCategorySelected',
         'category-created' => 'refreshCategories',
-        //'invValuesItem-created' => 'refreshValuesItems',
+        'closeValuesModal' => 'closeValuesModal',
     ];
 
     // Propiedades para el formulario
@@ -53,13 +55,16 @@ class ManageItems extends Component
     public $houseId;
     public $purchase_unit;
     public $consumption_unit;
-    public $generic=1;
+    public $generic = 1;
     public $inv_values = [];
     public $warehouses = [];
     public $warehouseIdValue;
     public $tax;
     public $disabled = false;
-    
+    public $handles_serial;
+    public $inventoriable;
+    public $tempValues = []; // Array para almacenar valores temporales del item nuevo
+
     // Propiedades para la tabla
     public $search = '';
     public $sortField = 'name';
@@ -67,7 +72,7 @@ class ManageItems extends Component
     public $showModal = false;
     public $confirmingItemDeletion = false;
     public $perPage = 10;
-    
+
     //Información para categorias
     public $showCategoryInput = false;
     public $newCategoryName = '';
@@ -84,6 +89,13 @@ class ManageItems extends Component
     public $messageValues = '';
     public $temporaryErrorMessage;
     public $showValuesModal = false;
+
+    //Campos de validación
+    public $internal_codeExists = false;
+    public $validatingInternal_code = false;
+    public $skuExists = false;
+    public $validatingSku = false;
+    public $showCommand = false;
 
 
     // tipos disponibles (puedes externalizarlo si lo prefieres)
@@ -116,17 +128,27 @@ class ManageItems extends Component
         $this->labelValue = null; // Reset labelValue when typeValue changes
     }
 
-    protected $rules =[
+    protected $rules = [
         'category_id' => 'required',
         'name' => 'required|min:3',
         'type' => 'required',
-        'internal_code' => 'nullable|string',
-        'brandId' => 'nullable|integer',
+        'internal_code' => 'required|string',
+        'brandId' => 'required|integer',
         'houseId' => 'nullable|integer',
         'purchase_unit' => 'nullable|integer',
         'consumption_unit' => 'nullable|integer',
     ];
-    
+
+    protected $messages = [
+        'category_id.required' => 'La categoría es obligatoria',
+        'name.required' => 'El nombre del item es obligatorio',
+        'name.min' => 'El nombre del item debe tener al menos 3 caracteres',
+        'type.required' => 'El tipo de item es obligatorio',
+        'internal_code.required' => 'El código interno es obligatorio',
+        'brandId.required' => 'La marca es obligatoria',
+
+    ];
+
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -163,6 +185,16 @@ class ManageItems extends Component
     public function mount()
     {
         $this->ensureTenantConnection();
+        $this->validateMerchantType();
+        // DEBUG: Limpiar caché para testing
+        $this->clearConfigurationCache();
+
+        // DEBUG: Log para verificar inicialización
+        Log::info('🔍 DetailPettyCash mount() ejecutado', [
+            'currentCompanyId' => $this->currentCompanyId,
+            'currentPlainId' => $this->currentPlainId,
+            'configService_exists' => $this->configService ? 'YES' : 'NO'
+        ]);
     }
 
     private function ensureTenantConnection()
@@ -188,8 +220,26 @@ class ManageItems extends Component
         tenancy()->initialize($tenant);
     }
 
+    public function manageSerials()
+    {
+        $this->initializeCompanyConfiguration();
+        $result = $this->isOptionEnabled(32);
+        $value = $this->getOptionValue(32);
+
+        Log::info('🔍 manageSerials() verificación', [
+            'companyId' => $this->currentCompanyId,
+            'option_id' => 32,
+            'result' => $result ? 'TRUE' : 'FALSE',
+            'option_value' => $value,
+            'configService_exists' => $this->configService ? 'YES' : 'NO',
+            'method_called' => 'isOptionEnabled(32) y getOptionValue(32)'
+        ]);
+        return $result;
+    }
+
     public function edit($idItem)
     {
+        $this->clearValidationErrors();
         $this->ensureTenantConnection();
         $item = Items::with('invValues')->findOrFail($idItem);
         $this->item_id = $item->id;
@@ -206,6 +256,8 @@ class ManageItems extends Component
         $this->consumption_unit = $item->consumption_unit;
         $this->generic = $item->generic ?? 1;
         $this->tax = $item->taxId;
+        $this->handles_serial = $item->handles_serial;
+        $this->inventoriable = $item->inventoriable;
         $this->disabled = true;
 
         $this->showModal = true;
@@ -217,11 +269,11 @@ class ManageItems extends Component
         $this->loadWarehouses();
 
         $items = Items::query()
-            ->with(['brand', 'principalImage'])
-            ->when($this->search, function($query) {
+            ->with(['brand', 'house', 'principalImage', 'tax', 'purchasingUnit', 'consumptionUnit', 'invItemsStore', 'invValues'])
+            ->when($this->search, function ($query) {
                 $query->where('name', 'like', '%' . $this->search . '%')
-                      ->orWhere('sku', 'like', '%' . $this->search . '%')
-                      ->orWhere('internal_code', 'like', '%' . $this->search . '%');
+                    ->orWhere('sku', 'like', '%' . $this->search . '%')
+                    ->orWhere('internal_code', 'like', '%' . $this->search . '%');
             })
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
@@ -241,20 +293,34 @@ class ManageItems extends Component
     public function create()
     {
         $this->resetExcept(['categories', 'types', 'allLabelsValues']); // No reseteamos las listas de opciones
+        $this->resetExcept(['categories', 'types', 'allLabelsValues', 'showCommand']);
         $this->showModal = true;
-        
+
         // Emitir eventos para inicializar los componentes hijos
         $this->dispatch('initializeCommand');
         $this->dispatch('initializeBrand');
         $this->dispatch('initializeHouse');
         $this->dispatch('initializePurchaseUnit');
         $this->dispatch('initializeConsumptionUnit');
+
+        $this->clearValidationErrors();
+        $this->resetForm();
     }
 
     public function save()
     {
-        $this->ensureTenantConnection();
+        //$this->ensureTenantConnection();
         $this->validate();
+
+        if ($this->internal_codeExists) {
+            $this->addError('internal_code', 'Este código interno ya está registrado.');
+            return;
+        }
+
+        if ($this->skuExists) {
+            $this->addError('sku', 'Este SKU ya está registrado.');
+            return;
+        }
 
         $itemData = [
             'categoryId' => $this->category_id,
@@ -263,48 +329,52 @@ class ManageItems extends Component
             'sku' => $this->sku,
             'description' => $this->description,
             'type' => $this->type,
-            'commandId' => $this->commandId,
+            'commandId' => $this->commandId ?: null,
             'brandId' => $this->brandId,
             'houseId' => $this->houseId,
-            'inventoriable' => 1,
+            'inventoriable' => $this->inventoriable,
             'purchasing_unit' => $this->purchase_unit,
             'consumption_unit' => $this->consumption_unit,
             'status' => 1,
             'generic' => $this->generic,
             'taxId' => $this->tax,
+            'handles_serial' => $this->handles_serial ?? 0,
         ];
-        
-        try{
-            if ($this->item_id) {
-                $item = Items::findOrFail($this->item_id);
-                $item->update($itemData);
-                session()->flash('message', 'Item actualizado correctamente.');
-                $this->showModal = false;
-            } else {
-                $newItem=Items::create($itemData);
-                $item_id=$newItem->id;
-                session()->flash('message', 'Item creado correctamente.');
-            }
 
-            // Mantener la paginación y filtros, limpiar solo el formulario
-            $this->resetValidation();
-            $this->reset([
-                'item_id',
-                'category_id',
-                'name',
-                'internal_code',
-                'sku',
-                'description',
-                'type',
-                'brandId',
-                'houseId',
-                'commandId',
-                'purchase_unit',
-                'consumption_unit'
-            ]);
-            $this->edit($item_id);
-            $this->disabled = false;
-        }catch(\Exception $e){
+        try {
+            if ($this->item_id) { // Existing item
+                $existsValue = InvValues::where('itemId', $this->item_id)->exists();
+
+                if (!$existsValue) {
+                    $this->messageValues = 'Tiene que registrar al menos un valor.';
+                } else {
+                    $item = Items::findOrFail($this->item_id);
+                    $item->update($itemData);
+
+                    $this->clearTemporaryMessage();
+                    session()->flash('message', 'Item actualizado correctamente.');
+                    $this->showModal = false; // Close modal after update
+                    $this->resetValidation(); // Clear validation errors for next open
+                    $this->resetForm(); // Clear the form completely for next new item
+                }
+            } else { // New item
+                // Validar que los cinco tipos de precios estén registrados
+                $requiredPrices = ['Costo Inicial', 'Costo', 'Precio Base', 'Precio Regular', 'Precio Crédito'];
+                $missingPrices = $this->validateRequiredPrices($requiredPrices);
+                //dd($missingPrices);
+                if (!empty($missingPrices)) {
+                    $this->messageValues = 'Debe registrar todos los precios requeridos: ' . implode(', ', $missingPrices);
+                } else {
+                    $newItem = Items::create($itemData);
+                    $item_id = $newItem->id;
+                    $this->saveTemporaryValues($item_id);
+                    session()->flash('message', 'Item creado correctamente.');
+                    $this->resetValidation(); // Clear validation for current submission
+                    $this->edit($item_id); // Load new item into the form (sets showModal=true, disabled=true)
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al guardar item: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             session()->flash('error', 'Error al guardar: ' . $e->getMessage());
             return;
         }
@@ -314,40 +384,45 @@ class ManageItems extends Component
     public function toggleItemStatus($id)
     {
         $this->ensureTenantConnection();
-        $item=Items::findOrFail($id);
+        $item = Items::findOrFail($id);
 
         $newStatus = $item->status ? 0 : 1;
         $item->update([
-            'status'=>$newStatus, 
+            'status' => $newStatus,
         ]);
-        
+
         session()->flash('message', 'Estado actualizado correctamente');
     }
 
-    public function openValuesModal(){
-        $this->showValuesModal=true;
+    public function openValuesModal($itemId)
+    {
+        $this->item_id = $itemId;
+        $this->showValuesModal = true;
+    }
+
+    public function closeValuesModal()
+    {
+        $this->showValuesModal = false;
     }
 
     public function cancel()
     {
-        $this->resetValidation();
-        $this->reset([
-            'item_id',
-            'category_id',
-            'name',
-            'internal_code',
-            'sku',
-            'description',
-            'type',
-            'brandId',
-            'houseId',
-            'commandId',
-            'purchase_unit',
-            'consumption_unit',
-            'inv_values'
-        ]);
-        $this->showModal = false;
-        $this->confirmingItemDeletion = false;
+        if ($this->item_id) {
+            $existsValue = InvValues::where('itemId', $this->item_id)->exists();
+            if (!$existsValue) {
+                $this->messageValues = 'Tiene que registrar al menos un valor.';
+            } else {
+                $this->resetValidation();
+                $this->resetForm();
+                $this->showModal = false;
+                $this->confirmingItemDeletion = false;
+            }
+        } else {
+            $this->resetValidation();
+            $this->resetForm();
+            $this->showModal = false;
+            $this->confirmingItemDeletion = false;
+        }
     }
 
     public function onCategorySelected($value)
@@ -380,64 +455,94 @@ class ManageItems extends Component
         $this->consumption_unit = $value;
     }
 
-    public function exportExcel()
+    public function getExportData()
     {
-        // TODO: Implementar exportación a Excel
-        $this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Exportación a Excel - En desarrollo'
-        ]);
-        //dd('Exportación PDF ejecutada');
-    }
-
-    public function exportPdf()
-    {
-        // TODO: Implementar exportación a PDF
-        $this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Exportación a PDF - En desarrollo'
-        ]);
-    }
-
-    public function exportCsv()
-    {
-        // TODO: Implementar exportación a CSV
-        /*$this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Exportación a CSV - En desarrollo'
-        ]);*/
-        //$this->ensureTenantConnection();
-        //return Items::disk('invoices')->download('invoice.csv');
-        return response()->download( 
-            $this->item_id->file_path, 'items.cvs'
-        );
-    }
-
-    public function getTaxesProperty(){
         $this->ensureTenantConnection();
-    
+        return Items::query()
+            ->with(['brand', 'tax', 'purchasingUnit', 'consumptionUnit', 'invItemsStore'])
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('sku', 'like', '%' . $this->search . '%')
+                    ->orWhere('internal_code', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    public function getExportHeadings(): array
+    {
+        return [
+            'SKU',
+            'Código Interno',
+            'Nombre',
+            'Tipo',
+            'Marca',
+            'Stock',
+            'Unidad Compra',
+            'Unidad Consumo',
+            'Impuesto',
+            'Estado'
+        ];
+    }
+
+    public function getExportMapping($item): array
+    {
+        $stock = 'No maneja';
+        if ($item->inventoriable == 1) {
+            if ($item->invItemsStore->isNotEmpty()) {
+                $stocks = [];
+                foreach ($item->invItemsStore as $store) {
+                    $stocks[] = $store->stock_items_store;
+                }
+                $stock = implode(' / ', $stocks);
+            } else {
+                $stock = '0';
+            }
+        }
+
+        return [
+            $item->sku,
+            $item->internal_code ?? $item->internalCode ?? '',
+            $item->name,
+            $item->type,
+            $item->brand->name ?? 'SIN MARCA',
+            $stock,
+            $item->purchasingUnit->description ?? 'N/A',
+            $item->consumptionUnit->description ?? 'N/A',
+            $item->tax->name ?? 'Sin impuesto',
+            $item->status ? 'Activo' : 'Inactivo'
+        ];
+    }
+
+    public function getExportFilename(): string
+    {
+        return 'items_' . date('Y-m-d_His');
+    }
+
+    public function getTaxesProperty()
+    {
+        $this->ensureTenantConnection();
+
         return CnfTaxes::all();
     }
 
     private function loadWarehouses(): void
     {
         $sessionTenant = $this->getTenantId();
-        
-        // 1. Obtener los IDs de las bodegas que cumplen el criterio
-        $warehouseIds = UserTenant::query()
-            ->select('vc.warehouseId')
-            ->join('users as u', 'u.id', '=', 'user_tenants.user_id')
-            ->join('vnt_contacts as vc', 'vc.id', '=', 'u.contact_id')
-            ->where('user_tenants.tenant_id', $sessionTenant)
-            ->pluck('warehouseId') // Obtener solo los IDs de las bodegas
-            ->unique(); // Evitar IDs duplicados
 
-        // 2. Cargar las bodegas usando los IDs obtenidos
-        $this->warehouses = VntWarehouse::query()
-            ->whereIn('id', $warehouseIds) // Usamos el array de IDs
-            ->where('vnt_warehouses.status', true)
+        // Obtener el tenant desde la base de datos usando el ID de sesión
+        $tenant = Tenant::find($sessionTenant);
+
+        if (!$tenant || !$tenant->company_id) {
+            $this->warehouses = collect([]);
+            return;
+        }
+
+        // Traer todos los almacenes que coincidan con ese company_id
+        $this->warehouses = VntWarehouse::where('companyId', $tenant->company_id)
+            ->where('status', true)
             ->with('company')
-            ->orderBy('vnt_warehouses.name')
+            ->orderBy('name')
             ->get();
     }
 
@@ -461,7 +566,8 @@ class ManageItems extends Component
         }
     }
 
-    public function saveCategory(){
+    public function saveCategory()
+    {
         $this->ensureTenantConnection();
         try {
             // Usar el servicio para crear la categoría
@@ -474,17 +580,16 @@ class ManageItems extends Component
 
             // Actualizar la lista de categorías y seleccionar la nueva
             $this->commandId = $command->id;
-            
+
             // Resetear el formulario de categoría
             $this->showCommandInput = false;
             $this->newCommandName = '';
-            
+
             // Emitir evento para actualizar componentes
             $this->dispatch('command-created', commandId: $command->id);
-            
+
             // Mostrar mensaje de éxito
             session()->flash('command_message', 'Comanda creada exitosamente!');
-            
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Pasar los errores de validación al componente
             $this->addError('newCommandName', $e->validator->errors()->first('name'));
@@ -498,7 +603,7 @@ class ManageItems extends Component
     {
         // Forzar la recarga de categorías en el próximo render
         $this->dispatch('$refresh');
-        
+
         if ($categoryId) {
             $this->category_id = $categoryId;
             // También emitir el cambio para sincronizar
@@ -512,7 +617,7 @@ class ManageItems extends Component
         if ($this->newCategoryName) {
             $categoryService = app(CategoriesService::class);
             $exists = $categoryService->categoryExists($this->newCategoryName);
-            
+
             if ($exists) {
                 $this->addError('newCategoryName', 'Esta categoría ya existe.');
             } else {
@@ -531,7 +636,8 @@ class ManageItems extends Component
         }
     }
 
-    public function saveCommand(){
+    public function saveCommand()
+    {
         $this->ensureTenantConnection();
         try {
             // Usar el servicio para crear la categoría
@@ -543,17 +649,16 @@ class ManageItems extends Component
 
             // Actualizar la lista de categorías y seleccionar la nueva
             $this->category_id = $category->id;
-            
+
             // Resetear el formulario de categoría
             $this->showCommandInput = false;
             $this->newCommandName = '';
-            
+
             // Emitir evento para actualizar componentes
             $this->dispatch('category-created', categoryId: $category->id);
-            
+
             // Mostrar mensaje de éxito
             session()->flash('category_message', 'Categoría creada exitosamente!');
-            
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Pasar los errores de validación al componente
             $this->addError('newCommandName', $e->validator->errors()->first('name'));
@@ -567,7 +672,7 @@ class ManageItems extends Component
     {
         // Forzar la recarga de categorías en el próximo render
         $this->dispatch('$refresh');
-        
+
         if ($commandId) {
             $this->commandId = $commandId;
             // También emitir el cambio para sincronizar
@@ -581,7 +686,7 @@ class ManageItems extends Component
         if ($this->newCommandName) {
             $commandService = app(CommandsServices::class);
             $exists = $commandService->commandExists($this->newCommandName);
-            
+
             if ($exists) {
                 $this->addError('newCommandName', 'Esta comanda ya existe.');
             } else {
@@ -593,7 +698,7 @@ class ManageItems extends Component
     //============VALORES ITEMS========================//
     public function toggleValuesForm()
     {
-        $this->showValuesSection=true;
+        $this->showValuesSection = true;
         $this->messageValues = '';
     }
 
@@ -603,7 +708,6 @@ class ManageItems extends Component
         $exitsValue = InvValues::where('itemId', $this->item_id)->where('label', $this->labelValue)->exists();
         if ($exitsValue) {
             $this->temporaryErrorMessage = 'Este Item ya tiene registrado un costo inicial.';
-            
         } else {
             $this->temporaryErrorMessage = null;
             $this->resetErrorBag('labelValue');
@@ -613,10 +717,10 @@ class ManageItems extends Component
                 'typeValue' => 'required|string',
                 'labelValue' => 'required|string',
             ]);
-    
+
             try {
                 $invValueService = app(InvValuesService::class);
-                
+
                 $invValueService->createValueItem([
                     'date' => Carbon::now(),
                     'values' => $this->valueItem,
@@ -625,16 +729,15 @@ class ManageItems extends Component
                     'warehouseId' => $this->warehouseIdValue ?? 0,
                     'label' => $this->labelValue
                 ]);
-    
+
                 // Resetear y ocultar el formulario
                 $this->reset(['valueItem', 'typeValue', 'labelValue']);
                 $this->showValuesSection = false;
-    
+
                 $this->messageValues = 'Valor agregado exitosamente';
-    
+
                 // Refrescar para mostrar el nuevo valor
                 $this->dispatch('refreshValues');
-    
             } catch (\Exception $e) {
                 session()->flash('error', 'Error al crear el valor: ' . $e->getMessage());
             }
@@ -645,5 +748,242 @@ class ManageItems extends Component
     public function clearTemporaryMessage()
     {
         $this->temporaryErrorMessage = null;
+        $this->messageValues = '';
+    }
+
+    public function updatedInternalCode($value)
+    {
+        $this->validateInternalCodeExits();
+    }
+
+    public function updatedSku($value)
+    {
+        $this->validateSkuExits();
+    }
+
+    public function validateInternalCodeExits(): void
+    {
+        if (empty($this->internal_code)) {
+            $this->internal_codeExists = false;
+            $this->validatingInternal_code = false;
+            return;
+        }
+
+        $this->validatingInternal_code = true;
+
+        try {
+            $this->ensureTenantConnection();
+            $query = Items::where('internal_code', $this->internal_code);
+
+            if ($this->item_id) {
+                $query->where('id', '!=', $this->item_id);
+            }
+            $this->internal_codeExists = $query->exists();
+        } catch (\Exception $e) {
+            // Log error but don't break the form
+            Log::error('Error validating internal_code exists', [
+                'error' => $e->getMessage(),
+                'internal_code' => $this->internal_code
+            ]);
+            $this->internal_codeExists = false;
+        } finally {
+            $this->validatingInternal_code = false;
+        }
+    }
+
+    public function validateSkuExits(): void
+    {
+        if (empty($this->sku)) {
+            $this->skuExists = false;
+            $this->validatingSku = false;
+            return;
+        }
+
+        $this->validatingSku = true;
+        try {
+            $this->ensureTenantConnection();
+            $query = Items::where('sku', $this->sku);
+
+            if ($this->item_id) {
+                $query->where('id', '!=', $this->item_id);
+            }
+            $this->skuExists = $query->exists();
+        } catch (\Exception $e) {
+            // Log error but don't break the form
+            Log::error('Error validating sku exists', [
+                'error' => $e->getMessage(),
+                'sku' => $this->sku
+            ]);
+            $this->skuExists = false;
+        } finally {
+            $this->validatingSku = false;
+        }
+    }
+
+    public function resetForm()
+    {
+        $this->item_id = '';
+        $this->category_id = '';
+        $this->name = '';
+        $this->internal_code = '';
+        $this->sku = '';
+        $this->description = '';
+        $this->type = '';
+        $this->commandId = '';
+        $this->brandId = '';
+        $this->houseId = '';
+        $this->purchase_unit = '';
+        $this->consumption_unit = '';
+        $this->generic = 1;
+        $this->inv_values = [];
+        $this->warehouses = [];
+        $this->warehouseIdValue = '';
+        $this->tax = '';
+        $this->disabled = false;
+        $this->tempValues = []; // Limpiar valores temporales
+        $this->showCategoryInput = false;
+        $this->newCategoryName = '';
+        $this->showCommandInput = false;
+        $this->newCommandName = '';
+        $this->showValuesSection = false;
+        $this->valueItem = 0;
+        $this->typeValue;
+        $this->labelValue;
+        $this->messageValues = '';
+        $this->temporaryErrorMessage;
+        $this->showValuesModal = false;
+        $this->internal_codeExists = false;
+        $this->validatingInternal_code = false;
+        $this->skuExists = false;
+        $this->validatingSku = false;
+    }
+
+    public function clearValidationErrors()
+    {
+        $this->resetErrorBag(['internal_code', 'sku']);
+        $this->internal_codeExists = false;
+        $this->skuExists = false;
+    }
+
+    public function validateMerchantType()
+    {
+        $this->ensureTenantConnection();
+
+        $centralDbName = config('database.connections.central.database');
+        $userId = Auth::id(); // Get the authenticated user's ID
+
+        $exists = DB::table("{$centralDbName}.users", 'u')
+            ->join("{$centralDbName}.usr_profile_merchant as upm", 'upm.profile_id', '=', 'u.profile_id')
+            ->where('u.id', $userId)
+            ->where('upm.merchant_type_id', 4)
+            ->exists(); // Check if any record exists
+
+        $this->showCommand = $exists; // Set showCommand based on the existence check
+    }
+
+    /**
+     * Obtener el componente ManageValues
+     */
+    private function getManageValuesComponent()
+    {
+        // Buscar el componente ManageValues en la vista
+        if (isset($this->_view) && isset($this->_view->slots)) {
+            foreach ($this->_view->slots as $slot) {
+                if ($slot instanceof ManageValues) {
+                    return $slot;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Guardar valores nuevos para un item
+     */
+    private function saveNewValuesForItem($itemId, $newValues)
+    {
+        $this->ensureTenantConnection();
+
+        try {
+            foreach ($newValues as $label => $valueData) {
+                // Verificar que no exista ya un valor con esa etiqueta
+                $exists = InvValues::where('itemId', $itemId)
+                    ->where('label', $label)
+                    ->exists();
+
+                if (!$exists) {
+                    InvValues::create([
+                        'itemId' => $itemId,
+                        'label' => $label,
+                        'type' => strtolower($valueData['type']),
+                        'values' => $valueData['value'],
+                        'date' => Carbon::now(),
+                        'warehouseId' => 0,
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al guardar valores del item: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Validar que todos los precios requeridos estén presentes en tempValues
+     * 
+     * @param array $requiredPrices Array con los nombres de precios requeridos
+     * @return array Array con los precios que faltan, vacío si están todos presentes
+     */
+    private function validateRequiredPrices(array $requiredPrices): array
+    {
+        $missingPrices = [];
+
+        foreach ($requiredPrices as $priceLabel) {
+            // Verificar si la etiqueta existe en tempValues y tiene un valor válido
+            if (!isset($this->tempValues[$priceLabel]) || $this->tempValues[$priceLabel] === null || $this->tempValues[$priceLabel] === '' || $this->tempValues[$priceLabel] <= 0) {
+                $missingPrices[] = $priceLabel;
+            }
+        }
+
+        return $missingPrices;
+    }
+
+    /**
+     * Guardar valores temporales para un nuevo item
+     */
+    private function saveTemporaryValues($itemId)
+    {
+        $this->ensureTenantConnection();
+
+        try {
+            // Mapeo de etiquetas a tipos
+            $typeMap = [
+                'Costo Inicial' => 'costo',
+                'Costo' => 'costo',
+                'Precio Base' => 'precio',
+                'Precio Regular' => 'precio',
+                'Precio Crédito' => 'precio',
+            ];
+
+            foreach ($this->tempValues as $label => $value) {
+                // Solo guardar si el valor no está vacío
+                if ($value !== null && $value !== '' && $value > 0) {
+                    InvValues::create([
+                        'itemId' => $itemId,
+                        'label' => $label,
+                        'type' => $typeMap[$label] ?? 'costo',
+                        'values' => (float)$value,
+                        'date' => Carbon::now(),
+                        'warehouseId' => 0,
+                    ]);
+                }
+            }
+
+            // Limpiar los valores temporales después de guardar
+            $this->tempValues = [];
+        } catch (\Exception $e) {
+            Log::error('Error al guardar valores temporales: ' . $e->getMessage());
+            throw $e;
+        }
     }
 }

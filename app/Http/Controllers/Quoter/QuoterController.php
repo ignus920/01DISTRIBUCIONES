@@ -12,7 +12,7 @@ class QuoterController extends Controller
     {
         $agent = new Agent();
 
-        // Detectar si es móvil o tablet
+        // FORZAR TABLET A MOBILE: Para que tenga soporte Offline PWA
         if ($agent->isMobile() || $agent->isTablet()) {
             return redirect()->route('tenant.quoter.mobile');
         }
@@ -28,6 +28,11 @@ class QuoterController extends Controller
 
     public function desktop(Request $request)
     {
+        // Fallback de seguridad: Si una tablet entra aquí directo, redirigirla
+        $agent = new Agent();
+        if ($agent->isTablet()) {
+            return redirect()->route('tenant.quoter.mobile');
+        }
         return view('livewire.tenant.quoter.quoter-desktop');
     }
 
@@ -35,12 +40,12 @@ class QuoterController extends Controller
     {
         $agent = new Agent();
 
-        // Detectar si es móvil o tablet
+        // FORZAR TABLET A MOBILE
         if ($agent->isMobile() || $agent->isTablet()) {
-            return redirect()->route('tenant.quoter.products.mobile');
+            return redirect()->route('tenant.quoter.products.mobile', $request->all());
         }
 
         // Desktop - redirigir a la ruta desktop
-        return redirect()->route('tenant.quoter.products.desktop');
+        return redirect()->route('tenant.quoter.products.desktop', $request->all());
     }
 }

@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-    <div class="max-w-12xl mx-auto">
+    <div class="max-w-full mx-auto">
         <!-- Header -->
         <div
             class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
@@ -28,6 +28,17 @@
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 {{ session('message') }}
+            </div>
+        </div>
+        @endif
+
+        <!-- Mensajes -->
+        @if (session()->has('error'))
+        <div
+            class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-6">
+            <div class="flex items-center">
+                <x-heroicon-o-exclamation-circle class="w-6 h-6" />
+                {{ session('error') }}
             </div>
         </div>
         @endif
@@ -66,39 +77,13 @@
                                 <option value="100">100</option>
                             </select>
                         </div>
-                        <!-- Botones de exportar -->
-                        <div class="flex items-center gap-2">
-                            <!-- Botón Excel -->
-                            <button wire:click="exportExcel" title="Exportar a Excel"
-                                class="inline-flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        d="M21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5M19,5H12V7H19V5M19,9H12V11H19V9M19,13H12V15H19V13M19,17H12V19H19V17M5,5V7H10V5H5M5,9V11H10V9H5M5,13V15H10V13H5M5,17V19H10V17H5Z" />
-                                </svg>
-                            </button>
-                            <!-- Botón PDF -->
-                            <button wire:click="exportPdf" title="Exportar a PDF"
-                                class="inline-flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                                </svg>
-                            </button>
-                            <!-- Botón CSV -->
-                            <button wire:click="exportCsv" title="Exportar a CSV"
-                                class="inline-flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M8,12V14H16V12H8M8,16V18H13V16H8Z" />
-                                </svg>
-                            </button>
-                        </div>
+                        <x-export-buttons />
                     </div>
                 </div>
             </div>
 
             <!-- Tabla -->
-            <div class="overflow-x-auto">
+            <div class="relative overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
@@ -140,7 +125,13 @@
                                 Marca</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Inventoriable</th>
+                                Casa</th>    
+                            <th
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Stock</th>
+                              <th
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Precios</th>
                             <th
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 Unidad de compra</th>
@@ -171,26 +162,55 @@
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $it->internal_code ?? $it->internalCode ?? '' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            <td class="text-xs text-gray-500 dark:text-gray-400">
                                 {{ $it->name }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            <td class="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
                                 {{ $it->type }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            <td class="px-2 py-2 text-sm text-gray-500 dark:text-gray-400">
                                 {{ $it->brand->name ?? 'SIN MARCA' }}
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->inventoriable }}
+                             <td class="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                {{ $it->house->name ?? 'SIN MARCA' }}
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->purchasingUnit->description }}
+                                @if($it->inventoriable == 1)
+                                @if($it->invItemsStore->isNotEmpty())
+                                @foreach($it->invItemsStore as $store)
+                                {{ $store->stock_items_store }}
+                                @endforeach
+                                @else
+                                <p>Sin stock</p>
+                                @endif
+                                @else
+                                No maneja inventario
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->consumptionUnit->description }}
+                                @if($it->invValues->isNotEmpty())
+                                    <div class="space-y-1.5">
+                                        @foreach($it->invValues->where('type', 'precio') as $value)
+                                            <div class="flex items-center gap-2">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                                    {{ str_replace('Precio ', '', $value->label) }}:
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">${{ number_format($value->values, 0, ',', '.') }}</span>
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="text-gray-400 dark:text-gray-500 italic">Sin precios</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                {{ $it->tax->name }}
+                                {{ $it->purchasingUnit->description ?? 'N/A' }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $it->consumptionUnit->description ?? 'N/A' }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $it->tax->name ?? 'Sin impuesto' }}
                             </td>
                             <td
                                 class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900 dark:text-white">
@@ -211,8 +231,8 @@
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                 <!-- Menú de tres puntos con Alpine.js -->
                                 <div x-data="{ open: false }" @click.outside="open = false"
-                                    class="relative inline-block text-left">
-                                    <button @click="open = !open"
+                                    class="relative inline-block text-left static">
+                                    <button @click="open = !open" x-ref="button"
                                         class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
                                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                             <path
@@ -227,7 +247,8 @@
                                         x-transition:leave="transition ease-in duration-75"
                                         x-transition:leave-start="transform opacity-100 scale-100"
                                         x-transition:leave-end="transform opacity-0 scale-95" @click="open = false"
-                                        class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
+                                        class="origin-top-left fixed left-auto right-auto mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-[60]"
+                                        x-anchor="$refs.button"
                                         style="display: none;">
 
                                         <div class="py-1" role="menu" aria-orientation="vertical">
@@ -250,11 +271,7 @@
                                             </button> --}}
                                             {{-- <button wire:click="openValuesModal({{ $it->id }})"
                                                 class="w-full text-left px-4 py-2 text-sm text-green-800 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="currentColor" class="size-6">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                                </svg>
+                                                <x-heroicon-o-currency-dollar class="w-6 h-6" />
                                                 Valores
                                             </button> --}}
                                         </div>
@@ -285,7 +302,8 @@
 
             <!-- Paginación -->
             @if($items->hasPages())
-            <div class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+            <div
+                class="overflow-x-auto bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
                 <div class="flex items-center justify-between">
                     <div class="text-sm text-gray-700 dark:text-gray-300">
                         Mostrando {{ $items->firstItem() }} a {{ $items->lastItem() }} de {{ $items->total() }}
@@ -317,10 +335,16 @@
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                 <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        {{ $item_id ? 'Editar Item' : 'Crear Item' }}
-                    </h3>
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $item_id ? 'Editar Item' : 'Crear Item' }}
+                        </h3>
+                    </div>
+                    <button wire:click="cancel"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <x-heroicon-o-x-mark class="w-6 h-6" />
+                    </button>
                 </div>
 
                 <!-- Form -->
@@ -337,9 +361,9 @@
                         focus:ring-indigo-500 focus:border-indigo-500'
                         ])
 
-                        <div class="mb-3">
+                        <div class="mb-3 ">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nombre
-                                *</label>
+                                <span class="text-red-500">*</span></label>
                             <input wire:model="name" type="text" id="name"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder="Ingrese nombre del producto">
@@ -349,48 +373,61 @@
                         <div class="mb-3 grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Código
-                                    interno</label>
-                                <input wire:model="internal_code" type="text" id="internal_code"
+                                    interno <span class="text-red-500">*</span></label>
+                                <input wire:model.live.debounce.400ms="internal_code" type="text" id="internal_code"
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     placeholder="Ingrese el código interno">
                                 @error('internal_code') <span class="text-red-600 text-sm">{{ $message }}</span>
                                 @enderror
+
+                                @if($internal_codeExists && !$errors->has('internal_code'))
+                                <span class="text-red-500 text-sm">
+                                    Este código interno ya está registrado
+                                </span>
+                                @endif
                             </div>
                             <div>
                                 <label
                                     class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">SKU</label>
-                                <input wire:model="sku" type="text" id="sku"
+                                <input wire:model.live.debounce.400ms="sku" type="text" id="sku"
                                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                     placeholder="Ingrese el sku">
                                 @error('sku') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+
+                                @if($skuExists && !$errors->has('sku'))
+                                <span class="text-red-500 text-sm">
+                                    Este SKU ya está registrado
+                                </span>
+                                @endif
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
-                            <select wire:model="type" {{ $disabled ? 'disabled' : '' }}
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">-- Seleccione --</option>
-                                @foreach($types as $k => $v)
-                                <option value="{{ $k }}">{{ $v }}</option>
-                                @endforeach
-                            </select>
-                            @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label
+                        <div class="mb-3 grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo <span class="text-red-500">*</span></label>
+                                <select wire:model="type" {{ $disabled ? 'disabled' : '' }}
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">-- Seleccione --</option>
+                                    @foreach($types as $k => $v)
+                                    <option value="{{ $k }}">{{ $v }}</option>
+                                    @endforeach
+                                </select>
+                                @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label
                                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Impuesto</label>
-                            <select wire:model="tax"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="">-- Seleccione --</option>
-                                @foreach($this->taxes as $tax)
-                                <option value="{{ $tax->id }}">{{ $tax->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                <select wire:model="tax"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">-- Seleccione --</option>
+                                    @foreach($this->taxes as $tax)
+                                    <option value="{{ $tax->id }}">{{ $tax->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
                         </div>
-
+                        @if($showCommand)
                         @livewire('tenant.items.command', [
                         'commandId' => $commandId,
                         'name' => 'commandId',
@@ -400,7 +437,7 @@
                         dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2
                         focus:ring-indigo-500 focus:border-indigo-500'
                         ])
-
+                        @endif
 
                         @livewire('tenant.items.brand',[
                         'brandId' => $brandId,
@@ -444,8 +481,35 @@
                             ])
                         </div>
 
+                        <div class="mb-3 grid grid-cols-2 gap-2">
+                            @if($this->manageSerials())
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Maneja
+                                    Serial</label>
+                                <select wire:model="handles_serial"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">-- Seleccione --</option>
+                                    <option value="1">SI</option>
+                                    <option value="0">NO</option>
+                                </select>
+                                @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            @endif
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Maneja
+                                    Inventario</label>
+                                <select wire:model="inventoriable"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">-- Seleccione --</option>
+                                    <option value="1">SI</option>
+                                    <option value="0">NO</option>
+                                </select>
+                                @error('type') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
                         <div class="mb-3">
-                            <label class="block text-sm">Descripción</label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción</label>
                             <textarea wire:model="description"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 rows="3">
@@ -476,128 +540,152 @@
                         </div -->
 
                         <div class="border-t border-gray-300 my-6"></div>
-                        @if ($item_id)
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-gray-700 mb-4">Valores</h3>
-                            <div class="flex items-center space-x-3">
-                                <button type="button" wire:click="toggleValuesForm"
-                                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
-                                    title="Agregar nuevo valor">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 4v16m8-8H4"></path>
-                                    </svg>
-                                    Agregar Valor
-                                </button>
-                            </div>
-                        </div>
+                        <h3 class="text-lg blockfont-medium text-gray-700 dark:text-gray-300 mb-2">Valores</h3>
 
-
-                        @if ($showValuesSection)
-                        <div class="mb-3 grid grid-cols-2 gap-2">
-                            <!--Valor-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor</label>
-                                <input wire:model="valueItem" type="text" id="valueItem"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="Ingrese el valor">
-                                @error('valueItem') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                        {{-- Si el item es NUEVO: mostrar inputs para agregar valores --}}
+                        @if (!$item_id)
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead class="bg-gray-50 dark:bg-gray-900">
+                                        <tr>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Etiqueta</th>
+                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
+                                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        @php
+                                            $staticValues = [
+                                                ['label' => 'Costo Inicial', 'type' => 'Costo'],
+                                                ['label' => 'Costo', 'type' => 'Costo'],
+                                                ['label' => 'Precio Base', 'type' => 'Precio'],
+                                                ['label' => 'Precio Regular', 'type' => 'Precio'],
+                                                ['label' => 'Precio Crédito', 'type' => 'Precio'],
+                                            ];
+                                        @endphp
+                                        @foreach ($staticValues as $index => $staticValue)
+                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                                    {{ $staticValue['label'] }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm">
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $staticValue['type'] === 'Costo' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }}">
+                                                        {{ $staticValue['type'] }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-right">
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        min="0"
+                                                        wire:model="tempValues.{{ $staticValue['label'] }}"
+                                                        placeholder="0.00"
+                                                        class="w-28 px-2 py-1 text-right border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                                    >
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
-                            <!--Tipo de valor-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
-                                <select wire:model.live="typeValue"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">-- Seleccione --</option>
-                                    <option value="costo">Costo</option>
-                                    <option value="precio">Precio</option>
-                                </select>
-                                @error('typeValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <!--Etiqueta del valor-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Etiqueta</label>
-                                <select wire:model="labelValue"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">-- Seleccione --</option>
-                                    @foreach($this->labelsValues as $key => $value)
-                                    <option value="{{ $key }}">{{ $value }}</option>
-                                    @endforeach
-                                </select>
-                                @error('labelValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <!--Sucursal / Si aplica-->
-                            <div class="mb-4">
-                                <label
-                                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sucursal</label>
-                                <select wire:model="warehouseIdValue"
-                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">-- Seleccione --</option>
-                                    @foreach($warehouses as $warehouse)
-                                    <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('warehouseIdValue') <span class="text-red-600 text-sm">{{ $message }}</span>
-                                @enderror
-                            </div>
-                        </div>
-                        @if($temporaryErrorMessage)
-                        <div x-data="{show:true}" x-show="show"
-                            x-init="setTimeout(()=>{show = false; $wire.call('clearTemporaryMessage')}, 2000)"
-                            class="p-4 mt-2 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
-                            role="alert">
-                            <span class="font-medium">{{$temporaryErrorMessage}}</span>
-                        </div>
-                        @endif
-                        <!-- Mensajes -->
-                        @if ($messageValues)
-                        <div x-data="{ showAlert: true }" x-show="showAlert"
-                            x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 transform scale-90"
-                            x-transition:enter-end="opacity-100 transform scale-100"
-                            class="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                            <div class="flex items-start">
-                                <svg class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0"
-                                    fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                                <div class="flex-1">
-                                    <p class="text-sm text-green-700 dark:text-green-400">{{ $messageValues }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-3">
+                                <strong>Nota:</strong> Los valores serán guardados cuando registres el item.
+                            </p>
+                        @else
+                            {{-- Si el item YA EXISTE: mostrar botón para abrir modal --}}
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <button type="button" wire:click="openValuesModal({{ $item_id }})"
+                                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150"
+                                        title="Gestionar valores del item">
+                                        <x-heroicon-o-cog-6-tooth class="w-4 h-4 mr-2" />
+                                        Gestionar Valores
+                                    </button>
                                 </div>
-                                <button type="button" @click="showAlert = false"
-                                    class="ml-3 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors">
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                </button>
                             </div>
-                        </div>
-                        @endif
-                        <!--Botón-->
-                        <div class="flex justify-end">
-                            <button type="button" wire:click="SaveValueItem" wire:loading.attr="disabled"
-                                class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors order-1 sm:order-2">
-                                <span wire:loading.remove>Agregar</span>
-                                <span wire:loading>Guardando...</span>
-                            </button>
-                        </div>
                         @endif
 
-                        <!----Tabla Valores----->
 
-                        <div
-                            class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                            @livewire('tenant.items.inv-values', ['ItemId' => $item_id])
-                        </div>
+                            {{-- @if ($showValuesSection)
+                                <div class="mb-3 grid grid-cols-2 gap-2">
+                                    <!--Valor-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor</label>
+                                        <input wire:model="valueItem" type="text" id="valueItem"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            placeholder="Ingrese el valor">
+                                        @error('valueItem') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    </div>
+                                    <!--Tipo de valor-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo</label>
+                                        <select wire:model.live="typeValue"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">-- Seleccione --</option>
+                                            <option value="costo">Costo</option>
+                                            <option value="precio">Precio</option>
+                                        </select>
+                                        @error('typeValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    </div>
+                                    <!--Etiqueta del valor-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Etiqueta</label>
+                                        <select wire:model="labelValue"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700">
+                                            <option value="">-- Seleccione --</option>
+                                            @foreach($this->labelsValues as $key => $value)
+                                            <option wire:key="label-{{ $key }}" value="{{ $key }}">
+                                                {{ $value }}
+                                            </option>
+                                            @endforeach
+                                        </select>
+                                        @error('labelValue') <span class="text-red-600 text-sm">{{ $message }}</span> @enderror
+                                    </div>
+                                    <!--Sucursal / Si aplica-->
+                                    <div class="mb-4">
+                                        <label
+                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sucursal</label>
+                                        <select wire:model="warehouseIdValue"
+                                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                            <option value="">-- Seleccione --</option>
+                                            @foreach($warehouses as $warehouse)
+                                            <option value="{{ $warehouse->id }}">{{ $warehouse->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('warehouseIdValue') <span class="text-red-600 text-sm">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+                                </div>
+                                @if($temporaryErrorMessage)
+                                    <div x-data="{show:true}" x-show="show"
+                                        x-init="setTimeout(()=>{show = false; $wire.call('clearTemporaryMessage')}, 2000)"
+                                        class="p-4 mt-2 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+                                        role="alert">
+                                        <span class="font-medium">{{$temporaryErrorMessage}}</span>
+                                    </div>
+                                @endif
 
-                        @endif
+                                <!--Botón-->
+                                <div class="flex justify-end">
+                                    <button type="button" wire:click="SaveValueItem" wire:loading.attr="disabled"
+                                        class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed border border-transparent rounded-lg font-medium text-sm text-white transition-colors order-1 sm:order-2">
+                                        <span wire:loading.remove>Agregar</span>
+                                        <span wire:loading>Guardando...</span>
+                                    </button>
+                                </div>
+                            @endif
+
+                            <!----Tabla Valores----->
+
+                            <div
+                                class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                @livewire('tenant.items.inv-values', ['ItemId' => $item_id])
+                            </div> --}}
+
+                        {{-- @endif --}}
 
                         <!-- Sección de Galería de Imágenes -->
                         @if ($item_id)
@@ -614,7 +702,29 @@
                         key('image-upload-'.$item_id))
                         @endif
 
-
+                        <!-- Mensajes -->
+                        @if ($messageValues)
+                        <div x-data="{ showAlert: true }" x-show="showAlert"
+                            x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0 transform scale-90"
+                            x-transition:enter-end="opacity-100 transform scale-100"
+                            class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <div class="flex items-start">
+                                <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-red-700" />
+                                <div class="flex-1">
+                                    <p class="text-sm text-red-700 dark:text-red-400">{{ $messageValues }}</p>
+                                </div>
+                                <button type="button" @click="showAlert = false"
+                                    class="ml-3 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors">
+                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        @endif
                         <div
                             class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <button type="button" wire:click="cancel"

@@ -12,7 +12,7 @@ use Carbon\Carbon;
 
 class Command extends Component
 {
-    use WithPagination;
+    use WithPagination, \App\Traits\Livewire\WithExport;
 
     public $command_id, $name, $print_path, $status, $created_at;
 
@@ -26,8 +26,15 @@ class Command extends Component
     public $perPage = 10;
 
     protected $rules =[
-        'name' => 'required|min:3',
+        'name' => 'required|min:3|regex:/^\pL+(\s+\pL+)*$/u',
         'print_path' => 'required|min:3',
+    ];
+
+    protected $messages = [
+        'name.required' => 'El nombre de la marca es obligatorio',
+        'name.min' => 'El nombre de la marca debe tener al menos 3 caracteres',
+        'name.regex' => 'El nombre de la casa solo debe contener letras y espacios',
+        'print_path.required' => 'La ruta de impresión es obligatoria',
     ];
 
     public function resetForm()
@@ -182,5 +189,44 @@ class Command extends Component
         return view('livewire.tenant.inventory.command',[
             'commands' => $commands
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection(); 
+        return CommandModel::query()
+            ->when($this->search, function($query){
+                $query->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('print_path', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Ruta Impresión', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function($command) {
+            return [
+                $command->id,
+                $command->name,
+                $command->print_path,
+                $command->status ? 'Activo' : 'Inactivo',
+                $command->created_at ? Carbon::parse($command->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'comandas_' . now()->format('Y-m-d_His');
     }
 }

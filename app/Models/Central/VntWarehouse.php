@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VntWarehouse extends Model
 {
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'vnt_warehouses';
 
     protected $fillable = [

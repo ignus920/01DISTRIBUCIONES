@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Layout;
+use App\Models\Central\CnfFiscalResponsability;
 
 class UpdateCompany extends Component
 {
@@ -134,8 +135,15 @@ class UpdateCompany extends Component
 
     protected function loadSelectData()
     {
-        // YA NO NECESARIO - Los componentes cargan automáticamente los datos
-        // Método mantenido para compatibilidad, pero puede eliminarse
+        // Asegurar que el select tenga un valor por defecto ('Ninguna') si no hay valor cargado
+        try {
+            if (empty($this->fiscalResponsibilityId) || $this->fiscalResponsibilityId === 0) {
+                $this->fiscalResponsibilityId = CnfFiscalResponsability::where('description', 'Ninguna')->value('id') ?? 0;
+            }
+        } catch (\Exception $e) {
+            // Silenciar errores de lectura de catálogo y dejar el valor por defecto
+            $this->fiscalResponsibilityId = $this->fiscalResponsibilityId ?? 0;
+        }
     }
 
     protected function loadExistingData()

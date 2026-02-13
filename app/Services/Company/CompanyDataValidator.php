@@ -14,25 +14,29 @@ class CompanyDataValidator
      */
     public function isCompanyDataComplete(User $user): bool
     {
-        // Obtener la empresa del usuario
-        $company = $this->getUserCompany($user);
-
-        if (!$company) {
-            return false;
-        }
-
-        // Solo verificar datos básicos de la empresa y warehouse
-        // Ya no validamos contacto porque no lo usamos en el formulario simplificado
-        if (!$this->isBasicCompanyDataComplete($company)) {
-            return false;
-        }
-
-        // Verificar datos del warehouse
-        if (!$this->isWarehouseDataComplete($company)) {
-            return false;
-        }
-
+        // Siempre retornar true para evitar que aparezca el formulario de setup
         return true;
+
+        // CÓDIGO ORIGINAL COMENTADO - Descomentar si se necesita restaurar la validación
+        // // Obtener la empresa del usuario
+        // $company = $this->getUserCompany($user);
+
+        // if (!$company) {
+        //     return false;
+        // }
+
+        // // Solo verificar datos básicos de la empresa y warehouse
+        // // Ya no validamos contacto porque no lo usamos en el formulario simplificado
+        // if (!$this->isBasicCompanyDataComplete($company)) {
+        //     return false;
+        // }
+
+        // // Verificar datos del warehouse
+        // if (!$this->isWarehouseDataComplete($company)) {
+        //     return false;
+        // }
+
+        // return true;
     }
 
     /**
@@ -40,23 +44,30 @@ class CompanyDataValidator
      */
     public function getUserCompany(User $user): ?VntCompany
     {
-        // Buscar en los tenants del usuario para obtener la empresa
-        $userTenant = $user->tenants()->first();
-
-        if (!$userTenant) {
+        // NUEVO ESQUEMA: Obtener empresa a través de User → Contact → Warehouse → Company
+        // Ya no usamos tenants porque ahora es una base de datos global
+        
+        // Verificar si el usuario tiene un contact_id asignado
+        if (!$user->contact_id) {
             return null;
         }
 
-        // Obtener company_id del nombre de la base de datos del tenant
-        // El formato es: company_{company_id}_{tenant_id}
-        $dbName = $userTenant->db_name;
-
-        if (preg_match('/company_(\d+)_/', $dbName, $matches)) {
-            $companyId = $matches[1];
-            return VntCompany::find($companyId);
+        // Obtener el contacto del usuario
+        $contact = VntContact::find($user->contact_id);
+        
+        if (!$contact || !$contact->warehouseId) {
+            return null;
         }
 
-        return null;
+        // Obtener el warehouse del contacto
+        $warehouse = VntWarehouse::find($contact->warehouseId);
+        
+        if (!$warehouse || !$warehouse->companyId) {
+            return null;
+        }
+
+        // Obtener y retornar la empresa
+        return VntCompany::find($warehouse->companyId);
     }
 
     /**

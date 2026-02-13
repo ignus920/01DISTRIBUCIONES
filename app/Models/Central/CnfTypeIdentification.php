@@ -10,7 +10,7 @@ class CnfTypeIdentification extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'cnf_type_identifications';
 
     protected $fillable = [

@@ -3,6 +3,7 @@
 namespace App\Livewire\Tenant\VntCompany\Services;
 
 use App\Models\Tenant\Customer\VntCompany;
+use App\Models\TAT\Routes\TatRoutes;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use App\Services\Tenant\TenantManager;
@@ -18,20 +19,32 @@ class CompanyQueryService
         string $search = '',
         int $perPage = 10,
         string $sortField = 'id',
-        string $sortDirection = 'desc'
+        string $sortDirection = 'desc',
+        string $searchType = 'TODOS'
     ): LengthAwarePaginator {
 
         $this->ensureTenantConnection();
         return VntCompany::query()
             ->with([
                 'mainWarehouse:id,companyId,name,address,postcode',
-                'mainWarehouse.contacts' => function($query) {
+                'mainWarehouse.contacts' => function ($query) {
                     $query->select('id', 'warehouseId', 'business_phone', 'personal_phone')
-                          ->limit(1);
-                }
+                        ->limit(1);
+                },
+                'routes' => function ($query) {
+                    $query->select('id', 'company_id', 'route_id', 'sales_order', 'delivery_order');
+                },
+                'routes.route' => function ($query) {
+                    $query->select('id', 'name', 'zone_id', 'salesman_id', 'sale_day', 'delivery_day');
+                },
+                'routes.route.zones:id,name',
+                'routes.route.salesman:id,name,email,phone'
             ])
             ->when($search, function (Builder $query) use ($search) {
                 $this->applySearchFilters($query, $search);
+            })
+            ->when($searchType !== 'TODOS', function (Builder $query) use ($searchType) {
+                $query->where('type', $searchType);
             })
             ->orderBy($sortField, $sortDirection)
             ->paginate($perPage);
@@ -53,7 +66,7 @@ class CompanyQueryService
      */
     public function getActiveCompanies(): Builder
     {
-          $this->ensureTenantConnection();
+        $this->ensureTenantConnection();
         return VntCompany::where('status', 1);
     }
 
@@ -102,13 +115,13 @@ class CompanyQueryService
      */
     public function identificationExists(string $identification, ?int $excludeId = null): bool
     {
-          $this->ensureTenantConnection();
+        $this->ensureTenantConnection();
         $query = VntCompany::where('identification', $identification);
-        
+
         if ($excludeId) {
             $query->where('id', '!=', $excludeId);
         }
-        
+
         return $query->exists();
     }
 
@@ -117,7 +130,7 @@ class CompanyQueryService
      */
     private function applySearchFilters(Builder $query, string $search): void
     {
-          $this->ensureTenantConnection();
+        $this->ensureTenantConnection();
         $query->where(function (Builder $subQuery) use ($search) {
             $subQuery->where('businessName', 'like', '%' . $search . '%')
                 ->orWhere('identification', 'like', '%' . $search . '%')
@@ -125,14 +138,14 @@ class CompanyQueryService
                 ->orWhere('lastName', 'like', '%' . $search . '%')
                 ->orWhere('billingEmail', 'like', '%' . $search . '%')
                 // Búsqueda en warehouse
-                ->orWhereHas('mainWarehouse', function($q) use ($search) {
+                ->orWhereHas('mainWarehouse', function ($q) use ($search) {
                     $q->where('name', 'like', '%' . $search . '%')
-                      ->orWhere('address', 'like', '%' . $search . '%');
+                        ->orWhere('address', 'like', '%' . $search . '%');
                 })
                 // Búsqueda en contacts
-                ->orWhereHas('mainWarehouse.contacts', function($q) use ($search) {
+                ->orWhereHas('mainWarehouse.contacts', function ($q) use ($search) {
                     $q->where('business_phone', 'like', '%' . $search . '%')
-                      ->orWhere('personal_phone', 'like', '%' . $search . '%');
+                        ->orWhere('personal_phone', 'like', '%' . $search . '%');
                 });
         });
     }
@@ -192,5 +205,138 @@ class CompanyQueryService
 
         // Inicializar tenancy
         tenancy()->initialize($tenant);
+    }
+
+    /**
+     * Obtener empresas por ruta específica
+     */
+    public function getCompaniesByRoute(int $routeId): Builder
+    {
+        $this->ensureTenantConnection();
+        return VntCompany::query()
+            ->with([
+                'mainWarehouse:id,companyId,name,address,postcode',
+                'routes' => function ($query) use ($routeId) {
+                    $query->where('route_id', $routeId)
+                        ->select('id', 'company_id', 'route_id', 'sales_order', 'delivery_order');
+                },
+                'routes.route' => function ($query) {
+                    $query->select('id', 'name', 'zone_id', 'salesman_id', 'sale_day', 'delivery_day');
+                }
+            ])
+            ->whereHas('routes', function ($query) use ($routeId) {
+                $query->where('route_id', $routeId);
+            });
+    }
+
+    /**
+     * Obtener empresas con rutas asignadas
+     */
+    public function getCompaniesWithRoutes(): Builder
+    {
+        $this->ensureTenantConnection();
+        return VntCompany::query()
+            ->with([
+                'mainWarehouse:id,companyId,name,address,postcode',
+                'routes' => function ($query) {
+                    $query->select('id', 'company_id', 'route_id', 'sales_order', 'delivery_order');
+                },
+                'routes.route' => function ($query) {
+                    $query->select('id', 'name', 'zone_id', 'salesman_id', 'sale_day', 'delivery_day');
+                }
+            ])
+            ->whereHas('routes');
+    }
+
+    /**
+     * Obtener empresas sin rutas asignadas
+     */
+    public function getCompaniesWithoutRoutes(): Builder
+    {
+        $this->ensureTenantConnection();
+        return VntCompany::query()
+            ->with([
+                'mainWarehouse:id,companyId,name,address,postcode'
+            ])
+            ->whereDoesntHave('routes');
+    }
+
+    /**
+     * Obtener rutas disponibles con relaciones
+     */
+    public function getAvailableRoutes()
+    {
+        $this->ensureTenantConnection();
+        return TatRoutes::query()
+            ->select('id', 'name', 'zone_id', 'salesman_id', 'sale_day', 'delivery_day')
+            ->with([
+                'zones:id,name',
+                'salesman:id,name,email,phone'
+            ])
+            ->get();
+    }
+
+    /**
+     * Obtener el nombre del vendedor (salesman) de una empresa
+     * Puede retornar solo el nombre o nombre y email si están disponibles
+     */
+    public function getSalesmanName(?int $companyId = null, ?string $format = 'name'): string
+    {
+        if (!$companyId) {
+            return 'Sin vendedor';
+        }
+
+        $this->ensureTenantConnection();
+        $company = VntCompany::with([
+            'routes' => function ($query) {
+                $query->select('id', 'company_id', 'route_id');
+            },
+            'routes.route' => function ($query) {
+                $query->select('id', 'salesman_id');
+            },
+            'routes.route.salesman' => function ($query) {
+                $query->select('id', 'name', 'email', 'phone');
+            }
+        ])->find($companyId);
+
+        if (!$company || $company->routes->isEmpty()) {
+            return 'Sin vendedor';
+        }
+
+        $salesman = $company->routes->first()?->route?->salesman;
+
+        if (!$salesman) {
+            return 'Sin vendedor';
+        }
+
+        return match ($format) {
+            'email' => $salesman->email ?? 'N/A',
+            'phone' => $salesman->phone ?? 'N/A',
+            'name_email' => "{$salesman->name} ({$salesman->email})",
+            default => $salesman->name ?? 'N/A'
+        };
+    }
+
+    /**
+     * Obtener todas las empresas por vendedor/salesman
+     */
+    public function getCompaniesBySalesman(int $salesmanId): Builder
+    {
+        $this->ensureTenantConnection();
+        return VntCompany::query()
+            ->with([
+                'mainWarehouse:id,companyId,name,address,postcode',
+                'routes' => function ($query) use ($salesmanId) {
+                    $query->select('id', 'company_id', 'route_id');
+                },
+                'routes.route' => function ($query) use ($salesmanId) {
+                    $query->where('salesman_id', $salesmanId)
+                        ->select('id', 'name', 'zone_id', 'salesman_id', 'sale_day', 'delivery_day');
+                },
+                'routes.route.salesman:id,name,email,phone'
+            ])
+            ->whereHas('routes.route', function ($query) use ($salesmanId) {
+                $query->where('salesman_id', $salesmanId);
+            });
     }
 }

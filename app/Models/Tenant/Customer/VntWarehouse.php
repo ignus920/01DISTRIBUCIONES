@@ -57,7 +57,8 @@ class VntWarehouse extends Model
         'termId',
         'creditLimit',
         'priceList',
-        'status',
+        'status', // Tiene un default(1) en la migración
+        'district',
         'api_data_id',
         'main',
         'branch_type',

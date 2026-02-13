@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-    <div class="max-w-12xl mx-auto">
+    <div class="max-w-full mx-auto">
         <!-- Header -->
         @if(\App\Helpers\PermissionHelper::userCan('Usuarios', 'show'))
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
@@ -111,37 +111,12 @@
                         </div>
 
                         <!-- Export buttons -->
-                        <div class="flex items-center gap-2">
-                            <!-- Excel button -->
-                            <button wire:click="exportExcel"
-                                title="Exportar a Excel"
-                                class="inline-flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5M19,5H12V7H19V5M19,9H12V11H19V9M19,13H12V15H19V13M19,17H12V19H19V17M5,5V7H10V5H5M5,9V11H10V9H5M5,13V15H10V13H5M5,17V19H10V17H5Z" />
-                                </svg>
-                            </button>
-                            <!-- PDF button -->
-                            <button wire:click="exportPdf"
-                                title="Exportar a PDF"
-                                class="inline-flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                                </svg>
-                            </button>
-                            <!-- CSV button -->
-                            <button wire:click="exportCsv"
-                                title="Exportar a CSV"
-                                class="inline-flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20M8,12V14H16V12H8M8,16V18H13V16H8Z" />
-                                </svg>
-                            </button>
-                        </div>
+                        <x-export-buttons />
                     </div>
                 </div>
             </div>
             <!-- Datatable -->
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto overflow-visible">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-700">
                         <tr>
@@ -220,7 +195,7 @@
                                 <div class="flex items-center">
                                     <div class="ml-4">
                                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ $user->name }}
+                                            {{ $user->name ?: 'N/A' }}
                                         </div>
                                     </div>
                                 </div>
@@ -258,11 +233,11 @@
                                         wire:loading.attr="disabled"
                                         wire:loading.class="opacity-50 cursor-not-allowed"
                                         wire:target="toggleItemStatus({{ $user->id }})"
-                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:shadow-md {{ $user->contact && $user->contact->status ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500' }}"
+                                        class="relative inline-flex h-4 w-8 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 hover:shadow-md {{ $user->contact && $user->contact->status ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500' }}"
                                         role="switch"
                                         aria-checked="{{ $user->contact && $user->contact->status ? 'true' : 'false' }}"
                                         aria-label="Toggle user status for {{ $user->name }}">
-                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-all duration-200 ease-in-out {{ $user->contact && $user->contact->status ? 'translate-x-5' : 'translate-x-1' }}"></span>
+                                        <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-all duration-200 ease-in-out {{ $user->contact && $user->contact->status ? 'translate-x-5' : 'translate-x-1' }}"></span>
                                     </button>
                                     <!-- Estado de carga -->
                                     <div wire:loading wire:target="toggleItemStatus({{ $user->id }})" class="ml-1">
@@ -275,8 +250,24 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                 <!-- Menú de tres puntos con Alpine.js -->
-                                <div x-data="{ open: false }" @click.outside="open = false" class="relative inline-block text-left">
-                                    <button @click="open = !open"
+                                <div x-data="{ 
+                                    open: false,
+                                    openUp: false,
+                                    toggleMenu() {
+                                        this.open = !this.open;
+                                        if (this.open) {
+                                            this.$nextTick(() => {
+                                                const button = this.$refs.button;
+                                                const menu = this.$refs.menu;
+                                                const buttonRect = button.getBoundingClientRect();
+                                                const spaceBelow = window.innerHeight - buttonRect.bottom;
+                                                const menuHeight = menu.offsetHeight || 150;
+                                                this.openUp = spaceBelow < (menuHeight + 50);
+                                            });
+                                        }
+                                    }
+                                }" @click.outside="open = false" class="relative inline-block text-left">
+                                    <button @click="toggleMenu()" x-ref="button"
                                         class="flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg p-1 transition-colors">
                                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
@@ -285,6 +276,8 @@
 
                                     <!-- Menú desplegable -->
                                     <div x-show="open"
+                                        x-ref="menu"
+                                        x-cloak
                                         x-transition:enter="transition ease-out duration-100"
                                         x-transition:enter-start="transform opacity-0 scale-95"
                                         x-transition:enter-end="transform opacity-100 scale-100"
@@ -292,8 +285,8 @@
                                         x-transition:leave-start="transform opacity-100 scale-100"
                                         x-transition:leave-end="transform opacity-0 scale-95"
                                         @click="open = false"
-                                        class="origin-top-right absolute right-0 mt-2 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50"
-                                        style="display: none;">
+                                        :class="openUp ? 'bottom-full mb-2 origin-bottom-right' : 'top-full mt-2 origin-top-right'"
+                                        class="absolute right-0 w-48 rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 dark:ring-gray-700 z-50">
                                         <div class="py-1" role="menu" aria-orientation="vertical">
                                             <!-- Editar Usuario -->
                                             @if(\App\Helpers\PermissionHelper::userCan('Usuarios', 'edit'))
@@ -311,7 +304,7 @@
                                             <button wire:click="openChangePasswordModal({{ $user->id }})"
                                                 class="w-full text-left px-4 py-2 text-sm text-orange-800 dark:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors flex items-center">
                                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 112 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 112 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
                                                 </svg>
                                                 Cambiar Contraseña
                                             </button>
@@ -459,7 +452,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Primer Nombre <span class="text-red-500">*</span>
                             </label>
-                            <input wire:model.defer="firstName" type="text"
+                            <input wire:model="firstName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('firstName') border-red-500 @enderror"
                                 placeholder="Ej: Juan">
                             @error('firstName') 
@@ -472,7 +465,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Segundo Nombre
                             </label>
-                            <input wire:model.defer="secondName" type="text"
+                            <input wire:model="secondName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('secondName') border-red-500 @enderror"
                                 placeholder="Ej: Carlos">
                             @error('secondName') 
@@ -485,7 +478,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Primer Apellido <span class="text-red-500">*</span>
                             </label>
-                            <input wire:model.defer="lastName" type="text"
+                            <input wire:model="lastName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('lastName') border-red-500 @enderror"
                                 placeholder="Ej: Pérez">
                             @error('lastName') 
@@ -498,7 +491,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Segundo Apellido
                             </label>
-                            <input wire:model.defer="secondLastName" type="text"
+                            <input wire:model="secondLastName" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('secondLastName') border-red-500 @enderror"
                                 placeholder="Ej: García">
                             @error('secondLastName') 
@@ -511,7 +504,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Correo <span class="text-red-500">*</span>
                             </label>
-                            <input wire:model.defer="email" type="email"
+                            <input wire:model="email" type="email"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('email') border-red-500 @enderror"
                                 placeholder="Ej: juan.perez@empresa.com">
                             @error('email') 
@@ -524,7 +517,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Teléfono
                             </label>
-                            <input wire:model.defer="phone" type="text"
+                            <input wire:model="phone" type="text"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('phone') border-red-500 @enderror"
                                 placeholder="Ej: +57 300 123 4567">
                             @error('phone') 
@@ -534,31 +527,59 @@
 
                         <!-- Password (only in create mode) -->
                         @if(!$editingId)
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Contraseña <span class="text-red-500">*</span>
-                            </label>
-                            <input wire:model.defer="password" type="password"
-                                autocomplete="new-password"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password') border-red-500 @enderror"
-                                placeholder="Mínimo 8 caracteres">
-                            @error('password') 
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
-                            @enderror
-                        </div>
+                        <div x-data="{ 
+                            get password() { return $wire.password || ''; },
+                            get passwordConfirmation() { return $wire.password_confirmation || ''; },
+                            get passwordsMatch() {
+                                if (!this.password || !this.passwordConfirmation) return true;
+                                return this.password === this.passwordConfirmation;
+                            }
+                        }">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Contraseña <span class="text-red-500">*</span>
+                                </label>
+                                <input wire:model="password" type="password"
+                                    autocomplete="new-password"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password') border-red-500 @enderror"
+                                    placeholder="Mínimo 8 caracteres">
+                                @error('password') 
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                                @enderror
+                            </div>
 
-                        <!-- Password Confirmation (only in create mode) -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Confirmar Contraseña <span class="text-red-500">*</span>
-                            </label>
-                            <input wire:model.defer="password_confirmation" type="password"
-                                autocomplete="new-password"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password_confirmation') border-red-500 @enderror"
-                                placeholder="Repite la contraseña">
-                            @error('password_confirmation') 
-                                <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
-                            @enderror
+                            <!-- Password Confirmation (only in create mode) -->
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Confirmar Contraseña <span class="text-red-500">*</span>
+                                </label>
+                                <input wire:model="password_confirmation" type="password"
+                                    autocomplete="new-password"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('password_confirmation') border-red-500 @enderror"
+                                    placeholder="Repite la contraseña">
+                                @error('password_confirmation') 
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> 
+                                @enderror
+                            </div>
+
+                            <!-- Password Match Alert -->
+                            <div x-show="!passwordsMatch && password && passwordConfirmation"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 transform scale-95"
+                                x-transition:enter-end="opacity-100 transform scale-100"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 transform scale-100"
+                                x-transition:leave-end="opacity-0 transform scale-95"
+                                class="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                <div class="flex items-start">
+                                    <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <p class="text-sm text-yellow-700 dark:text-yellow-300">
+                                        Las contraseñas deben ser iguales
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                         @endif
 
@@ -587,7 +608,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Sucursal <span class="text-red-500">*</span>
                             </label>
-                            <select wire:model.defer="warehouseId"
+                            <select wire:model="warehouseId"
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 @error('warehouseId') border-red-500 @enderror">
                                 <option value="">Seleccionar sucursal</option>
                                 @foreach($warehouses as $warehouse)

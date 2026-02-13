@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Auth\Livewire\Verify2FA;
 use App\Auth\Livewire\SelectTenant;
 use App\Auth\Livewire\Enable2FA;
-use App\Http\Livewire\Tenant\Dashboard as TenantDashboard;
+use App\Livewire\Tenant\Dashboard\Dashboard as TenantDashboard;
 use App\Http\Controllers\WorldController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TestController;
@@ -144,11 +144,39 @@ Route::prefix('api/permissions')->middleware(['auth', 'company.complete'])->grou
 
 
 
+
+
+
+
 require __DIR__.'/auth.php';
 
-// Incluir rutas del módulo de parámetros del tenant
 require __DIR__.'/tenants/parameters.php';
-// Incluir rutas del módulo de pagos de cotizacion 
+// Incluir rutas del módulo de pagos de cotizacion
 require __DIR__.'/tenants/payments.php';
+// Incluir rutas del módulo TAT Items
+require __DIR__.'/TAT/tatItems.php';
+// Incluir rutas del módulo TAT Categories
+require __DIR__.'/TAT/tatCategories.php';
+// Incluir rutas del módulo TAT Customers
+require __DIR__.'/TAT/tatCustomers.php';
+// Incluir rutas del módulo TAT Quoter
+require __DIR__.'/TAT/quoter.php';
 
+// Incluir rutas de módulo cargue
+require __DIR__.'/tenants/uploads.php';
+
+// Incluir rutas del módulo de usuarios del tenant
+require __DIR__.'/tenants/users.php';
+
+// Incluir rutas del módulo de clientes del tenant
+require __DIR__.'/tenants/customers.php';
+
+// Incluir rutas del módulo de reportes del tenant
+require __DIR__.'/tenants/reports.php';
+
+// Rutas de entregas
+require __DIR__.'/tenants/deliveries.php';
+
+// Incluir rutas del módulo de remisiones 
+require __DIR__.'/tenants/remissions.php';
 

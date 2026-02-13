@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VntMerchantType extends Model
 {
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'vnt_merchant_types';
 
     protected $fillable = [

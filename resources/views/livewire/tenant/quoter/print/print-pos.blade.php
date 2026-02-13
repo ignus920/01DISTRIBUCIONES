@@ -357,5 +357,10 @@
     </div>
 
     <div style="margin-top: 10mm;"></div> <!-- Espacio final para corte -->
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
 </body>
 </html>

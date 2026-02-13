@@ -22,8 +22,13 @@ class VntQuote extends Model
         'warehouseId',
         'userId',
         'observations',
-        'branchId'
+        'branchId',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
+
+
 
     protected $casts = [
         'created_at' => 'datetime',
@@ -39,7 +44,7 @@ class VntQuote extends Model
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(VntCompany::class, 'customerId');
+        return $this->belongsTo(VntWarehouse::class, 'customerId');
     }
 
     public function warehouse(): BelongsTo
@@ -52,11 +57,18 @@ class VntQuote extends Model
         return $this->belongsTo(VntWarehouse::class, 'branchId');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Auth\User::class, 'userId');
+    }
+
     // Métodos de utilidad
     public function getTotalAttribute()
     {
         return $this->detalles->sum(function ($detalle) {
-            return $detalle->quantity * $detalle->value;
+            $subtotal = $detalle->quantity * $detalle->value;
+            $tax = $subtotal * (($detalle->tax ?? 0) / 100);
+            return $subtotal + $tax;
         });
     }
 
@@ -66,10 +78,14 @@ class VntQuote extends Model
             return 'Cliente no encontrado';
         }
 
-        // Si es persona jurídica, usar businessName; si es persona natural, usar nombres
-        return $this->customer->businessName ?:
-               trim($this->customer->firstName . ' ' . $this->customer->secondName . ' ' .
-                    $this->customer->lastName . ' ' . $this->customer->secondLastName);
+        // Si ahora customer es un VntWarehouse, buscamos el nombre en su compañía
+        $company = $this->customer->company;
+        
+        if (!$company) {
+            return $this->customer->name ?: 'Sucursal sin nombre';
+        }
+
+        return trim($company->businessName ?: ($company->firstName . ' ' . $company->lastName)) ?: 'Sin nombre';
     }
 
     public function getWarehouseNameAttribute()

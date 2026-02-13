@@ -66,35 +66,7 @@
                             </select>
                         </div>
                         <!-- Botones de exportar -->
-                        <div class="flex items-center gap-2">
-                            <button wire:click="exportExcel"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
-                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                        d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm6 10V6h6v8h-6z">
-                                    </path>
-                                </svg>
-                                Excel
-                            </button>
-                            <button wire:click="exportPdf"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
-                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                        d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm0 2h12v8H4V6z">
-                                    </path>
-                                </svg>
-                                PDF
-                            </button>
-                            <button wire:click="exportCsv"
-                                class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm transition-colors">
-                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                        d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L4.414 10H17a1 1 0 100-2H4.414l1.879-1.293z">
-                                    </path>
-                                </svg>
-                                CSV
-                            </button>
-                        </div>
+                        <x-export-buttons />
                     </div>
                 </div>
             </div>
@@ -216,16 +188,8 @@
 
             <!-- Paginación -->
             @if($categories->hasPages())
-            <div class="bg-white dark:bg-gray-800 px-6 py-3 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
-                <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-700 dark:text-gray-300">
-                        Mostrando {{ $categories->firstItem() }} a {{ $categories->lastItem() }} de {{
-                        $categories->total() }} resultados
-                    </div>
-                    <div>
-                        {{ $categories->links() }}
-                    </div>
-                </div>
+            <div class="bg-white dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
+                <x-responsive-pagination :paginator="$categories" />
             </div>
             @endif
         </div>
@@ -248,10 +212,16 @@
                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
 
                 <!-- Header -->
-                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        {{ $category_id ? 'Editar Categoria' : 'Crear Categoría' }}
-                    </h3>
+                <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            {{ $category_id ? 'Editar Categoria' : 'Crear Categoría' }}
+                        </h3>
+                    </div>
+                    <button wire:click="cancel"
+                        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <x-heroicon-o-x-mark class="w-6 h-6" />
+                    </button>
                 </div>
 
                 <!-- Form -->

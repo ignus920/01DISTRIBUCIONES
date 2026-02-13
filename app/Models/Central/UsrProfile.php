@@ -9,7 +9,7 @@ class UsrProfile extends Model
 {
     use SoftDeletes;
 
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'usr_profiles';
 
     protected $fillable = [

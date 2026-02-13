@@ -5,8 +5,10 @@ namespace App\Models\Tenant\Items;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Tenant\Items\Brand;
+use App\Models\Tenant\Items\House;
 use App\Models\Tenant\Items\InvValues;
 use App\Models\Tenant\Items\ImageGallery;
+use App\Models\Tenant\Items\InvItemsStore;
 use App\Models\Central\CnfTaxes;
 use App\Models\Tenant\Items\CnfPricelist;
 use App\Traits\HasCompanyConfiguration;
@@ -35,6 +37,7 @@ class Items extends Model
         'consumption_unit',
         'generic',
         'status',
+        'handles_serial',
     ];
 
     /**
@@ -60,6 +63,11 @@ class Items extends Model
         return $this->belongsTo(Brand::class, 'brandId', 'id');
     }
 
+    public function house()
+    {
+        return $this->belongsTo(House::class, 'houseId', 'id');
+    }
+
     public function purchasingUnit()
     {
         return $this->belongsTo(UnitMeasurements::class, 'purchasing_unit', 'id');
@@ -78,7 +86,10 @@ class Items extends Model
     {
         return $this->hasMany(InvValues::class, 'itemId', 'id');
     }
-
+    public function invItemsStore()
+    {
+        return $this->hasMany(InvItemsStore::class, 'itemId', 'id');
+    }
     /**
      * Relación con la galería de imágenes
      * Un item puede tener múltiples imágenes

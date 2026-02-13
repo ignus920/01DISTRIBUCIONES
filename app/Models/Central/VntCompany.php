@@ -9,7 +9,7 @@ class VntCompany extends Model
 {
     use HasFactory;
 
-    protected $connection = 'central';
+    protected $connection = 'tenant';
     protected $table = 'vnt_companies';
 
     protected $fillable = [
@@ -60,6 +60,25 @@ class VntCompany extends Model
     public function fiscalResponsability()
     {
         return $this->belongsTo(CnfFiscalResponsability::class, 'fiscalResponsabilityId');
+    }
+
+    // Relación con almacenes (warehouses)
+    public function warehouses()
+    {
+        return $this->hasMany(VntWarehouse::class, 'companyId');
+    }
+
+    // Relación con contactos
+    public function contacts()
+    {
+        return $this->hasManyThrough(
+            VntContact::class,
+            VntWarehouse::class,
+            'companyId', // Foreign key en vnt_warehouses
+            'warehouseId', // Foreign key en vnt_contacts
+            'id', // Local key en vnt_companies
+            'id' // Local key en vnt_warehouses
+        );
     }
 
     // Accessors para mostrar nombre completo

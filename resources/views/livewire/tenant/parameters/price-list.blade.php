@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-    <div class="max-w-12xl mx-auto">
+    <div class="max-w-full mx-auto">
         <!-- Header -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -63,7 +63,7 @@
                                 <option value="100">100</option>
                             </select>
                         </div>
-                    </div>
+                        <x-export-buttons />
                 </div>
             </div>
 

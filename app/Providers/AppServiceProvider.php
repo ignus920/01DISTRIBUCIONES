@@ -20,7 +20,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Forzar HTTPS si la URL de la aplicación empieza con https
+        // Esto es necesario para que los estilos y scripts carguen bien en Ngrok
+        if (str_contains(config('app.url'), 'https://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         if ($this->app->runningInConsole()) {
+
             $this->commands([
                 \App\Console\Commands\MakeLivewireModuleCommand::class,
             ]);

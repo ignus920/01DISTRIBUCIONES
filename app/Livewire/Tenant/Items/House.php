@@ -7,6 +7,8 @@ use App\Models\Tenant\Items\House as HouseModel;
 use App\Services\Tenant\Inventory\HouseService;
 use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 
 class House extends Component
 {
@@ -17,6 +19,8 @@ class House extends Component
     public $required = true;
     public $showLabel = true;
     public $class = 'mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500';
+    public $index = null;
+    public $search = '';
 
     public $newHouseName = '';
     public $showHouseForm = false;
@@ -37,7 +41,54 @@ class House extends Component
     }
 
     public function updatedHouseId(){
-        $this->dispatch('house-changed', $this->houseId);
+        \Illuminate\Support\Facades\Log::info('HouseSelect: updatedHouseId hook triggered', [
+            'houseId' => $this->houseId,
+            'index' => $this->index,
+            'name' => $this->name
+        ]);
+
+        if($this->index !== null){
+            $this->dispatch('house-changed', houseId: $this->houseId, index: $this->index);
+        }else{
+            $this->dispatch('house-changed', $this->houseId);
+        }
+
+        \Illuminate\Support\Facades\Log::info('HouseSelect: house-changed event dispatched', [
+            'houseId' => $this->houseId,
+            'index' => $this->index
+        ]);
+    }
+
+    #[On('validate-house')]
+    public function validateHouse(){
+        $this->validate([
+            'houseId' => 'required',
+        ]);
+        // Notificar al padre que el hijo pasó la validación
+        $this->dispatch('house-valid', index: $this->index, houseId: $this->houseId);
+    }
+
+    public function selectHouse($id){
+        \Illuminate\Support\Facades\Log::info('HouseSelect: selectHouse called', [
+            'id' => $id,
+            'index' => $this->index,
+            'name' => $this->name
+        ]);
+
+        $this->houseId = $id;
+        $this->search = '';
+
+        if($this->index !== null){
+            $this->dispatch('house-changed', houseId: $this->houseId, index: $this->index);
+        }else{
+            $this->dispatch('house-changed', $this->houseId);
+        }
+    }
+
+    #[Computed]
+    public function selectedHouseName(){
+        if (!$this->houseId) return null;
+        return HouseModel::find($this->houseId)?->name;
     }
 
     public function toggleHouseForm()
@@ -72,13 +123,6 @@ class House extends Component
         tenancy()->initialize($tenant);
     }
 
-    public function getHousesProperty()
-    {
-        $this->ensureTenantConnection();
-        // Cargar todas las casas desde la base de datos
-        return HouseModel::where('status', 1)->get(['id', 'name']);
-    }
-
     public function createHouse()
     {   
         
@@ -105,11 +149,24 @@ class House extends Component
             
             // Opcional: Seleccionar automáticamente la nueva categoría
             $this->houseId = $house->id;
-            $this->updatedHouse();
+            $this->updatedHouseId();
 
         } catch (\Exception $e) {
             $this->addError('newHouseName', 'Error al crear la casa: ' . $e->getMessage());
         }
+    }
+
+    #[Computed]
+    public function houses(){
+        $query = HouseModel::where('status', 1);
+        if(!empty($this->search)){
+            $query->where('name', 'like', '%'.$this->search.'%');
+        }
+
+        return $query->select('id', 'name')
+            ->orderBy('name')
+            ->limit(50)
+            ->get();
     }
 
     public function render()

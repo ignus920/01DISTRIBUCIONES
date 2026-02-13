@@ -4,14 +4,18 @@ namespace App\Livewire\Tenant\Inventory;
 
 use App\Livewire\Tenant\Items\Brand as ItemsBrand;
 use Livewire\Component;
+use Livewire\WithPagination;
 use App\Models\Tenant\Items\Brand as BrandModel;
 use App\Services\Tenant\TenantManager;
 use App\Models\Auth\Tenant;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 
 class Brand extends Component
 {
-    public $brand_id,$name,$status, $created_at;
+    use WithPagination;
+    use \App\Traits\Livewire\WithExport;
+    public $brand_id, $name, $status, $created_at;
 
     //Propiedades para la tabla
     public $search = '';
@@ -22,8 +26,14 @@ class Brand extends Component
     public $brandIdToDelete;
     public $perPage = 10;
 
-    protected $rules =[
-        'name' => 'required|min:3',
+    protected $rules = [
+        'name' => 'required|min:3|regex:/^\pL+(\s+\pL+)*$/u',
+    ];
+
+    protected $messages = [
+        'name.required' => 'El nombre de la marca es obligatorio',
+        'name.min' => 'El nombre de la marca debe tener al menos 3 caracteres',
+        'name.regex' => 'El nombre de la casa solo debe contener letras y espacios',
     ];
 
     public function resetForm()
@@ -54,7 +64,7 @@ class Brand extends Component
 
         // Inicializar tenancy
         tenancy()->initialize($tenant);
-    } 
+    }
 
     public function sortBy($field)
     {
@@ -84,7 +94,7 @@ class Brand extends Component
         $this->ensureTenantConnection();
         $brand = BrandModel::findOrFail($id);
         $this->name = $brand->name;
-        $this->brand_id=$brand->id;
+        $this->brand_id = $brand->id;
         $this->showModal = true;
     }
 
@@ -107,11 +117,11 @@ class Brand extends Component
             'name' => $this->name,
         ];
 
-        if($this->brand_id){
-            $brand=BrandModel::findOrFail($this->brand_id);
+        if ($this->brand_id) {
+            $brand = BrandModel::findOrFail($this->brand_id);
             $brand->update($brandData);
             session()->flash('message', 'Marca actualizada correctamente.');
-        }else{
+        } else {
             BrandModel::create($brandData);
             session()->flash('message', 'Marca creada correctamente.');
         }
@@ -126,13 +136,13 @@ class Brand extends Component
     public function toggleBrandStatus($id)
     {
         $this->ensureTenantConnection();
-        $item=BrandModel::findOrFail($id);
+        $item = BrandModel::findOrFail($id);
 
         $newStatus = $item->status ? 0 : 1;
         $item->update([
-            'status'=>$newStatus, 
+            'status' => $newStatus,
         ]);
-        
+
         session()->flash('message', 'Estado actualizado correctamente');
     }
 
@@ -146,30 +156,67 @@ class Brand extends Component
     {
         $this->ensureTenantConnection();
 
-        $brandData=[
-            'status'=>0,
-            'deleted_at'=>Carbon::now(),
+        $brandData = [
+            'status' => 0,
+            'deleted_at' => Carbon::now(),
         ];
 
-        $brand=BrandModel::findOrFail($this->brandIdToDelete);
+        $brand = BrandModel::findOrFail($this->brandIdToDelete);
         $brand->update($brandData);
         $this->confirmingItemDeletion = false;
         $this->reset(['brandIdToDelete']);
-        session()->flash('message','Marca eliminada correctamente');
+        session()->flash('message', 'Marca eliminada correctamente');
     }
 
     public function render()
     {
         $this->ensureTenantConnection();
-        $brands=BrandModel::query()
+        $brands = BrandModel::query()
             //->where('status', 1)
-            ->when($this->search, function($query){
+            ->when($this->search, function ($query) {
                 $query->where('name', 'like', '%' . $this->search . '%');
             })
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
-        return view('livewire.tenant.inventory.brand',[
+        return view('livewire.tenant.inventory.brand', [
             'brands' => $brands
         ]);
+    }
+
+    /**
+     * Métodos para Exportación
+     */
+
+    protected function getExportData()
+    {
+        $this->ensureTenantConnection();
+        return BrandModel::query()
+            ->when($this->search, function ($query) {
+                $query->where('name', 'like', '%' . $this->search . '%');
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->get();
+    }
+
+    protected function getExportHeadings(): array
+    {
+        return ['ID', 'Nombre', 'Estado', 'Fecha Registro'];
+    }
+
+    protected function getExportMapping()
+    {
+        return function ($brand) {
+            return [
+                $brand->id,
+                $brand->name,
+                $brand->status ? 'Activo' : 'Inactivo',
+                $brand->created_at ? Carbon::parse($brand->created_at)->format('Y-m-d H:i:s') : 'N/A',
+            ];
+        };
+    }
+
+    protected function getExportFilename(): string
+    {
+        return 'marcas_' . now()->format('Y-m-d_His');
     }
 }
