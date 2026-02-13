@@ -144,7 +144,8 @@ class Quoter extends Component
             Log::info('🔄 Cargando cotización...');
             $this->selectedQuote = VntQuote::with([
                 'detalles.item',
-                'customer',
+                'customer.company.routes.route',
+                'customer.city',
                 'warehouse',
                 'branch'
             ])->findOrFail($id);
@@ -454,68 +455,70 @@ class Quoter extends Component
         Log::info('🏢 getCompanyInfo llamado');
 
         // Intentar obtener información del warehouse desde la base central
-        if ($quote && $quote->warehouseId) {
-            Log::info('🏢 Obteniendo warehouse desde base central', ['warehouse_id' => $quote->warehouseId]);
+    if ($quote && $quote->warehouseId) {
+        Log::info('🏢 Obteniendo warehouse desde base central', ['warehouse_id' => $quote->warehouseId]);
 
-            try {
-                // Consultar directamente desde la base central usando el modelo VntWarehouse
-                $warehouse = VntWarehouse::find($quote->warehouseId);
+        try {
+            // Consultar directamente desde la base central usando el modelo VntWarehouse con su empresa
+            $warehouse = VntWarehouse::with('company')->find($quote->warehouseId);
 
-                if ($warehouse) {
-                    Log::info('🏢 Warehouse encontrado en central', [
-                        'id' => $warehouse->id,
-                        'name' => $warehouse->name,
-                        'address' => $warehouse->address
-                    ]);
+            if ($warehouse) {
+                Log::info('🏢 Warehouse encontrado en central', [
+                    'id' => $warehouse->id,
+                    'name' => $warehouse->name,
+                    'address' => $warehouse->address
+                ]);
 
-                    $companyData = [
-                        'businessName' => $warehouse->name ?? 'EMPRESA DE PRUEBA',
-                        'firstName' => 'Admin',
-                        'lastName' => 'Sistema',
-                        'identification' => '123456789',
-                        'billingAddress' => $warehouse->address ?? 'Dirección de prueba',
-                        'phone' => '1234567890',
-                        'billingEmail' => 'test@empresa.com'
-                    ];
+                // Priorizar datos de la empresa vinculada al warehouse
+                $company = $warehouse->company;
 
-                    Log::info('🏢 Datos empresa obtenidos del warehouse central', $companyData);
-                } else {
-                    Log::warning('⚠️ Warehouse no encontrado en central con ID: ' . $quote->warehouseId);
-                    throw new \Exception('Warehouse no encontrado');
-                }
-            } catch (\Exception $e) {
-                Log::error('❌ Error consultando warehouse central: ' . $e->getMessage());
-
-                // Datos por defecto si hay error
                 $companyData = [
-                    'businessName' => 'EMPRESA DE PRUEBA',
-                    'firstName' => 'Admin',
-                    'lastName' => 'Sistema',
-                    'identification' => '123456789',
-                    'billingAddress' => 'Dirección de prueba',
-                    'phone' => '1234567890',
-                    'billingEmail' => 'test@empresa.com'
+                    'businessName' => $company->businessName ?? $warehouse->name ?? 'DISTRIBUCIONES',
+                    'firstName' => $company->firstName ?? '',
+                    'lastName' => $company->lastName ?? '',
+                    'identification' => $company->identification ?? 'N/A',
+                    'billingAddress' => $warehouse->address ?? $company->billingAddress ?? 'N/A',
+                    'phone' => $company->phone ?? $company->billingPhone ?? 'N/A',
+                    'billingEmail' => $company->billingEmail ?? 'pedidos@distribuciones.com'
                 ];
-            }
-        } else {
-            Log::warning('⚠️ No se encontró warehouseId en la cotización, usando datos por defecto');
 
-            // Datos por defecto si no hay warehouse
+                Log::info('🏢 Datos empresa obtenidos del warehouse central', $companyData);
+            } else {
+                Log::warning('⚠️ Warehouse no encontrado en central con ID: ' . $quote->warehouseId);
+                throw new \Exception('Warehouse no encontrado');
+            }
+        } catch (\Exception $e) {
+            Log::error('❌ Error consultando warehouse central: ' . $e->getMessage());
+
+            // Fallback razonable
             $companyData = [
-                'businessName' => 'EMPRESA DE PRUEBA',
-                'firstName' => 'Admin',
-                'lastName' => 'Sistema',
-                'identification' => '123456789',
-                'billingAddress' => 'Dirección de prueba',
-                'phone' => '1234567890',
-                'billingEmail' => 'test@empresa.com'
+                'businessName' => 'DISTRIBUCIONES',
+                'firstName' => '',
+                'lastName' => '',
+                'identification' => 'N/A',
+                'billingAddress' => 'N/A',
+                'phone' => 'N/A',
+                'billingEmail' => 'pedidos@distribuciones.com'
             ];
         }
+    } else {
+        Log::warning('⚠️ No se encontró warehouseId en la cotización, usando datos por defecto');
 
-        Log::info('🏢 Datos empresa preparados', $companyData);
-
-        return (object) $companyData;
+        $companyData = [
+            'businessName' => 'DISTRIBUCIONES',
+            'firstName' => '',
+            'lastName' => '',
+            'identification' => 'N/A',
+            'billingAddress' => 'N/A',
+            'phone' => 'N/A',
+            'billingEmail' => 'pedidos@distribuciones.com'
+        ];
     }
+
+    Log::info('🏢 Datos empresa preparados', $companyData);
+
+    return (object) $companyData;
+}
 
 
     private function ensureTenantConnection()
@@ -549,7 +552,15 @@ class Quoter extends Component
         //dd(Auth::id());
         // Cargar cotizaciones con sus relaciones
 
-        $quotes = VntQuote::with(['customer', 'warehouse.contacts', 'branch', 'detalles', 'user'])
+        $quotes = VntQuote::with([
+            'customer.company.routes.route',
+            'customer.city',
+            'customer.contacts',
+            'warehouse.contacts',
+            'branch',
+            'detalles',
+            'user'
+        ])
             ->when(Auth::user()->profile_id != 2, function ($query) {
                 return $query->where('userId', Auth::id());
             })

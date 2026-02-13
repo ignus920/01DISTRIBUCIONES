@@ -221,14 +221,63 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                             #{{ $quote->consecutive }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
+                        <td class="px-6 py-4 text-sm text-gray-700 dark:text-slate-300 min-w-[250px]">
                             @if($quote->customer)
-                            {{ $quote->customer_name }}
-                            @if($quote->customer->email)
-                            <br><small class="text-gray-500">{{ $quote->customer->email }}</small>
-                            @endif
+                            <div class="flex flex-col space-y-1">
+                                <!-- Nombre del establecimiento -->
+                                <div class="font-bold text-gray-900 dark:text-white uppercase">
+                                    {{ $quote->customer->company->businessName ?? $quote->customer->name }}
+                                </div>
+                                
+                                <!-- Contacto principal -->
+                                @php
+                                    $mainContact = $quote->customer->contacts->where('status', 1)->first();
+                                    $routeInfo = $quote->customer->company->routes->first();
+                                @endphp
+                                @if($mainContact)
+                                <div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                    {{ $mainContact->firstName }} {{ $mainContact->lastName }}
+                                </div>
+                                @endif
+
+                                <!-- Dirección y Ciudad -->
+                                <div class="text-xs text-gray-500 dark:text-slate-400 flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    {{ $quote->customer->address }} - {{ $quote->customer->city->name ?? 'N/A' }}
+                                </div>
+
+                                <!-- Teléfonos -->
+                                <div class="text-xs text-gray-600 dark:text-slate-300 flex items-center gap-2">
+                                    @if($mainContact && $mainContact->personal_phone)
+                                        <span class="flex items-center">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                            {{ $mainContact->personal_phone }}
+                                        </span>
+                                    @endif
+                                    @if($mainContact && $mainContact->business_phone && $mainContact->business_phone != $mainContact->personal_phone)
+                                        <span class="flex items-center">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                                            {{ $mainContact->business_phone }}
+                                        </span>
+                                    @endif
+                                </div>
+
+                                <!-- Ruta y Día -->
+                                @if($routeInfo && $routeInfo->route)
+                                <div class="mt-1 pt-1 border-t border-gray-100 dark:border-slate-700/50">
+                                    <span class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-[10px] uppercase font-bold">
+                                        Ruta: {{ $routeInfo->route->name }} ({{ $routeInfo->route->delivery_day }})
+                                    </span>
+                                </div>
+                                @endif
+                                
+                                @if($quote->customer->email)
+                                <div class="text-[10px] text-gray-400 italic">{{ $quote->customer->email }}</div>
+                                @endif
+                            </div>
                             @else
-                            <span class="text-gray-400">Sin cliente asignado</span>
+                            <span class="text-gray-400 italic">Sin cliente asignado</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
@@ -423,38 +472,55 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <!-- Cliente -->
                         <div class="bg-gray-50 dark:bg-slate-700/50 p-4 rounded-lg">
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3">Información del Cliente</h4>
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-3 underline decoration-indigo-500 underline-offset-4">Información del Cliente</h4>
                             @if($selectedQuote->customer)
-                                <div class="space-y-2 text-sm">
-                                    <p class="flex justify-between">
-                                        <span class="text-gray-500 dark:text-slate-400">Nombre:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer_name }}</span>
-                                    </p>
-                                    @if($selectedQuote->customer->identification)
-                                    <p class="flex justify-between">
-                                        <span class="text-gray-500 dark:text-slate-400">Identificación:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->identification }}</span>
-                                    </p>
-                                    @endif
-                                     @if($selectedQuote->customer->typePerson)
-                                    <p class="flex justify-between">
-                                        <span class="text-gray-500 dark:text-slate-400">Tipo persona:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->typePerson === 'PERSON_ENTITY' ? 'Natural' : 'Jurídica' }}</span>
-                                    </p>
-                                    @endif
-                                    @if($selectedQuote->customer->billingEmail)
-                                    <p class="flex justify-between">
-                                        <span class="text-gray-500 dark:text-slate-400">Email:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->billingEmail }}</span>
-                                    </p>
-                                    @endif
-                                    @if($selectedQuote->customer->business_phone)
-                                    <p class="flex justify-between">
-                                        <span class="text-gray-500 dark:text-slate-400">Teléfono:</span>
-                                        <span class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->business_phone }}</span>
-                                    </p>
-                                    @endif
+                                @php
+                                    $mainContact = $selectedQuote->customer->contacts->where('status', 1)->first();
+                                    $routeInfo = $selectedQuote->customer->company->routes->first();
+                                @endphp
+                                <div class="space-y-3 text-sm">
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold">Establecimiento</p>
+                                        <p class="font-semibold text-gray-900 dark:text-slate-200 text-base">{{ $selectedQuote->customer->company->businessName ?? $selectedQuote->customer_name }}</p>
+                                    </div>
 
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold">Identificación</p>
+                                            <p class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->identification ?? 'N/A' }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold">Contacto</p>
+                                            <p class="font-medium text-gray-900 dark:text-slate-200">{{ $mainContact ? ($mainContact->firstName . ' ' . $mainContact->lastName) : 'N/A' }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold">Ubicación</p>
+                                        <p class="font-medium text-gray-900 dark:text-slate-200">{{ $selectedQuote->customer->address }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-slate-400">{{ $selectedQuote->customer->city->name ?? 'Ciudad no especificada' }}</p>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold">Teléfono/Celular</p>
+                                            <p class="font-medium text-gray-900 dark:text-slate-200">{{ $mainContact->personal_phone ?? $selectedQuote->customer->business_phone ?? 'N/A' }}</p>
+                                        </div>
+                                        @if($routeInfo && $routeInfo->route)
+                                        <div>
+                                            <p class="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold">Ruta / Entrega</p>
+                                            <p class="font-medium text-indigo-600 dark:text-indigo-400">{{ $routeInfo->route->name }}</p>
+                                            <p class="text-xs font-bold text-gray-700 dark:text-slate-300">{{ $routeInfo->route->delivery_day }}</p>
+                                        </div>
+                                        @endif
+                                    </div>
+
+                                    @if($selectedQuote->customer->billingEmail)
+                                    <div>
+                                        <p class="text-xs text-gray-500 dark:text-slate-400 uppercase font-bold">Email</p>
+                                        <p class="font-medium text-gray-900 dark:text-slate-200 break-all">{{ $selectedQuote->customer->billingEmail }}</p>
+                                    </div>
+                                    @endif
                                 </div>
                             @else
                                 <p class="text-sm text-gray-500 italic">Cliente mostrador / No registrado</p>
