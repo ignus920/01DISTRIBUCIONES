@@ -249,7 +249,7 @@
         <div class="quote-info">
             <div class="quote-title">COTIZACIÓN</div>
             <div><strong>No. {{ $quote->consecutive }}</strong></div>
-            <div>Página 1 de 1</div>
+            <div>Página 1 de 12</div>
         </div>
     </div>
 
