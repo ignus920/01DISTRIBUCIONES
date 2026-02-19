@@ -54,20 +54,21 @@ self.addEventListener('fetch', (event) => {
     const isLivewire = event.request.headers.get('X-Livewire');
     const isNavigation = event.request.mode === 'navigate';
 
-    // 1. RUTAS CRÍTICAS (Cotizador y Productos) - STALE WHILE REVALIDATE
+    // 1. RUTAS CRÍTICAS (Cotizador y Productos) - NETWORK FIRST (Asegura CSRF fresco)
     if (isNavigation && (url.pathname.includes('/quoter') || url.pathname.includes('/products/mobile'))) {
         event.respondWith(
-            caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
-                const fetchPromise = fetch(event.request).then((networkResponse) => {
+            fetch(event.request)
+                .then((networkResponse) => {
                     if (networkResponse && networkResponse.status === 200) {
                         const copy = networkResponse.clone();
                         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
                     }
                     return networkResponse;
-                }).catch(() => null);
-
-                return cachedResponse || fetchPromise || new Response("Offline (No Cache)", { status: 503 });
-            })
+                })
+                .catch(async () => {
+                    return await caches.match(event.request, { ignoreSearch: true }) ||
+                        new Response("Offline (No Cache)", { status: 503 });
+                })
         );
         return;
     }

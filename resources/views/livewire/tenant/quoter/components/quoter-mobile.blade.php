@@ -164,9 +164,12 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <!-- Columna Cliente -->
                             <div class="lg:col-span-2">
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Cliente</p>
+                                <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                    CLIENTE / ESTABLECIMIENTO
+                                </p>
                                 <div class="space-y-1">
-                                    <p class="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight">
+                                    <p class="text-base font-black text-gray-900 dark:text-white uppercase leading-tight tracking-tight">
                                         {{ $quote->customer->company->businessName ?? $quote->customer_name }}
                                     </p>
                                     @php
@@ -174,9 +177,9 @@
                                         $routeInfo = $quote->customer->company->routes->first();
                                     @endphp
                                     @if($mainContact)
-                                        <p class="text-[11px] font-medium text-gray-600 dark:text-gray-400 flex items-center">
-                                            <svg class="w-3 h-3 mr-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                            {{ $mainContact->firstName }} {{ $mainContact->lastName }}
+                                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-center bg-gray-100 dark:bg-gray-700/50 px-2 py-0.5 rounded-full w-fit mt-1">
+                                            <svg class="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                            <span class="text-[9px] uppercase mr-1 text-gray-400">CONTACTO:</span> {{ $mainContact->firstName }} {{ $mainContact->lastName }}
                                         </p>
                                     @endif
                                 </div>
@@ -208,8 +211,8 @@
                             <!-- Columna Vendedor y Ruta -->
                             <div>
                                 <div class="mb-4">
-                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Vendedor</p>
-                                    <p class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center">
+                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">REGISTRADO POR</p>
+                                    <p class="text-xs font-bold text-gray-600 dark:text-gray-400 flex items-center">
                                         <svg class="w-3 h-3 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                                         {{ $quote->user->name ?? 'N/A' }}
                                     </p>

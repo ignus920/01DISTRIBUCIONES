@@ -199,11 +199,15 @@ class ProcessOfflineOrderJob implements ShouldQueue
                         }
                     }
                 } else {
-                    // Si ya existía, usamos su ID o buscamos por identificación.
-                    $customerId = $offlineCustomer['id'] ?? null;
-                    if (!$customerId && isset($offlineCustomer['identification'])) {
-                        $existing = VntCompany::where('identification', $offlineCustomer['identification'])->first();
-                        $customerId = $existing ? $existing->id : null;
+                    // Si ya existía, intentamos obtener el warehouseId.
+                    // Si viene desde local, 'id' suele ser el warehouse_id.
+                    $customerId = $offlineCustomer['warehouse_id'] ?? $offlineCustomer['id'] ?? null;
+
+                    if (isset($offlineCustomer['identification'])) {
+                        $existing = VntCompany::with('mainWarehouse')->where('identification', $offlineCustomer['identification'])->first();
+                        if ($existing) {
+                            $customerId = $existing->mainWarehouse->id ?? $existing->id;
+                        }
                     }
                 }
             }
