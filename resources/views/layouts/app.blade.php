@@ -7,7 +7,7 @@
 
         <!-- PWA Meta Tags -->
         <meta name="theme-color" content="#ffffff">
-        <link rel="manifest" href="{{ asset('build/manifest.webmanifest') }}" crossorigin="use-credentials">
+        <link rel="manifest" href="/manifest.json">
         <link rel="apple-touch-icon" href="{{ asset('pwa-icons/icon-192x192.png') }}">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="default">

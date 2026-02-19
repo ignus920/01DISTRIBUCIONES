@@ -213,12 +213,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
             }
 
             // 2. Crear o Actualizar la Cotización (Cabecera)
-            
-            // Adjuntamos el UUID en las observaciones si no está
-            $observations = ($this->orderData['observaciones'] ?? 'Sincronizado Offline');
-            if (!str_contains($observations, "[UUID: {$uuid}]")) {
-                $observations .= " [UUID: {$uuid}]";
-            }
+            $observations = $this->orderData['observaciones'] ?? 'Sincronizado Offline';
 
             if ($existingQuote) {
                 Log::info("🔄 [Job] Actualizando pedido existente con UUID {$uuid} (Quote ID: {$existingQuote->id})");
