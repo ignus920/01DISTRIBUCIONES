@@ -1,20 +1,24 @@
-const CACHE_NAME = 'quoter-cache-v18';
+/*
+* Sistema de Service Worker Manual - DOSIL ERP
+* self.__WB_MANIFEST;
+*/
+const CACHE_NAME = 'quoter-cache-v19';
 // Lista de recursos críticos para precargar
 const PRECACHE_ASSETS = [
-    '/build/assets/app-0b7ZjQm8.css',
-    '/build/assets/app-Cp30cTxS.js',
+    '/',
+    '/manifest.json',
     '/Logo_DosilERPFinal.png',
     '/logo.png',
-    '/build/manifest.webmanifest',
-    '/tenant/quoter/mobile', // Lista de cotizaciones
-    '/tenant/quoter/products/mobile' // Editor de cotizaciones (CRÍTICO para offline)
+    '/pwa-icons/icon-192x192.png',
+    '/pwa-icons/icon-512x512.png',
+    '/tenant/quoter/mobile',
+    '/tenant/quoter/products/mobile'
 ];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('📦 Precargando activos críticos...');
-            // Usar una promesa para cada asset para que si uno falla no detenga todo
+            console.log('📦 Precargando activos críticos (v19)...');
             return Promise.allSettled(
                 PRECACHE_ASSETS.map(asset =>
                     cache.add(asset).catch(err => console.warn(`⚠️ Error precargando ${asset}:`, err))
@@ -58,6 +62,8 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch(async () => {
+                    console.log('🌐 SW: Red fallida, buscando en caché:', url.pathname);
+
                     // 1. Intentar coincidencia exacta (incluyendo query params si están cacheados)
                     const cachedExact = await caches.match(event.request);
                     if (cachedExact) return cachedExact;
@@ -66,13 +72,17 @@ self.addEventListener('fetch', (event) => {
                     const cachedNoSearch = await caches.match(event.request, { ignoreSearch: true });
                     if (cachedNoSearch) return cachedNoSearch;
 
-                    // 3. Fallback crítico: Si es cualquier ruta del quoter, servir la lista móvil
+                    // 3. Fallback crítico: Si es cualquier ruta del quoter, servir la LISTA o el EDITOR
+                    if (url.pathname.includes('/products/mobile')) {
+                        return caches.match('/tenant/quoter/products/mobile', { ignoreSearch: true });
+                    }
+
                     if (url.pathname.includes('/tenant/quoter')) {
-                        console.log('🔄 SW: Sirviendo fallback offline para:', url.pathname);
                         return caches.match('/tenant/quoter/mobile', { ignoreSearch: true });
                     }
 
-                    return null;
+                    // 4. Último recurso: El root si está cacheado
+                    return caches.match('/', { ignoreSearch: true });
                 })
         );
         return;

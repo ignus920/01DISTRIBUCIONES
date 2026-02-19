@@ -736,6 +736,16 @@ class ProductQuoter extends Component
         $this->calculateTotal();
         $this->checkAndDisableIfHasRemission();
 
+        Log::info('🛒 [SYNC] Sincronización exitosa. Emitiendo cart-updated para confirmar.', [
+            'total_items' => count($this->quoterItems),
+            'total_amount' => $this->totalAmount
+        ]);
+
+        // Emitir de vuelta para asegurar que el frontend vea que el servidor YA tiene la data.
+        $this->dispatch('cart-updated', [
+            'items' => $this->quoterItems
+        ]);
+
         // Si se solicitó una acción específica tras la sincronización, ejecutarla
         if ($actionAfterSync) {
             if (method_exists($this, $actionAfterSync)) {

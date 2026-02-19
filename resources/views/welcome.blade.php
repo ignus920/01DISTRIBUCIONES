@@ -6,8 +6,8 @@
 
         <!-- PWA Meta Tags -->
         <meta name="theme-color" content="#ffffff">
-        <link rel="manifest" href="{{ asset('build/manifest.webmanifest') }}" crossorigin="use-credentials">
-        <link rel="apple-touch-icon" href="{{ asset('icons/icon-192x192.png') }}">
+        <link rel="manifest" href="/manifest.json">
+        <link rel="apple-touch-icon" href="/pwa-icons/icon-192x192.png">
 
         <title>Tienda Multitenancy</title>
 
@@ -25,7 +25,7 @@
         <script>
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register("{{ asset('build/sw.js') }}");
+                    navigator.serviceWorker.register("/sw.js");
                 });
             }
         </script>
