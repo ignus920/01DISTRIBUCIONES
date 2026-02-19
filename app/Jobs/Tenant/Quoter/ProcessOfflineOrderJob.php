@@ -59,8 +59,8 @@ class ProcessOfflineOrderJob implements ShouldQueue
             DB::beginTransaction();
 
             // PREVENCIÓN DE DUPLICADOS / EDICIÓN: 
-            // Buscamos si ya existe una cotización que contenga este UUID en sus observaciones.
-            $existingQuote = VntQuote::where('observations', 'LIKE', "%[UUID: {$uuid}]%")->first();
+            // Buscamos si ya existe una cotización con este UUID offline.
+            $existingQuote = VntQuote::where('offline_uuid', $uuid)->first();
             
             // Si existe, preparamos para actualizar en lugar de salir
             $quote = null;
@@ -222,12 +222,14 @@ class ProcessOfflineOrderJob implements ShouldQueue
                     'status' => 'REGISTRADO', // Resetear estado si es necesario
                     'customerId' => $customerId,
                     'observations' => $observations,
+                    'offline_uuid' => $uuid,
                     'updated_at' => now(),
                     // Mantener otros campos originales si se desea
                 ]);
 
                 // Borrar detalles anteriores para re-insertar los nuevos (manera más limpia de actualizar items)
-                $quote->details()->delete();
+                // CORRECCIÓN: El nombre de la relación en el modelo VntQuote es 'detalles', no 'details'
+                $quote->detalles()->delete();
                 
             } else {
                 Log::info("🆕 [Job] Creando nuevo pedido offline con UUID {$uuid}");
@@ -242,6 +244,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
                     'warehouseId' => $this->warehouseId,
                     'userId' => $this->userId,
                     'observations' => $observations,
+                    'offline_uuid' => $uuid,
                     'branchId' => $this->branchId,
                     'created_at' => $this->orderData['fecha'] ?? now()
                 ]);
@@ -253,6 +256,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
                     'quantity' => $item['quantity'],
                     'tax_percentage' => 0,
                     'price' => $item['price'],
+                    'value' => $item['price'], // CORRECCIÓN: Asegurar columna value para cálculos de totales
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
                     'description' => $item['name'] ?? 'Producto Offline',

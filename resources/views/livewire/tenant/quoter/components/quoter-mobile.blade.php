@@ -12,7 +12,7 @@
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="-translate-y-full"
              x-transition:enter-end="translate-y-0"
-             class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0 z-[60] flex items-center justify-center gap-2">
+             class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0  flex items-center justify-center gap-2">
             <span>⚠️ MODO OFFLINE ACTIVADO</span>
         </div>
 
@@ -595,8 +595,17 @@
             if (this.loadingNewQuote) return;
             this.loadingNewQuote = true;
             
-            // 1. Limpiar estado local
-            await this.clearLocalState();
+            console.log('🆕 Iniciando nueva cotización (Limpieza total)...');
+            
+            // 1. Limpiar estado local en IndexedDB
+            const db = await this.getDb();
+            if (db) {
+                await db.estado_quoter.delete('actual');
+            }
+            
+            this.localCart = [];
+            this.selectedLocalCustomer = null;
+            this.currentQuoteUuid = null;
             
             // 2. Redirigir a ruta móvil directamente (Offline Safe)
             // ?clear=1 fuerza al servidor a limpiar la sesión si hay internet

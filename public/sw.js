@@ -1,9 +1,8 @@
 /*
 * Sistema de Service Worker Manual - DOSIL ERP
-* self.__WB_MANIFEST;
+* v27 - Estrategia Ultra-Rápida (Stale-While-Revalidate)
 */
-const CACHE_NAME = 'quoter-cache-v19';
-// Lista de recursos críticos para precargar
+const CACHE_NAME = 'quoter-cache-v27';
 const PRECACHE_ASSETS = [
     '/',
     '/manifest.json',
@@ -12,13 +11,16 @@ const PRECACHE_ASSETS = [
     '/pwa-icons/icon-192x192.png',
     '/pwa-icons/icon-512x512.png',
     '/tenant/quoter/mobile',
-    '/tenant/quoter/products/mobile'
+    '/tenant/quoter/products/mobile',
+    '/tenant/remissions',
+    '/tenant/tat-quoter',
+    '/tenant/tat-sales'
 ];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('📦 Precargando activos críticos (v19)...');
+            console.log('📦 Precargando v27...');
             return Promise.allSettled(
                 PRECACHE_ASSETS.map(asset =>
                     cache.add(asset).catch(err => console.warn(`⚠️ Error precargando ${asset}:`, err))
@@ -49,72 +51,69 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
 
     const url = new URL(event.request.url);
+    const isLivewire = event.request.headers.get('X-Livewire');
+    const isNavigation = event.request.mode === 'navigate';
 
-    // 1. Estrategia para Navegación (HTML): Network First, Fallback to Cache
-    if (event.request.mode === 'navigate') {
+    // 1. RUTAS CRÍTICAS (Cotizador y Productos) - STALE WHILE REVALIDATE
+    if (isNavigation && (url.pathname.includes('/quoter') || url.pathname.includes('/products/mobile'))) {
         event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    if (response && response.status === 200) {
-                        const copy = response.clone();
+            caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
+                const fetchPromise = fetch(event.request).then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const copy = networkResponse.clone();
                         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
                     }
-                    return response;
+                    return networkResponse;
+                }).catch(() => null);
+
+                return cachedResponse || fetchPromise || new Response("Offline (No Cache)", { status: 503 });
+            })
+        );
+        return;
+    }
+
+    // 2. OTROS NAVEGACIONES Y LIVEWIRE - Network First
+    if (isNavigation || isLivewire) {
+        event.respondWith(
+            fetch(event.request)
+                .then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const copy = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+                    }
+                    return networkResponse;
                 })
                 .catch(async () => {
-                    console.log('🌐 SW: Red fallida, buscando en caché:', url.pathname);
+                    const cached = await caches.match(event.request, { ignoreSearch: true });
+                    if (cached) return cached;
 
-                    // 1. Intentar coincidencia exacta (incluyendo query params si están cacheados)
-                    const cachedExact = await caches.match(event.request);
-                    if (cachedExact) return cachedExact;
+                    if (url.pathname.includes('/products/mobile')) return await caches.match('/tenant/quoter/products/mobile');
+                    if (url.pathname.includes('/quoter')) return await caches.match('/tenant/quoter/mobile');
 
-                    // 2. Intentar coincidencia ignorando search params
-                    const cachedNoSearch = await caches.match(event.request, { ignoreSearch: true });
-                    if (cachedNoSearch) return cachedNoSearch;
-
-                    // 3. Fallback crítico: Si es cualquier ruta del quoter, servir la LISTA o el EDITOR
-                    if (url.pathname.includes('/products/mobile')) {
-                        return caches.match('/tenant/quoter/products/mobile', { ignoreSearch: true });
-                    }
-
-                    if (url.pathname.includes('/tenant/quoter')) {
-                        return caches.match('/tenant/quoter/mobile', { ignoreSearch: true });
-                    }
-
-                    // 4. Último recurso: El root si está cacheado
-                    return caches.match('/', { ignoreSearch: true });
+                    return await caches.match('/') || new Response("Offline", { status: 503 });
                 })
         );
         return;
     }
 
-    // 2. Estrategia para Activos (CSS, JS, Imágenes, Fuentes, CDNs): Cache First + Update
+    // 3. ACTIVOS (CSS, JS, Imágenes)
     const isAsset =
         url.pathname.includes('/build/') ||
         event.request.destination === 'style' ||
         event.request.destination === 'script' ||
         event.request.destination === 'image' ||
-        event.request.destination === 'font' ||
-        url.hostname.includes('fonts.bunny.net') ||
-        url.hostname.includes('cdn.jsdelivr.net');
+        event.request.destination === 'font';
 
     if (isAsset) {
         event.respondWith(
             caches.match(event.request).then((cachedResponse) => {
                 const networkFetch = fetch(event.request).then((networkResponse) => {
-                    // Solo intentar cachear si la respuesta es válida y no se ha usado
                     if (networkResponse && networkResponse.status === 200) {
                         const responseToCache = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseToCache).catch(err => {
-                                console.warn('❌ Error al guardar en cache:', event.request.url, err);
-                            });
-                        });
+                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
                     }
                     return networkResponse;
                 }).catch(() => null);
-
-                // Servir desde caché si existe, si no, esperar a la red
                 return cachedResponse || networkFetch;
             })
         );

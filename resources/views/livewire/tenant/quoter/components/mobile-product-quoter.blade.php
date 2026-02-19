@@ -60,6 +60,20 @@
         },
 
         async init() {
+            // 0. Limpieza forzada vía parámetro URL (Ej: desde Sidebar)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('clear')) {
+                console.log('🧹 Detectada bandera "clear", limpiando estado local...');
+                const db = await this.getDb();
+                if (db) {
+                    await db.estado_quoter.delete('actual');
+                    // Limpiar también variables reactivas en memoria
+                    this.localCart = [];
+                    this.selectedLocalCustomer = null;
+                    this.currentQuoteUuid = null;
+                }
+            }
+
             // Escuchar evento de carga de datos para edición
             window.addEventListener('load-customer-data', (event) => {
                 const data = event.detail.customer || event.detail[0]?.customer || event.detail;
@@ -138,6 +152,13 @@
                 await this.persistState();
             });
 
+            // Listener para redirección segura (evita errores de conexión de PHP en móvil)
+            window.addEventListener('quote-saved-redirect', (event) => {
+                const url = event.detail.url || event.detail[0]?.url || '/tenant/quoter/mobile';
+                console.log('🚀 Redirección local solicitada por el servidor:', url);
+                window.location.href = url;
+            });
+
             // Manejar evento de pérdida de conexión (Offline)
             window.addEventListener('offline', () => {
                 this.handleOffline();
@@ -196,6 +217,7 @@
                 this.runInQueue(async () => {
                     this.syncing = false;
                     this.lastSync = new Date().toISOString();
+                    console.timeEnd('🧪 [Sync Full]');
                     
                     // Solo recargar productos locales si estamos realmente offline o forzando offline
                     if (!this.isOnline || this.forceOffline) {
@@ -272,15 +294,16 @@
                 await this.loadLocalProducts();
             }
 
-            // Sincronización diferida
+            // Sincronización diferida (Ahora mucho más rápida)
             setTimeout(async () => {
-                if (this.isOnline && !this.syncing) {
+                if (navigator.onLine && !this.syncing) {
+                    console.time('🧪 [Sync Full]');
                     await this.syncFullCatalogAuto();
                     await this.syncPendingOrders();
                 }
-            }, 3000);
+            }, 500);
 
-            // Sincronización periódica
+            // Sincronización periódica (cada 10 min está bien para no saturar)
             setInterval(async () => {
                 if (this.isOnline && !this.syncing && !this.forceOffline) {
                     const timeSinceLast = new Date() - new Date(this.lastSync);
