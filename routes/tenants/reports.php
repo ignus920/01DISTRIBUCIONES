@@ -39,6 +39,10 @@ Route::prefix('/reports')->group(function () {
     Route::get('/salesman-x-item', SalesmanXItem::class)
         ->name('tenant.reports.salesman-x-item');
 
+    // Nueva ruta para reporte de remisión individual en PDF
+    Route::get('/remission/{id}', [\App\Http\Controllers\Reports\RemissionReportController::class, 'downloadPDF'])
+        ->name('tenant.reports.remission');
+
 
     // Ruta para descarga directa de lista de precios en PDF
     Route::get('/price-list', [PriceListController::class, 'downloadPDF'])
