@@ -1287,7 +1287,7 @@
                                         </svg>
                                     </div>
                                     <div class="text-left">
-                                        <p class="text-xs font-bold uppercase tracking-wider">No se encontró el cliente</p>
+                                        <p class="text-xs font-bold uppercase tracking-wider">No se encontró el cliente por favor registrarlo</p>
                                         <p class="text-sm font-black" x-text="'Registrar: ' + (isOnline ? serverCustomerSearch : localSearch)"></p>
                                     </div>
                                 </div>
@@ -1347,7 +1347,7 @@
                                 @endif
                                 
                                 @if(strlen($customerSearch) >= 2 && count($customerSearchResults) === 0)
-                                    <div class="text-center py-4 text-gray-500 text-xs">No se encontraron clientes</div>
+                                    <div class="text-center py-4 text-gray-500 text-xs">No se encontraron clientes por favor registrarlo</div>
                                 @endif
                             </div>
                         </div>
