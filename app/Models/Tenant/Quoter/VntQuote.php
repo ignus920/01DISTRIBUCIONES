@@ -23,6 +23,7 @@ class VntQuote extends Model
         'userId',
         'observations',
         'branchId',
+        'offline_uuid',
         'created_at',
         'updated_at',
         'deleted_at'

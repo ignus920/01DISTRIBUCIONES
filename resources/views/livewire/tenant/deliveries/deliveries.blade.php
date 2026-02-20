@@ -124,6 +124,8 @@
                 <!-- Botones de Resumen (Visible para Todos - Global o Por Cargue) -->
                 <div class="pt-4 border-t border-gray-100 dark:border-slate-800 grid grid-cols-3 gap-2">
                     <button 
+                         @if(auth()->user()->profile_id != 13) wire:click="closeDeliveryLoad" @endif
+                         @if(auth()->user()->profile_id == 13) disabled @endif
                         class="bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 rounded-lg text-[10px] flex flex-col items-center justify-center transition-all">
                         <x-heroicon-o-check-circle class="w-5 h-5 mb-1" />
                         Cierre
@@ -403,37 +405,46 @@
                      class="bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden transform transition hover:scale-[1.01] group">
                     <div class="p-4 sm:p-6">
                         <!-- Area Clickeable: Detalles (Header e Info) -->
-                        <div @click="handleViewOrder({{ $remission->id }})" class="cursor-pointer">
+                        <div>
                             <div class="flex justify-between items-start mb-4">
-                                 <h3 class="text-base sm:text-lg font-black tracking-widest uppercase text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
-                                PEDIDO # {{ $remission->consecutive ?? $remission->id }} RUTA {{ $remission->quote->branch->name ?? 'N/A' }}
-                             </h3>
-                             <span class="px-2 py-1 rounded text-[10px] font-bold uppercase transition-colors"
-                                   :class="localStatus == 'EN RECORRIDO' ? 'bg-blue-600 text-white' : (localStatus == 'ENTREGADO' ? 'bg-green-600 text-white' : (localStatus == 'REGISTRADO' ? 'bg-gray-500 text-white' : 'bg-red-600 text-white'))"
-                                   x-text="localStatus">
-                             </span>
-                        </div>
+                                 <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                                     <h3 class="text-base sm:text-lg font-black tracking-widest uppercase text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+                                        PEDIDO # {{ $remission->consecutive ?? $remission->id }} RUTA {{ $remission->quote->customer->name ?? 'N/A' }}
+                                     </h3>
+                                     
+                                     <button @click.stop="handleViewOrder({{ $remission->id }})" 
+                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">
+                                         <x-heroicon-o-pencil-square class="w-3.5 h-3.5" />
+                                         Devolver por unidad
+                                     </button>
+                                 </div>
+                                 
+                                 <span class="px-2 py-1 rounded text-[10px] font-bold uppercase transition-colors"
+                                       :class="localStatus == 'EN RECORRIDO' ? 'bg-blue-600 text-white' : (localStatus == 'ENTREGADO' ? 'bg-green-600 text-white' : (localStatus == 'REGISTRADO' ? 'bg-gray-500 text-white' : 'bg-red-600 text-white'))"
+                                       x-text="localStatus">
+                                 </span>
+                            </div>
 
                         <div class="space-y-4 text-sm sm:text-base">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <p class="flex flex-col">
                                         <span class="text-gray-500 dark:text-slate-400 text-xs uppercase font-bold tracking-tighter">Entregar en:</span>
-                                        <span class="text-gray-800 dark:text-slate-100 font-semibold">{{ $remission->quote->warehouse->address ?? 'Sin dirección' }}</span>
+                                         <span class="text-gray-800 dark:text-slate-100 font-semibold">{{ $remission->quote->customer->address ?? 'Sin dirección' }}</span>
                                     </p>
                                     
                                 </div>
                                 <div class="space-y-2">
                                     <p class="flex flex-col">
                                         <span class="text-gray-500 dark:text-slate-400 text-xs uppercase font-bold tracking-tighter">Contacto:</span>
-                                        <span class="text-gray-800 dark:text-slate-100 font-semibold uppercase">
-                                            {{ ($remission->quote->customer->firstName ?? '') . ' ' . ($remission->quote->customer->lastName ?? '') }}
+                                         <span class="text-gray-800 dark:text-slate-100 font-semibold uppercase">
+                                            {{ $remission->quote->customer_name }}
                                         </span>
                                     </p>
                                 </div>
                                 </div>
                             </div>
-                        </div> <!-- Cierre Area Clickeable -->
+                        </div> <!-- Fin Contenido Celda -->
                         
                         <div class="pt-4 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-2">
                             <div class="text-sm sm:text-base font-black uppercase tracking-tighter flex gap-3 flex-wrap">
@@ -461,16 +472,20 @@
 
                                             <button x-show="localBalance > 0" @click.stop="openFullReturnModal({{ $remission->id }})" 
                                                     class="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg text-xs font-black uppercase transition-all shadow-md active:scale-95">
-                                                Devolver
+                                                Devolver todo
                                             </button>
 
                                         @else
                                             <span class="text-[10px] font-black uppercase text-gray-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">Pendiente Cargue</span>
                                         @endif
-                                        <button wire:click.stop="printOrder({{ $remission->id }})" 
-                                                class="bg-blue-700 hover:bg-blue-800 text-white p-2 rounded-lg transition-all shadow-md active:scale-95">
-                                            <x-heroicon-o-printer class="w-4 h-4" />
-                                        </button>
+                                            <button wire:click.stop="printOrder({{ $remission->id }})" 
+                                                    class="bg-blue-700 hover:bg-blue-800 text-white p-2 rounded-lg transition-all shadow-md active:scale-95">
+                                                <x-heroicon-o-printer class="w-4 h-4" />
+                                            </button>
+                                            <button @click.stop="handleShareWhatsApp({{ $remission->id }})" 
+                                                    class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg transition-all shadow-md active:scale-95">
+                                                <x-heroicon-o-chat-bubble-left-right class="w-4 h-4" />
+                                            </button>
                                     </div>
 
                                     <!-- Mobile: Botón 'ACCIONES' Compacto al lado de A PAGAR -->
@@ -517,6 +532,11 @@
                                                 class="w-full flex items-center gap-3 px-4 py-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl transition-colors text-xs font-black uppercase tracking-widest">
                                             <x-heroicon-s-printer class="w-5 h-5" />
                                             Imprimir
+                                        </button>
+                                        <button @click.stop="handleShareWhatsApp({{ $remission->id }})" 
+                                                class="w-full flex items-center gap-3 px-4 py-3 bg-green-500/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-xl transition-colors text-xs font-black uppercase tracking-widest">
+                                            <x-heroicon-o-chat-bubble-left-right class="w-5 h-5" />
+                                            WhatsApp
                                         </button>
                                     </div>
                                 </div>
@@ -573,7 +593,7 @@
                     <div class="bg-slate-900 dark:bg-black px-4 py-4 border-b border-slate-800 dark:border-slate-800 flex justify-between items-center transition-colors">
                         <div class="flex flex-col">
                             <h3 class="text-lg font-black text-yellow-500 uppercase tracking-tighter leading-tight">
-                                Pedido # <span x-text="order?.consecutive || '...'"></span>
+                                Pedido # <span x-text="order?.consecutive || '...'"></span> - <span x-text="order?.branch_name || ''"></span>
                             </h3>
                             <span class="text-sm font-bold text-gray-200 dark:text-gray-300 uppercase tracking-widest break-words max-w-[250px] sm:max-w-none"
                                 x-text="order ? order.customer_name : 'Cargando datos...'"></span>
@@ -604,7 +624,7 @@
                             <div class="p-6 bg-blue-50/50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/30">
                                 <div class="flex flex-col items-center text-center space-y-6">
                                     <div class="space-y-1">
-                                        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 opacity-70">Editando Producto</span>
+                                        <span class="text-xs sm:text-sm font-black uppercase tracking-[0.3em] text-red-600 dark:text-red-500 animate-pulse">Devolución de Unidades</span>
                                         <h4 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight"
                                             x-text="order.details[currentItemIndex].name"></h4>
                                     </div>
@@ -633,24 +653,18 @@
 
                                     <div class="w-full max-w-md space-y-3">
                                         <div class="relative">
-                                            <label class="text-[10px] font-black uppercase text-gray-400 mb-1 block text-left">Observaciones de Devolución</label>
-                                            <textarea x-model="returnObservations[order.details[currentItemIndex].id]" 
-                                                    placeholder="¿Por qué se devuelve? (Obligatorio)"
+                                            <label class="text-[10px] font-black uppercase text-gray-400 mb-1 block text-left">Observaciones del Pedido (Razón de Devolución)</label>
+                                            <textarea x-model="orderNovelty" 
+                                                    placeholder="¿Por qué se devuelven estos productos? (Obligatorio)"
                                                     class="w-full px-4 py-3 rounded-xl border-gray-200 dark:border-slate-800 dark:bg-slate-900 dark:text-gray-200 text-sm focus:ring-2 focus:ring-blue-500/50 transition-all resize-none h-20"
-                                                    :class="((returnQuantities[order.details[currentItemIndex].id] || 0) > 0 && !(returnObservations[order.details[currentItemIndex].id] || '')) ? 'border-red-500 ring-1 ring-red-500' : ''"></textarea>
+                                                    :class="Object.values(returnQuantities).some(q => q > 0) && !orderNovelty.trim() ? 'border-red-500 ring-1 ring-red-500' : ''"></textarea>
                                         </div>
                                         
-                                        <button @click="handleSaveReturn(order.details[currentItemIndex].id)" 
-                                                :disabled="syncing"
-                                                class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-wait text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] uppercase text-xs tracking-widest flex items-center justify-center gap-3">
-                                            <div x-show="syncing">
-                                                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                            </div>
-                                            <x-heroicon-s-check-circle x-show="!syncing" class="w-5 h-5" />
-                                            <span>Guardar Producto</span>
+                                        <button @click="saveProductNovelty(order.id)"
+                                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-6 rounded-2xl shadow-lg shadow-blue-500/30 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                                :disabled="Object.values(returnQuantities).some(q => q > 0) && !orderNovelty.trim()">
+                                            <x-heroicon-o-check-circle class="w-6 h-6" />
+                                            <span>GUARDAR UNIDADES DEVUELTAS</span>
                                         </button>
                                     </div>
                                 </div>
@@ -721,6 +735,14 @@
                                     </tfoot>
                                 </table>
                             </div>
+                        </div>
+
+                        <!-- Justificación Global por Pedido -->
+                        <div class="mt-2 px-6 pb-4 bg-gray-50/50 dark:bg-slate-900/30">
+                            <label class="text-[10px] font-black uppercase text-gray-400 mb-2 block tracking-widest">Novedad / Justificación General</label>
+                            <textarea wire:model.blur="orderNovelty" 
+                                      class="w-full px-4 py-3 rounded-xl border-gray-200 dark:border-slate-800 dark:bg-slate-900 dark:text-gray-200 text-sm focus:ring-2 focus:ring-blue-500/50 transition-all resize-none h-16"
+                                      placeholder="Escriba aquí cualquier novedad..."></textarea>
                         </div>
 
                         <div class="bg-gray-50 dark:bg-slate-900/50 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-gray-100 dark:border-slate-800">
@@ -974,21 +996,17 @@
     </div>
     
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('deliveriesOffline', () => ({
-                isOnline: navigator.onLine,
-                syncing: false,
-                db: null,
-                showToast: false,
-                toastMsg: '',
-                isError: false,
+        function initDeliveriesOffline() {
+            if (window.Alpine && !Alpine.data('deliveriesOffline')) {
+                Alpine.data('deliveriesOffline', () => ({
+                    isOnline: navigator.onLine,
+                    syncing: false,
+                    db: null,
+                    showToast: false,
+                    toastMsg: '',
+                    isError: false,
 
                 // Propiedades del Modal (Entrelazadas con Livewire)
-                open: @entangle('showingOrderModal'),
-                currentItemIndex: @entangle('currentItemIndex'),
-                returnQuantities: @entangle('returnQuantities'),
-                returnObservations: @entangle('returnObservations'),
-                order: @entangle('selectedOrderData'),
                 open: @entangle('showingOrderModal'),
                 currentItemIndex: @entangle('currentItemIndex'),
                 returnQuantities: @entangle('returnQuantities'),
@@ -1010,6 +1028,7 @@
                     daviplata: { value: 0 },
                     tarjeta: { value: 0 }
                 },
+                orderNovelty: @entangle('orderNovelty'),
                 searchLocal: '',
 
                 currentDeliveryId: @entangle('selectedDeliveryId'),
@@ -1128,6 +1147,28 @@
                         this.showToast = true;
                         setTimeout(() => { this.showToast = false; }, 4000);
                     });
+
+                    // Nuevo listener para abrir enlaces (WhatsApp, Reportes, etc.)
+                    Livewire.on('open-link', (data) => {
+                        const url = data.url || data[0].url;
+                        console.log("🔗 Abriendo enlace:", url);
+                        if (url) {
+                            window.open(url, '_blank');
+                        }
+                    });
+
+                    // Listener para impresión de tickets
+                    Livewire.on('open-print-window', (data) => {
+                         const printData = data[0] || data;
+                         console.log("🖨️ Abriendo ventana de impresión:", printData.url);
+                         if (printData.url) {
+                             const printWin = window.open(printData.url, '_blank');
+                             if (printWin) {
+                                  // Opcional: enfocar ventana
+                                  printWin.focus();
+                             }
+                         }
+                    });
                 },
 
                 async handleViewOrder(id) {
@@ -1147,7 +1188,8 @@
                         this.order = {
                             id: rem.id,
                             consecutive: rem.consecutive || rem.id,
-                            customer_name: rem.customer_name,
+                            customer_name: rem.customer_name, // Este viene guardado del sync
+                            branch_name: rem.warehouse_name,   // Nombre literal de la sucursal
                             details: details
                         };
 
@@ -1238,6 +1280,88 @@
                         Swal.fire('Error', 'No se pudo guardar localmente', 'error');
                     } finally {
                         this.syncing = false;
+                    }
+                },
+
+                async handleSaveProductNovelty(id) {
+                    console.log("💾 handleSaveProductNovelty llamado para ID:", id);
+                    if (this.isOnline) {
+                        console.log("🌐 Llamando a Livewire saveProductNovelty...");
+                        this.$wire.saveProductNovelty(id);
+                        return;
+                    }
+
+                    // Lógica Offline para guardado masivo de devoluciones
+                    try {
+                        this.syncing = true;
+                        let hasReturns = false;
+                        for (const detailId in this.returnQuantities) {
+                            if (this.returnQuantities[detailId] > 0) {
+                                hasReturns = true;
+                                break;
+                            }
+                        }
+
+                        if (hasReturns && !this.orderNovelty.trim()) {
+                            Swal.fire('Error', 'Para registrar una devolución de unidades, debe escribir la razón en las observaciones.', 'error');
+                            return;
+                        }
+
+                        // Guardar cada detalle que tenga cantidad > 0
+                        for (const detailId in this.returnQuantities) {
+                            const qty = this.returnQuantities[detailId];
+                            const observation = this.orderNovelty;
+
+                            // Actualizar IndexedDB
+                            const existing = await this.db.devoluciones_locales.where('detail_id').equals(Number(detailId)).first();
+                            if (existing) {
+                                await this.db.devoluciones_locales.update(existing.id, {
+                                    quantity: qty,
+                                    observation: observation,
+                                    synced: 0
+                                });
+                            } else {
+                                await this.db.devoluciones_locales.put({
+                                    detail_id: Number(detailId),
+                                    quantity: qty,
+                                    observation: observation,
+                                    synced: 0
+                                });
+                            }
+
+                            const detail = await this.db.detalles.get(Number(detailId));
+                            if (detail) {
+                                detail.cant_return = qty;
+                                detail.observations_return = observation;
+                                await this.db.detalles.put(detail);
+                            }
+                        }
+
+                        Swal.fire({
+                            title: 'Guardado Local',
+                            text: 'Las devoluciones fueron guardadas en el dispositivo.',
+                            icon: 'success',
+                            toast: true,
+                            position: 'top-end',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+
+                    } catch (e) {
+                         console.error("❌ Error offline saveProductNovelty:", e);
+                         Swal.fire('Error', 'No se pudo guardar localmente: ' + e.message, 'error');
+                    } finally {
+                        this.syncing = false;
+                    }
+                },
+
+                handleShareWhatsApp(id) {
+                    console.log("📱 handleShareWhatsApp llamado para ID:", id);
+                    if (this.isOnline) {
+                        console.log("🌐 Llamando a Livewire shareWhatsApp...");
+                        this.$wire.shareWhatsApp(id);
+                    } else {
+                        Swal.fire('Info', 'El envío por WhatsApp requiere conexión a internet para generar el enlace del PDF.', 'info');
                     }
                 },
 
@@ -1332,7 +1456,7 @@
                                remissionId: remId,
                                total: Number(this.paymentTotal),
                                methods: JSON.parse(JSON.stringify(this.paymentMethods)),
-                               observation: this.paymentObs,
+                               observation: (this.paymentObs || '') + (this.orderNovelty ? ' | Novedad: ' + this.orderNovelty : ''),
                                timestamp: new Date().toISOString(),
                                synced: 0
                            };
@@ -1454,6 +1578,9 @@
                                 syncedCount += pendingStatus.length;
                             }
                         }
+
+                        // 4. Sincronizar Novedades de Pedido (Si existen registros sueltos)
+                        // Por ahora se sincronizan dentro de Pagos y Full Returns.
 
                         if (syncedCount > 0) {
                             this.toastMsg = 'Sincronización completada (' + syncedCount + ' registros)';
@@ -1685,6 +1812,14 @@
                     }
                 }
             }));
-        });
-    </script>
+        }
+    }
+
+    // Ejecutar inmediatamente si Alpine ya está cargado
+    if (window.Alpine) {
+        initDeliveriesOffline();
+    } else {
+        document.addEventListener('alpine:init', initDeliveriesOffline);
+    }
+</script>
 </div>

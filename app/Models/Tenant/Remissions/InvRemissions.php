@@ -27,9 +27,14 @@ class InvRemissions extends Model
         'userId',
         'deliveryDate',
         'delivery_id',
+        'delivery_sequence',
         'expiration',
         'modify',
-        'observations_return'
+        'observations_return',
+        'deliveryman_id',
+        'closed_at',
+        'sale_date',
+        'deleted_at'
     ];
 
     protected $casts = [

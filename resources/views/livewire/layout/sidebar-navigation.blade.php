@@ -91,7 +91,7 @@ new class extends Component
 
         <!-- Ventas -->
  @if(auth()->user()->profile_id === 17 && PermissionHelper::userCan('Ventas', 'show'))
-<a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" @click="startNewQuote" wire:navigate
+<a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" @click="startNewQuote"
     class="group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
     {{ request()->routeIs('tenant.quoter.products*')
         ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-r-2 border-indigo-500'
@@ -175,15 +175,15 @@ new class extends Component
      <div x-show="open && !sidebarCollapsed" x-transition
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
 
-        <a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" @click="startNewQuote" wire:navigate class="block px-2 py-1 hover:text-indigo-600">
+        <a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" class="block px-2 py-1 hover:text-indigo-600">
             Ventas
         </a>
 
-        <a href="{{ route('tenant.quoter') }}" wire:navigate class="block px-2 py-1 hover:text-indigo-600">
+        <a href="{{ route('tenant.quoter', ['clear' => 1]) }}" class="block px-2 py-1 hover:text-indigo-600">
             Cotizaciones
         </a>
 
-        <a href="{{ route('tenant.remissions') }}" wire:navigate class="block px-2 py-1 hover:text-indigo-600">
+        <a href="{{ route('tenant.remissions') }}" class="block px-2 py-1 hover:text-indigo-600">
             Remisiones
         </a>
     </div>
@@ -193,11 +193,11 @@ new class extends Component
         class="absolute left-full ml-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded shadow-lg z-[9999] py-1 whitespace-nowrap"
         @mouseenter="tooltip = true" @mouseleave="tooltip = false">
         
-        <a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}" @click="startNewQuote" wire:navigate
+        <a href="{{ route('tenant.quoter.products', ['clear' => 1]) }}"
             class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Ventas</a>
-        <a href="{{ route('tenant.quoter') }}" wire:navigate
-            class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Cotizaciones</a>
-        <a href="{{ route('tenant.remissions') }}" wire:navigate
+<a href="{{ route('tenant.quoter', ['clear' => 1]) }}"
+    class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Cotizaciones</a>
+        <a href="{{ route('tenant.remissions') }}"
             class="block px-2 py-1 hover:bg-gray-700 dark:hover:bg-gray-600 text-white">Remisiones</a>
     </div>
 </div>
@@ -241,7 +241,7 @@ new class extends Component
             <div x-show="open && !sidebarCollapsed" x-transition
                 class="ml-8 mt-1 space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 
-                <a href="{{ route('tenant.tat.quoter.index') }}" wire:navigate
+                <a href="{{ route('tenant.tat.quoter.index', ['clear' => 1]) }}" wire:navigate
                     class="block rounded-md px-2 py-1 text-sm transition-colors duration-150 {{ request()->routeIs('tenant.tat.quoter.index') ? 'bg-green-50 dark:bg-green-900/50 text-green-700 dark:text-green-300' : 'hover:text-green-600 dark:hover:text-green-400' }}">
                     Nueva Venta
                 </a>
