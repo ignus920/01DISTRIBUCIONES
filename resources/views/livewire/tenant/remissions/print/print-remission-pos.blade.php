@@ -274,7 +274,8 @@
 
         @foreach($quote->details as $index => $detalle)
             @php
-                $subtotalItem = $detalle->value * $detalle->quantity;
+                $cantidadEntregada = $detalle->quantity - ($detalle->cant_return ?? 0);
+                $subtotalItem = $detalle->value * $cantidadEntregada;
                 $totalGeneral += $subtotalItem;
             @endphp
 
@@ -285,10 +286,13 @@
 
                 <div class="product-name">
                     {{ Str::limit($detalle->item->name ?? $detalle->item->display_name, 35) }}
+                    @if(($detalle->cant_return ?? 0) > 0)
+                        <span class="small" style="color: red;">(Dev: -{{ $detalle->cant_return }})</span>
+                    @endif
                 </div>
 
                 <div class="quantity-price">
-                    <span>{{ number_format($detalle->quantity, 0) }} x ${{ number_format($detalle->value, 0) }}</span>
+                    <span>{{ number_format($cantidadEntregada, 0) }} x ${{ number_format($detalle->value, 0) }}</span>
                     <span class="bold">${{ number_format($subtotalItem, 0) }}</span>
                 </div>
             </div>

@@ -12,8 +12,7 @@ export default defineConfig({
             refresh: true,
         }),
         VitePWA({
-            registerType: 'autoUpdate',
-            injectRegister: 'auto',
+            injectRegister: false, // Registro manual en layout de /sw.js
             manifest: {
                 id: '/',
                 name: 'DOSIL ERP',

@@ -4,7 +4,7 @@ namespace App\Livewire\Selects;
 
 use Livewire\Component;
 use App\Models\Auth\User;
-
+use Illuminate\Support\Facades\Log;
 class UserVntsSelect extends Component
 {
     public $userId = '';
@@ -37,7 +37,7 @@ class UserVntsSelect extends Component
     {
 
          $sessionTenant = $this->getTenantId();
-
+         Log::info('Session Tenant ID: ' . $sessionTenant);
         return User::query()
             ->join('vnt_contacts', 'users.contact_id', '=', 'vnt_contacts.id')
             ->whereHas('tenants', function ($query) use ($sessionTenant) {

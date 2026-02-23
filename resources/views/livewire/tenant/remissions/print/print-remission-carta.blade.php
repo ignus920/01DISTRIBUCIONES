@@ -285,7 +285,6 @@
                 <th>Código</th>
                 <th>Unidad</th>
                 <th>Descripción</th>
-                <th>Imágenes</th>
                 <th>Cantidad</th>
                 <th>Valor Unitario</th>
                 <th>IVA %</th>
@@ -294,22 +293,24 @@
         </thead>
         <tbody>
             @foreach($quote->details as $index => $detalle)
+                @php
+                    $cantidadEntregada = $detalle->quantity - ($detalle->cant_return ?? 0);
+                    $subtotalLinea = $detalle->value * $cantidadEntregada;
+                @endphp
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td class="code">{{ $detalle->item ? ($detalle->item->sku ?? 'N/A') : 'N/A' }}</td>
                     <td class="unit">Unidad</td>
                     <td class="description">{{ $detalle->item ? ($detalle->item->name ?? $detalle->item->display_name) : 'Producto no encontrado' }}</td>
-                    <td>
-                        @if($detalle->item && $detalle->item->principalImage)
-                            Sin imagen
-                        @else
-                            Sin imagen
+                    <td class="quantity">
+                        {{ $cantidadEntregada }}
+                        @if(($detalle->cant_return ?? 0) > 0)
+                            <div style="font-size: 7pt; color: red;">(-{{ $detalle->cant_return }} dev)</div>
                         @endif
                     </td>
-                    <td class="quantity">{{ $detalle->quantity }}</td>
                     <td class="price">${{ number_format($detalle->value, 0) }}</td>
                     <td class="iva">0</td>
-                    <td class="subtotal">${{ number_format($detalle->value * $detalle->quantity, 0) }}</td>
+                    <td class="subtotal">${{ number_format($subtotalLinea, 0) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -331,7 +332,8 @@
         <div class="totals">
             @php
                 $subtotal = $quote->details->sum(function($detalle) {
-                    return $detalle->value * $detalle->quantity;
+                    $cantidadEntregada = $detalle->quantity - ($detalle->cant_return ?? 0);
+                    return $detalle->value * $cantidadEntregada;
                 });
                 $iva = 0;
                 $total = $subtotal + $iva;

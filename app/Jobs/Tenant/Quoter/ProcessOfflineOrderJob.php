@@ -59,8 +59,8 @@ class ProcessOfflineOrderJob implements ShouldQueue
             DB::beginTransaction();
 
             // PREVENCIÓN DE DUPLICADOS / EDICIÓN: 
-            // Buscamos si ya existe una cotización que contenga este UUID en sus observaciones.
-            $existingQuote = VntQuote::where('observations', 'LIKE', "%[UUID: {$uuid}]%")->first();
+            // Buscamos si ya existe una cotización con este UUID offline.
+            $existingQuote = VntQuote::where('offline_uuid', $uuid)->first();
             
             // Si existe, preparamos para actualizar en lugar de salir
             $quote = null;
@@ -199,11 +199,15 @@ class ProcessOfflineOrderJob implements ShouldQueue
                         }
                     }
                 } else {
-                    // Si ya existía, usamos su ID o buscamos por identificación.
-                    $customerId = $offlineCustomer['id'] ?? null;
-                    if (!$customerId && isset($offlineCustomer['identification'])) {
-                        $existing = VntCompany::where('identification', $offlineCustomer['identification'])->first();
-                        $customerId = $existing ? $existing->id : null;
+                    // Si ya existía, intentamos obtener el warehouseId.
+                    // Si viene desde local, 'id' suele ser el warehouse_id.
+                    $customerId = $offlineCustomer['warehouse_id'] ?? $offlineCustomer['id'] ?? null;
+
+                    if (isset($offlineCustomer['identification'])) {
+                        $existing = VntCompany::with('mainWarehouse')->where('identification', $offlineCustomer['identification'])->first();
+                        if ($existing) {
+                            $customerId = $existing->mainWarehouse->id ?? $existing->id;
+                        }
                     }
                 }
             }
@@ -213,12 +217,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
             }
 
             // 2. Crear o Actualizar la Cotización (Cabecera)
-            
-            // Adjuntamos el UUID en las observaciones si no está
-            $observations = ($this->orderData['observaciones'] ?? 'Sincronizado Offline');
-            if (!str_contains($observations, "[UUID: {$uuid}]")) {
-                $observations .= " [UUID: {$uuid}]";
-            }
+            $observations = $this->orderData['observaciones'] ?? 'Sincronizado Offline';
 
             if ($existingQuote) {
                 Log::info("🔄 [Job] Actualizando pedido existente con UUID {$uuid} (Quote ID: {$existingQuote->id})");
@@ -227,12 +226,14 @@ class ProcessOfflineOrderJob implements ShouldQueue
                     'status' => 'REGISTRADO', // Resetear estado si es necesario
                     'customerId' => $customerId,
                     'observations' => $observations,
+                    'offline_uuid' => $uuid,
                     'updated_at' => now(),
                     // Mantener otros campos originales si se desea
                 ]);
 
                 // Borrar detalles anteriores para re-insertar los nuevos (manera más limpia de actualizar items)
-                $quote->details()->delete();
+                // CORRECCIÓN: El nombre de la relación en el modelo VntQuote es 'detalles', no 'details'
+                $quote->detalles()->delete();
                 
             } else {
                 Log::info("🆕 [Job] Creando nuevo pedido offline con UUID {$uuid}");
@@ -247,6 +248,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
                     'warehouseId' => $this->warehouseId,
                     'userId' => $this->userId,
                     'observations' => $observations,
+                    'offline_uuid' => $uuid,
                     'branchId' => $this->branchId,
                     'created_at' => $this->orderData['fecha'] ?? now()
                 ]);
@@ -258,6 +260,7 @@ class ProcessOfflineOrderJob implements ShouldQueue
                     'quantity' => $item['quantity'],
                     'tax_percentage' => 0,
                     'price' => $item['price'],
+                    'value' => $item['price'], // CORRECCIÓN: Asegurar columna value para cálculos de totales
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
                     'description' => $item['name'] ?? 'Producto Offline',

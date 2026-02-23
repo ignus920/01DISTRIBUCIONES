@@ -100,11 +100,11 @@
                                     <span class="text-sm font-medium text-gray-900 dark:text-white">${{ number_format($quote->total ?? 0, 0, '.', '.') }}</span>
                                 </td>
                                 <td class="px-3 py-4">
-                                    <div class="text-sm font-medium text-gray-900 dark:text-white">Soacha</div>
-                                    <div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5 truncate">calle 25a+5a-20</div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $companyInfo->businessName ?? 'Sucursal' }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5 truncate">{{ $companyInfo->billingAddress ?? 'Dirección no disponible' }}</div>
                                 </td>
                                 <td class="px-3 py-4 whitespace-nowrap">
-                                    <span class="text-sm text-gray-900 dark:text-slate-200">{{ $quote->customer->business_phone ?? '3208614517' }}</span>
+                                    <span class="text-sm text-gray-900 dark:text-slate-200">{{ $quote->customer->business_phone ?? ($companyInfo->phone ?? '3208614517') }}</span>
                                 </td>
                                 <td class="px-3 py-4 whitespace-nowrap">
                                     <span class="text-sm text-gray-900 dark:text-slate-200">{{ $quote->created_at->format('d/m/Y H:i') }}</span>
@@ -270,7 +270,7 @@
                                     </span>
                                 </p>
                                 <p><span class="text-gray-600 dark:text-slate-400">Tipo:</span> <span class="text-blue-600 dark:text-blue-400 font-medium">POS</span></p>
-                                <p><span class="text-gray-600 dark:text-slate-400">Sucursal:</span> <span class="text-gray-900 dark:text-white">Soacha</span></p>
+                                <p><span class="text-gray-600 dark:text-slate-400">Sucursal:</span> <span class="text-gray-900 dark:text-white">{{ $companyInfo->businessName ?? 'Sucursal' }}</span></p>
                             </div>
                         </div>
                     </div>
@@ -301,7 +301,7 @@
                                             </td>
                                             <td class="px-4 py-3 text-center text-sm text-gray-900 dark:text-white">{{ $item->quantity }}</td>
                                             <td class="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">${{ number_format($item->price, 0, '.', '.') }}</td>
-                                            <td class="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">${{ number_format($item->quantity * $item->price, 0, '.', '.') }}</td>
+                                            <td class="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">${{ number_format($item->total, 0, '.', '.') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -309,7 +309,7 @@
                                     <tr>
                                         <td colspan="3" class="px-4 py-3 text-right text-sm font-medium text-gray-900 dark:text-white">Total General:</td>
                                         <td class="px-4 py-3 text-right text-lg font-bold text-blue-600 dark:text-blue-400">
-                                            ${{ number_format($selectedQuote->items->sum(function($item) { return $item->quantity * $item->price; }), 0, '.', '.') }}
+                                            ${{ number_format($selectedQuote->items->sum(function($item) { return $item->total; }), 0, '.', '.') }}
                                         </td>
                                     </tr>
                                 </tfoot>

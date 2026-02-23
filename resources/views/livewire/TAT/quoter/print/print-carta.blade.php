@@ -307,7 +307,7 @@
                     </td>
                     <td class="quantity">{{ $detalle->quantity }}</td>
                     <td class="price">${{ number_format($detalle->price, 0) }}</td>
-                    <td class="iva">0</td>
+                    <td class="iva">{{ $detalle->tax_percentage ?? 19 }}%</td>
                     <td class="subtotal">${{ number_format($detalle->price * $detalle->quantity, 0) }}</td>
                 </tr>
             @endforeach
@@ -332,7 +332,10 @@
                 $subtotal = $quote->items->sum(function($detalle) {
                     return $detalle->price * $detalle->quantity;
                 });
-                $iva = 0;
+                $iva = $quote->items->sum(function($detalle) {
+                    $subtotalItem = $detalle->price * $detalle->quantity;
+                    return $subtotalItem * (($detalle->tax_percentage ?? 19) / 100);
+                });
                 $total = $subtotal + $iva;
             @endphp
 

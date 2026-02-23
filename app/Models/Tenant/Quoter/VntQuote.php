@@ -23,6 +23,7 @@ class VntQuote extends Model
         'userId',
         'observations',
         'branchId',
+        'offline_uuid',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -91,5 +92,10 @@ class VntQuote extends Model
     public function getWarehouseNameAttribute()
     {
         return $this->warehouse ? $this->warehouse->name : 'Sucursal no encontrada';
+    }
+
+    public function remission()
+    {
+        return $this->hasOne(\App\Models\Tenant\Remissions\InvRemissions::class, 'quoteId');
     }
 }

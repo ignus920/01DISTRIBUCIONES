@@ -34,4 +34,9 @@ class VntDetailPettyCash extends Model
     public function reasonsPettyCash(){
         return $this->belongsTo(VntReasonsPettyCash::class, 'reasonPettyCashId', 'id');
     }
+
+    public function quote()
+    {
+        return $this->belongsTo(\App\Models\Tenant\Quoter\VntQuote::class, 'invoiceId', 'id');
+    }
 }

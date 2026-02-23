@@ -18,6 +18,8 @@ class DisDeliveries extends Model
         'user_id',
         'deliveryman_id',
         'sale_date',
+        'status',
+        'closed_at',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -25,6 +27,7 @@ class DisDeliveries extends Model
 
     protected $casts = [
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
+        'closed_at' => 'datetime'
     ];
 }

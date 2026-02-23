@@ -12,12 +12,12 @@
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="-translate-y-full"
              x-transition:enter-end="translate-y-0"
-             class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0 z-[60] flex items-center justify-center gap-2">
+             class="bg-red-600 text-white text-[10px] py-1 text-center font-bold sticky top-0  flex items-center justify-center gap-2">
             <span>⚠️ MODO OFFLINE ACTIVADO</span>
         </div>
 
         <!-- Search Input and Add Button - Sticky -->
-        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm z-50">
+        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm ">
             <div class="px-4 py-4">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -106,15 +106,38 @@
 
                                 <!-- Acciones -->
                                 <div class="mt-6 flex flex-wrap gap-2">
+                                    <!-- Ver Detalle Local -->
                                     <button
-                                        @click="editOfflineQuote(quote)"
-                                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+                                        @click="showLocalQuoteDetails(quote)"
+                                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-black flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
                                     >
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5 c4.478 0 8.268 2.943 9.542 7 -1.274 4.057-5.064 7-9.542 7 -4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
-                                        <span>Editar Offline</span>
+                                        <span>Detalles</span>
+                                    </button>
+
+                                    <!-- Editar Local -->
+                                    <button
+                                        @click="editOfflineQuote(quote)"
+                                        class="bg-yellow-500 hover:bg-yellow-600 text-white p-2.5 rounded-lg transition-all shadow-md active:scale-90"
+                                        title="Editar"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
+
+                                    <!-- Eliminar Local -->
+                                    <button
+                                        @click="deleteLocalQuote(quote.uuid)"
+                                        class="bg-rose-500 hover:bg-rose-600 text-white p-2.5 rounded-lg transition-all shadow-md active:scale-90"
+                                        title="Eliminar"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
@@ -141,9 +164,12 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <!-- Columna Cliente -->
                             <div class="lg:col-span-2">
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Cliente</p>
+                                <p class="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                    CLIENTE / ESTABLECIMIENTO
+                                </p>
                                 <div class="space-y-1">
-                                    <p class="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight">
+                                    <p class="text-base font-black text-gray-900 dark:text-white uppercase leading-tight tracking-tight">
                                         {{ $quote->customer->company->businessName ?? $quote->customer_name }}
                                     </p>
                                     @php
@@ -151,9 +177,9 @@
                                         $routeInfo = $quote->customer->company->routes->first();
                                     @endphp
                                     @if($mainContact)
-                                        <p class="text-[11px] font-medium text-gray-600 dark:text-gray-400 flex items-center">
-                                            <svg class="w-3 h-3 mr-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                                            {{ $mainContact->firstName }} {{ $mainContact->lastName }}
+                                        <p class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-center bg-gray-100 dark:bg-gray-700/50 px-2 py-0.5 rounded-full w-fit mt-1">
+                                            <svg class="w-3 h-3 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                            <span class="text-[9px] uppercase mr-1 text-gray-400">CONTACTO:</span> {{ $mainContact->firstName }} {{ $mainContact->lastName }}
                                         </p>
                                     @endif
                                 </div>
@@ -185,8 +211,8 @@
                             <!-- Columna Vendedor y Ruta -->
                             <div>
                                 <div class="mb-4">
-                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Vendedor</p>
-                                    <p class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center">
+                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">REGISTRADO POR</p>
+                                    <p class="text-xs font-bold text-gray-600 dark:text-gray-400 flex items-center">
                                         <svg class="w-3 h-3 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                                         {{ $quote->user->name ?? 'N/A' }}
                                     </p>
@@ -204,9 +230,9 @@
 
                         <!-- Acciones -->
                         <div class="mt-8 flex flex-wrap gap-2">
-                            <!-- Botón Detalles -->
+                            <!-- Botón Detalles (Soporta Offline si está cacheado, pero mejor advertir si falla) -->
                             <button
-                                wire:click="verDetalles({{ $quote->id }})"
+                                @click="isOnline ? $wire.verDetalles({{ $quote->id }}) : Swal.fire('Sin Conexión', 'El detalle detallado requiere conexión para cargar items del servidor.', 'info')"
                                 class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg text-sm font-black flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +245,7 @@
                             <!-- Botón Editar -->
                             @if($quote->status != 'REMISIÓN')
                             <button
-                                wire:click="irAlCarrito({{ $quote->id }})"
+                                @click="isOnline ? $wire.irAlCarrito({{ $quote->id }}) : Swal.fire('Sin Conexión', 'Para editar una orden del servidor necesitas estar online.', 'warning')"
                                 class="bg-yellow-500 hover:bg-yellow-600 text-white p-2.5 rounded-lg transition-all shadow-md active:scale-90"
                                 title="Editar"
                             >
@@ -231,7 +257,7 @@
 
                             <!-- Botón Imprimir -->
                             <button
-                                wire:click="printQuote({{ $quote->id }})"
+                                @click="isOnline ? $wire.printQuote({{ $quote->id }}) : Swal.fire('Sin Conexión', 'La generación de PDF oficial requiere internet.', 'info')"
                                 class="bg-blue-500 hover:bg-blue-600 text-white p-2.5 rounded-lg transition-all shadow-md active:scale-90"
                                 title="Imprimir"
                             >
@@ -242,8 +268,7 @@
 
                             <!-- Botón Eliminar -->
                             <button
-                                wire:click="eliminar({{ $quote->id }})"
-                                onclick="return confirm('¿Está seguro de eliminar esta cotización?')"
+                                @click="isOnline ? (confirm('¿Está seguro de eliminar esta cotización?') && $wire.eliminar({{ $quote->id }})) : Swal.fire('Sin Conexión', 'No puedes eliminar órdenes del servidor estando offline.', 'error')"
                                 class="bg-rose-500 hover:bg-rose-600 text-white p-2.5 rounded-lg transition-all shadow-md active:scale-90"
                                 title="Eliminar"
                             >
@@ -459,6 +484,18 @@
             if(this.isOnline) {
                 await this.syncPendingOrders();
             }
+
+            // Escuchar cambios de visibilidad para recargar la lista (por si volvemos atrás en el navegador)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    console.log('👁️ Página visible, recargando cotizaciones offline...');
+                    this.loadOfflineQuotes();
+                }
+            });
+            window.addEventListener('pageshow', () => {
+                console.log('🔙 Regreso a la página (pageshow), recargando cotizaciones...');
+                this.loadOfflineQuotes();
+            });
         },
 
         async getDb() {
@@ -475,7 +512,7 @@
             if (!db) return;
 
             try {
-                // Cargar pedidos no sincronizados
+                // Cargar pedidos no sincronizados para la lista naranja
                 this.offlineQuotes = await db.pedidos
                     .where('sincronizado').equals(0)
                     .reverse()
@@ -484,6 +521,68 @@
                 console.log('📱 Cotizaciones offline cargadas:', this.offlineQuotes.length);
             } catch (e) {
                 console.error('❌ Error cargando cotizaciones offline:', e);
+            }
+        },
+
+        async showLocalQuoteDetails(quote) {
+            // Mapeamos el objeto local al formato que espera el modal de detalles de Livewire
+            // o simplemente mostramos un SweetAlert rico si no queremos depender del servidor
+            let itemsHtml = quote.items.map(item => `
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; border-bottom:1px solid #eee; padding-bottom:5px;">
+                    <div style="text-align:left;">
+                        <span style="font-weight:bold; font-size:12px;">${item.name}</span><br>
+                        <span style="font-size:10px; color:#666;">${item.quantity} UNID x $${new Intl.NumberFormat('es-CO').format(item.price)}</span>
+                    </div>
+                    <div style="font-weight:bold; align-self:center;">
+                        $${new Intl.NumberFormat('es-CO').format(item.price * item.quantity)}
+                    </div>
+                </div>
+            `).join('');
+
+            Swal.fire({
+                title: 'Detalle de Cotización Offline',
+                html: `
+                    <div style="margin-top:15px; max-height:300px; overflow-y:auto; padding-right:5px;">
+                        ${itemsHtml}
+                        <div style="margin-top:20px; display:flex; justify-content:space-between; font-size:18px; font-weight:900;">
+                            <span>TOTAL:</span>
+                            <span style="color:#4f46e5;">$${new Intl.NumberFormat('es-CO').format(quote.total)}</span>
+                        </div>
+                        ${quote.observaciones ? `<div style="margin-top:15px; text-align:left; font-size:11px; color:#666; font-style:italic;">Obs: ${quote.observaciones}</div>` : ''}
+                    </div>
+                `,
+                confirmButtonText: 'Cerrar',
+                confirmButtonColor: '#4f46e5',
+                width: '95%'
+            });
+        },
+
+        async deleteLocalQuote(uuid) {
+            const result = await Swal.fire({
+                title: '¿Eliminar cotización local?',
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (result.isConfirmed) {
+                const db = await this.getDb();
+                if (!db) return;
+                
+                await db.pedidos.delete(uuid);
+                await this.loadOfflineQuotes();
+                
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Cotización eliminada',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
             }
         },
 
@@ -499,12 +598,21 @@
             if (this.loadingNewQuote) return;
             this.loadingNewQuote = true;
             
-            // 1. Limpiar estado local
-            await this.clearLocalState();
+            console.log('🆕 Iniciando nueva cotización (Limpieza total)...');
+            
+            // 1. Limpiar estado local en IndexedDB
+            const db = await this.getDb();
+            if (db) {
+                await db.estado_quoter.delete('actual');
+            }
+            
+            this.localCart = [];
+            this.selectedLocalCustomer = null;
+            this.currentQuoteUuid = null;
             
             // 2. Redirigir a ruta móvil directamente (Offline Safe)
             // ?clear=1 fuerza al servidor a limpiar la sesión si hay internet
-            window.location.href = "{{ route('tenant.quoter.products.mobile') }}?clear=1";
+            window.location.href = "/tenant/quoter/products/mobile?clear=1";
         },
 
         async editOfflineQuote(quote) {
@@ -523,7 +631,7 @@
 
                 // 2. Redirigir al editor (mobile-product-quoter)
                 // Usamos la ruta directa móvil para evitar redirecciones de servidor que fallan offline
-                window.location.href = "{{ route('tenant.quoter.products.mobile') }}"; 
+                window.location.href = "/tenant/quoter/products/mobile"; 
 
             } catch (e) {
                 console.error('❌ Error al preparar edición offline:', e);

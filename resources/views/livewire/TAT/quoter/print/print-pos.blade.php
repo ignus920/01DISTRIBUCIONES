@@ -269,14 +269,16 @@
     <!-- Products -->
     <div class="products-section">
         @php
-            $totalGeneral = 0;
+            $subtotalGeneral = 0;
+            $ivaGeneral = 0;
         @endphp
 
         @foreach($quote->items as $index => $detalle)
             @php
                 $subtotalItem = $detalle->price * $detalle->quantity;
-                $iva = $detalle->price * $detalle->tax_percentage / 100 * $detalle->quantity;
-                $totalGeneral += $subtotalItem + $iva;
+                $ivaItem = $subtotalItem * ($detalle->tax_percentage / 100);
+                $subtotalGeneral += $subtotalItem;
+                $ivaGeneral += $ivaItem;
             @endphp
 
             <div class="product-item">
@@ -302,15 +304,15 @@
     <div class="totals-section">
         <div class="total-line">
             <span>Subtotal:</span>
-            <span>${{ number_format($totalGeneral, 0) }}</span>
+            <span>${{ number_format($subtotalGeneral, 0) }}</span>
         </div>
         <div class="total-line">
             <span>IVA:</span>
-            <span>${{ number_format($iva, 0) }}</span>
+            <span>${{ number_format($ivaGeneral, 0) }}</span>
         </div>
         <div class="total-line final-total">
             <span>TOTAL:</span>
-            <span>${{ number_format($totalGeneral, 0) }}</span>
+            <span>${{ number_format($subtotalGeneral + $ivaGeneral, 0) }}</span>
         </div>
     </div>
 
