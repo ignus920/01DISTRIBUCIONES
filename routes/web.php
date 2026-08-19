@@ -17,6 +17,8 @@ use App\Livewire\Tenant\Customers\CustomerManager;
 
 
 Route::view('/', 'welcome');
+Route::view('/politica-privacidad', 'politica')->name('politica.privacidad');
+
 
 // Rutas de autenticación 2FA
 Route::get('/verify-2fa', Verify2FA::class)

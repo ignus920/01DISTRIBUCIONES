@@ -224,7 +224,10 @@
                     </section>
 
                     <footer class="py-16 text-center text-sm text-gray-600 dark:text-gray-400">
-                        © {{ date('Y') }} Tienda Multitenancy. Todos los derechos reservados.
+                        <p>© {{ date('Y') }} Tienda Multitenancy. Todos los derechos reservados.</p>
+                        <p class="mt-2">
+                            <a href="/politica-privacidad" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">Política de Tratamiento de Datos Personales</a>
+                        </p>
                     </footer>
                 </div>
             </div>
