@@ -28,11 +28,11 @@
                             1. IDENTIFICACIÓN DEL RESPONSABLE DEL TRATAMIENTO
                         </h2>
                         <ul class="list-disc pl-5 space-y-1">
-                            <li><strong>Razón Social:</strong> MÁS DISTRIBUCIONES J&M</li>
-                            <li><strong>NIT:</strong> [NÚMERO DE IDENTIFICACIÓN TRIBUTARIA]</li>
-                            <li><strong>Domicilio y Dirección:</strong> [DIRECCIÓN COMPLETA Y CIUDAD]</li>
-                            <li><strong>Correo Electrónico:</strong> [CORREO ELECTRÓNICO OFICIAL PARA NOTIFICACIONES LEGALES]</li>
-                            <li><strong>Teléfono / WhatsApp:</strong> [NÚMERO DE TELÉFONO OFICIAL]</li>
+                            <li><strong>Razón Social:</strong> Mas distribuciones JM</li>
+                            <li><strong>NIT:</strong> 1017134785-1</li>
+                            <li><strong>Domicilio y Dirección:</strong> Bogotá, D.C. - Dirección: x</li>
+                            <li><strong>Correo Electrónico:</strong> marcela@gmail.com</li>
+                            <li><strong>Teléfono / WhatsApp:</strong> 3015823501</li>
                         </ul>
                     </section>
 
@@ -95,12 +95,12 @@
                             6. ÁREA RESPONSABLE Y CANALES DE ATENCIÓN
                         </h2>
                         <p class="mb-3 text-justify leading-relaxed">
-                            El área de [NOMBRE DEL ÁREA O CARGO, EJ. SERVICIO AL CLIENTE] es la responsable de la atención de peticiones, consultas y reclamos ante la cual el Titular puede ejercer sus derechos.
+                            El área de Servicio al Cliente es la responsable de la atención de peticiones, consultas y reclamos ante la cual el Titular puede ejercer sus derechos.
                         </p>
                         <p class="mb-3">El Titular podrá comunicarse mediante:</p>
                         <ul class="list-disc pl-5 space-y-1">
-                            <li><strong>Chat de atención:</strong> A través de la línea de WhatsApp habilitada.</li>
-                            <li><strong>Correo electrónico:</strong> [CORREO ELECTRÓNICO PARA HABEAS DATA]</li>
+                            <li><strong>Chat de atención:</strong> A través de la línea de WhatsApp 3015823501 habilitada.</li>
+                            <li><strong>Correo electrónico:</strong> marcela@gmail.com</li>
                             <li><strong>Horario de atención:</strong> Lunes a sábado, de 7:00 a. m. a 5:00 p. m.</li>
                         </ul>
                     </section>
@@ -120,7 +120,7 @@
                             8. VIGENCIA
                         </h2>
                         <p class="text-justify leading-relaxed">
-                            La presente Política de Tratamiento de Datos Personales rige a partir del [DÍA] de [MES] de [AÑO]. Las bases de datos en las que se registrarán los datos personales tendrán una vigencia igual al tiempo en que se mantenga y utilice la información para las finalidades descritas o aquel dictado por mandato legal.
+                            La presente Política de Tratamiento de Datos Personales rige a partir del 19 de Agosto de 2026. Las bases de datos en las que se registrarán los datos personales tendrán una vigencia igual al tiempo en que se mantenga y utilice la información para las finalidades descritas o aquel dictado por mandato legal.
                         </p>
                     </section>
                 </div>
