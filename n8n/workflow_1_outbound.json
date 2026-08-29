@@ -1,0 +1,230 @@
+{
+  "name": "WhatsApp Prospectos - Outbound Mensaje 1",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Schedule Trigger (Diario 9am)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "notes": "Ejecuta el campana una vez al dia en horario habil"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verificar que estemos en horario habil (Lun-Vie 9am-6pm, Sab 9am-1pm)\nconst now = new Date();\nconst col = new Date(now.toLocaleString('en-US', { timeZone: 'America/Bogota' }));\nconst hour = col.getHours();\nconst day = col.getDay(); // 0=Dom, 6=Sab\n\nconst isWeekday = day >= 1 && day <= 5;\nconst isSaturday = day === 6;\nconst isBusinessHour = (isWeekday && hour >= 9 && hour < 18) || (isSaturday && hour >= 9 && hour < 13);\n\nif (!isBusinessHour) {\n  throw new Error(`Fuera de horario habil. Hora Bogota: ${col.toLocaleString('es-CO')}`);\n}\n\nreturn [{ json: { ok: true, hora_bogota: col.toLocaleString('es-CO') } }];"
+      },
+      "id": "check-business-hours",
+      "name": "Verificar Horario Habil",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prospectos",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "PENDING"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": true
+        }
+      },
+      "id": "read-prospects",
+      "name": "Leer Prospectos PENDING",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Limitar a MAX 40 prospectos por dia (anti-ban)\nconst MAX_PER_DAY = 40;\nconst items = $input.all();\n\nif (items.length === 0) {\n  throw new Error('No hay prospectos PENDING para procesar hoy.');\n}\n\n// Tomar solo los primeros N\nconst batch = items.slice(0, MAX_PER_DAY);\nconsole.log(`Procesando ${batch.length} de ${items.length} prospectos disponibles`);\n\nreturn batch;"
+      },
+      "id": "limit-daily-batch",
+      "name": "Limitar Lote Diario (Anti-ban)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "split-in-batches",
+      "name": "Iterar Prospectos",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Delay aleatorio entre 45-120 segundos (humanizar envios - anti-ban)\nconst min = 45000;\nconst max = 120000;\nconst delay = Math.floor(Math.random() * (max - min + 1)) + min;\n\nconsole.log(`Esperando ${delay/1000} segundos antes de enviar...`);\nawait new Promise(resolve => setTimeout(resolve, delay));\n\nreturn $input.all();"
+      },
+      "id": "random-delay",
+      "name": "Delay Aleatorio (45-120s)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "notes": "Anti-ban: evita patron de envio automatico detectado por Meta"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construir el mensaje personalizado\nconst item = $input.first().json;\n\nconst name = item.name || 'equipo';\nconst business = item.business || 'su negocio';\n\n// Variaciones del mensaje para evitar deteccion de template (anti-ban)\nconst openers = [\n  `Hola ${name}, ¿cómo están?`,\n  `Buenas ${name}, ¿cómo les va?`,\n  `Hola ${name}, espero que estén muy bien.`\n];\n\nconst openerIdx = Math.floor(Math.random() * openers.length);\n\nconst mensaje = `${openers[openerIdx]} Vi ${business} en Google Maps y me gustó el flujo de trabajo que tienen. Tengo una duda rápida: ¿Ustedes ya envían los recordatorios de cambio de aceite por WhatsApp automáticamente o todavía lo hacen manual?`;\n\nreturn [{\n  json: {\n    ...item,\n    mensaje_m1: mensaje\n  }\n}];"
+      },
+      "id": "build-message",
+      "name": "Construir Mensaje 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://TU_EVOLUTION_API_HOST/message/sendText/{{$json.instance || 'main'}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_EVOLUTION_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"{{ $json.mensaje_m1 }}\",\n  \"delay\": 1200,\n  \"linkPreview\": false,\n  \"mentionsEveryOne\": false\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-whatsapp-m1",
+      "name": "Enviar Mensaje 1 (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prospectos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone": "={{ $json.phone }}",
+            "status": "SENT_M1",
+            "sent_m1_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": ["phone"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "update-sheet-sent",
+      "name": "Actualizar Sheet → SENT_M1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node['Iterar Prospectos'].context.noItemsLeft }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-loop-done",
+      "name": "¿Terminó el lote?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2220, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Diario 9am)": {
+      "main": [[{ "node": "Verificar Horario Habil", "type": "main", "index": 0 }]]
+    },
+    "Verificar Horario Habil": {
+      "main": [[{ "node": "Leer Prospectos PENDING", "type": "main", "index": 0 }]]
+    },
+    "Leer Prospectos PENDING": {
+      "main": [[{ "node": "Limitar Lote Diario (Anti-ban)", "type": "main", "index": 0 }]]
+    },
+    "Limitar Lote Diario (Anti-ban)": {
+      "main": [[{ "node": "Iterar Prospectos", "type": "main", "index": 0 }]]
+    },
+    "Iterar Prospectos": {
+      "main": [[{ "node": "Delay Aleatorio (45-120s)", "type": "main", "index": 0 }]]
+    },
+    "Delay Aleatorio (45-120s)": {
+      "main": [[{ "node": "Construir Mensaje 1", "type": "main", "index": 0 }]]
+    },
+    "Construir Mensaje 1": {
+      "main": [[{ "node": "Enviar Mensaje 1 (Evolution API)", "type": "main", "index": 0 }]]
+    },
+    "Enviar Mensaje 1 (Evolution API)": {
+      "main": [[{ "node": "Actualizar Sheet → SENT_M1", "type": "main", "index": 0 }]]
+    },
+    "Actualizar Sheet → SENT_M1": {
+      "main": [[{ "node": "¿Terminó el lote?", "type": "main", "index": 0 }]]
+    },
+    "¿Terminó el lote?": {
+      "main": [
+        [],
+        [{ "node": "Iterar Prospectos", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": ["whatsapp", "prospectos", "anti-ban"],
+  "pinData": {}
+}

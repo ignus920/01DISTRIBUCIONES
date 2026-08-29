@@ -1,4 +1,5 @@
 <div>
+
 @script
 <script>
     /**
@@ -11,9 +12,13 @@
         showCart: false, // Control manual (Principalmente Offline)
         showCartModal: $wire.entangle('showCartModal'), // Sincronizado con Livewire
         showObservations: $wire.entangle('showObservations'), // Sincronizado para observaciones
+        observaciones: $wire.entangle('observaciones'), // Sincronizado para notas del pedido
         displayProducts: @js($mappedProducts), // Inyectar datos iniciales de forma segura con Livewire 3
         localSearch: '',
         showOfflineCreateForm: false, // Control del formulario offline
+        showConfirmSave: false, // Control del modal de confirmación nativo
+        showSuccessSave: false, // Control del modal de éxito nativo
+        showConfirmClear: false, // Control del modal de confirmación de limpieza
         newOfflineCustomer: { // Datos para el nuevo cliente offline
             id: null,
             typeIdentificationId: 1,
@@ -36,6 +41,7 @@
         currentQuoteUuid: null, // UUID de la cotización actual (para edición)
         lastSync: null, // Marca de tiempo de la última sincronización completa
         isPushingToStore: false, // BLOQUEO: Evita que el servidor sobreescriba cambios mientras estamos subiendo datos local -> server
+        lockTimeout: null,
         
         // Estados para el swipe de los items del carrito
         swipeStates: {}, 
@@ -45,6 +51,15 @@
         runInQueue(task) {
             this.syncQueue = this.syncQueue.then(() => task());
             return this.syncQueue;
+        },
+
+        setLock() {
+            this.isPushingToStore = true;
+            if (this.lockTimeout) clearTimeout(this.lockTimeout);
+            this.lockTimeout = setTimeout(() => {
+                this.isPushingToStore = false;
+                console.log('🔓 Bloqueo de sincronización liberado (Interaction timeout)');
+            }, 2000);
         },
 
         /**
@@ -60,14 +75,18 @@
         },
 
         async init() {
-            // 0. Limpieza forzada vía parámetro URL (Ej: desde Sidebar)
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('clear')) {
-                console.log('🧹 Detectada bandera "clear", limpiando estado local...');
+            // 0. Limpieza forzada vía señal local (Ej: desde Sidebar)
+            if (localStorage.getItem('quoter_clear') === '1') {
+                console.log('🧹 Detectada señal de limpieza local, vaciando estado...');
+                localStorage.removeItem('quoter_clear'); // Consumir la señal
+                
                 const db = await this.getDb();
                 if (db) {
                     await db.estado_quoter.delete('actual');
-                    // Limpiar también variables reactivas en memoria
+                    // Limpiar sesión en servidor
+                    await $wire.clearQuoter();
+                    
+                    // Limpiar variables reactivas en memoria
                     this.localCart = [];
                     this.selectedLocalCustomer = null;
                     this.currentQuoteUuid = null;
@@ -213,20 +232,34 @@
                 });
             });
 
-            window.addEventListener('sync-finished', async () => {
+            window.addEventListener('sync-finished', async (event) => {
                 this.runInQueue(async () => {
                     this.syncing = false;
                     this.lastSync = new Date().toISOString();
-                    console.timeEnd('🧪 [Sync Full]');
-                    
+
+                    // Guardar versión del catálogo para evitar re-sync innecesario
+                    const syncData = event.detail || (Array.isArray(event.detail) ? event.detail[0] : {});
+                    const newVersion = syncData.version || null;
+                    if (newVersion) {
+                        localStorage.setItem('catalog_version', newVersion);
+                        console.log('💾 Versión de catálogo guardada:', newVersion);
+                    }
+
+                    try {
+                        await this.persistState();
+                        await this.syncPendingOrders();
+                    } finally {
+                        try { console.timeEnd('🧪 [Sync Full]'); } catch(e) {}
+                    }
+
                     // Solo recargar productos locales si estamos realmente offline o forzando offline
                     if (!this.isOnline || this.forceOffline) {
                         await this.loadLocalProducts();
                     }
-                    
+
                     await this.persistState();
 
-                    // Si está online, refrescar Livewire para asegurar que la sesión del servidor 
+                    // Si está online, refrescar Livewire para asegurar que la sesión del servidor
                     // y el estado de Alpine sean idénticos
                     if (this.isOnline) {
                         $wire.$refresh();
@@ -234,10 +267,23 @@
                 });
             });
 
+            // Si el servidor confirma que el catálogo no cambió, no hacer nada
+            window.addEventListener('sync-not-needed', (event) => {
+                const data = event.detail || (Array.isArray(event.detail) ? event.detail[0] : {});
+                console.log('✅ [Sync] Catálogo actualizado, omitiendo sincronización.', data.version || '');
+                this.syncing = false;
+            });
+
             window.addEventListener('products-updated', async (event) => {
                 if (this.isOnline) {
                     const products = event.detail[0]?.products || [];
-                    this.displayProducts = products;
+                    // Merge: preservar cantidades locales para productos que ya están en el carrito
+                    this.displayProducts = products.map(p => {
+                        const inCart = this.localCart.find(c => c.id === p.id);
+                        return inCart
+                            ? { ...p, quantity: inCart.quantity, selected_price: inCart.price, price_label: inCart.price_label }
+                            : p;
+                    });
                     await this.saveToLocalCache(products);
                 }
             });
@@ -428,25 +474,36 @@
         },
 
         async saveLocalOrder() {
+            console.log('🚀 [OfflineSave] Iniciando proceso de guardado local...');
+            
             if (this.localCart.length === 0) {
-                Swal.fire('Carrito vacío', 'Agrega productos antes de finalizar.', 'warning');
+                console.warn('⚠️ [OfflineSave] Carrito vacío');
+                alert('Carrito vacío: Agrega productos antes de finalizar.');
                 return;
             }
+
             if (!this.selectedLocalCustomer && @json(auth()->user()->profile_id) != 17) {
-                Swal.fire('Cliente requerido', 'Selecciona un cliente para continuar.', 'warning');
+                console.warn('⚠️ [OfflineSave] Cliente no seleccionado');
+                alert('Cliente requerido: Selecciona un cliente para continuar.');
                 return;
             }
-            const result = await Swal.fire({
-                title: '¿Finalizar pedido local?',
-                text: 'El pedido se guardará en el celular y se enviará cuando recuperes internet.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, guardar localmente',
-                cancelButtonText: 'Cancelar'
-            });
-            if (!result.isConfirmed) return;
+
+            // 1. Mostrar modal de confirmación nativo
+            this.showConfirmSave = true;
+        },
+
+        async doSaveLocalOrder() {
+            this.showConfirmSave = false;
+            console.log('🚀 [OfflineSave] Procesando guardado local definitivo...');
+
+            console.log('📂 [OfflineSave] Obteniendo base de datos...');
             const db = await this.getDb();
-            if (!db) return;
+            if (!db) {
+                console.error('❌ [OfflineSave] No se pudo obtener la base de datos (window.db)');
+                Swal.fire('Error de sistema', 'La base de datos local no está disponible.', 'error');
+                return;
+            }
+
             const orderUuid = this.currentQuoteUuid || ('local-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
             const orderData = {
                 uuid: orderUuid,
@@ -455,26 +512,33 @@
                 customer: this.selectedLocalCustomer ? JSON.parse(JSON.stringify(this.selectedLocalCustomer)) : null,
                 total: this.localCart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
                 sincronizado: 0,
-                observaciones: $wire.get('observaciones') || '',
+                observaciones: this.observaciones || '',
                 estado: 'edited'
             };
-            try {
-                console.log('💾 Guardando pedido local...', orderData);
-                const id = await db.pedidos.put(orderData);
-                console.log('✅ Pedido guardado en IndexedDB con ID/UUID:', id);
 
-                await Swal.fire({ icon: 'success', title: '¡Pedido Guardado!', timer: 1500, showConfirmButton: false });
+            console.log('💾 [OfflineSave] Intentando guardar en IndexedDB...', orderData);
+            
+            try {
+                const id = await db.pedidos.put(orderData);
+                console.log('✅ [OfflineSave] Guardado exitoso con ID:', id);
+
+                // Mostramos el modal de éxito nativo
+                this.showSuccessSave = true;
                 
-                // Limpiar ANTES de redirigir para asegurar que el estado quede limpio
+                // Limpieza de estado
                 this.localCart = [];
                 this.selectedLocalCustomer = null; 
                 this.currentQuoteUuid = null;
                 await this.persistState();
-                
-                window.location.href = "/tenant/quoter/mobile";
-            } catch (e) {
-                console.error('❌ Error guardando pedido local:', e);
-                Swal.fire('Error', 'No se pudo guardar el pedido localmente.', 'error');
+
+                // Redirección después de 2 segundos (tiempo para ver el éxito)
+                setTimeout(() => {
+                    window.location.href = "/tenant/quoter/mobile";
+                }, 2000);
+
+            } catch (err) {
+                console.error('❌ [OfflineSave] Error crítico al escribir en IndexedDB:', err);
+                alert('Error al guardar: ' + err.message);
             }
         },
 
@@ -555,6 +619,119 @@
                     };
                 });
             } catch (error) { console.error('❌ Error local products:', error); }
+        },
+
+        // --- Lógica de Carrito Instantáneo (Optimista) ---
+        addItemInstant(product, price, label) {
+            this.setLock();
+            // 1. Actualizar localCart (Persistencia local)
+            const existing = this.localCart.find(item => item.id === product.id);
+            if (existing) {
+                existing.quantity++;
+            } else {
+                this.localCart.push({
+                    id: product.id,
+                    name: product.display_name || product.name,
+                    sku: product.sku,
+                    price: price,
+                    price_label: label,
+                    quantity: 1
+                });
+            }
+
+            // 2. Actualizar displayProducts (Interfaz inmediata)
+            const prod = this.displayProducts.find(p => p.id === product.id);
+            if (prod) {
+                prod.quantity = (prod.quantity || 0) + 1;
+                prod.selected_price = price;
+                prod.price_label = label;
+            }
+
+            this.persistState();
+
+            // 3. Sincronizar con servidor si hay red
+            if (this.isOnline && !this.forceOffline) {
+                // Usamos addToQuoter para la primera vez, el servidor ya tiene lógica defensiva
+                $wire.addToQuoter(product.id, price, label);
+            }
+        },
+
+        updateQuantityInstant(productId, newQty) {
+            this.setLock();
+            newQty = parseInt(newQty);
+            if (isNaN(newQty) || newQty < 0) newQty = 0;
+
+            // 1. Actualizar localCart
+            const itemIndex = this.localCart.findIndex(item => item.id === productId);
+            if (itemIndex !== -1) {
+                if (newQty === 0) {
+                    this.localCart.splice(itemIndex, 1);
+                } else {
+                    this.localCart[itemIndex].quantity = newQty;
+                }
+            }
+
+            // 2. Actualizar displayProducts (UI del catálogo)
+            const prod = this.displayProducts.find(p => p.id === productId);
+            if (prod) {
+                prod.quantity = newQty;
+                if (newQty === 0) {
+                    prod.selected_price = null;
+                    prod.price_label = null;
+                }
+            }
+
+            this.persistState();
+
+            // 3. Sincronizar con servidor
+            if (this.isOnline && !this.forceOffline) {
+                // Enviamos valor absoluto para máxima precisión
+                $wire.updateQuantity(productId, newQty);
+            }
+        },
+
+        clearCartInstant() {
+            this.setLock();
+            // 1. Vaciar localCart
+            this.localCart = [];
+
+            // 2. Resetear displayProducts (UI del catálogo)
+            this.displayProducts.forEach(p => {
+                p.quantity = 0;
+                p.selected_price = null;
+                p.price_label = null;
+            });
+
+            this.persistState();
+
+            // 3. Sincronizar con servidor
+            if (this.isOnline && !this.forceOffline) {
+                $wire.call('clearCart');
+            }
+        },
+
+        removeItemInstant(productId) {
+            this.setLock();
+            // 1. Quitar de localCart
+            const index = this.localCart.findIndex(i => i.id === productId);
+            if (index !== -1) {
+                this.localCart.splice(index, 1);
+            }
+
+            // 2. Resetear en displayProducts
+            const prod = this.displayProducts.find(p => p.id === productId);
+            if (prod) {
+                prod.quantity = 0;
+                prod.selected_price = null;
+                prod.price_label = null;
+            }
+
+            this.persistState();
+
+            // 3. Sincronizar con servidor
+            if (this.isOnline && !this.forceOffline) {
+                $wire.call('removeFromQuoter', productId);
+            }
         },
 
         async saveToLocalCache(products) {
@@ -759,9 +936,10 @@
         },
 
         async syncFullCatalogAuto() {
-            if (this.isOnline && !this.syncing) {
-                await $wire.syncFullCatalog();
-            }
+            if (!this.isOnline || this.syncing) return;
+            // Pasar la versión local al servidor; si coincide, el servidor omite el sync
+            const localVersion = localStorage.getItem('catalog_version') || null;
+            await $wire.syncIfNeeded(localVersion);
         }
     }));
 </script>
@@ -769,7 +947,7 @@
 
 
     {{-- Contenedor con lógica offline --}}
-    <div wire:key="mobile-quoter-root-container" x-data="quoterOffline" 
+    <div wire:key="mobile-quoter-root-container" id="mobile-quoter-root-container" x-data="quoterOffline" 
          class="fixed inset-0 bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden transition-all duration-300"
          :class="showOfflineCreateForm ? 'z-[9999]' : 'z-[35]'">
         
@@ -794,7 +972,7 @@
                     href="{{ route('tenant.tat.restock.list') }}"
                     class="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200
                         flex items-center gap-2"
-                    wire:navigate.hover>
+                    wire:navigate.false>
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                     </svg>
@@ -803,10 +981,10 @@
                 </a>
                 @else
                 <a
-                    href="{{ route('tenant.quoter') }}"
+                    href="{{ route('tenant.remissions', ['clear' => 1]) }}"
                     class="p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200
                         flex items-center gap-2"
-                    wire:navigate.hover>
+                    wire:navigate.false>
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                     </svg>
@@ -846,13 +1024,12 @@
                                 d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17M17 16a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
 
-                        <!-- Indicador Online -->
-                        <div x-show="isOnline" class="contents" wire:key="hdr-online-indicator">
-                            @if($this->quoterCount > 0)
-                            <span wire:key="online-badge-{{ $this->quoterCount }}" class="absolute -top-2 -right-1.5 bg-red-600 text-white text-[11px] font-black rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm animate-pulse">
-                                {{ $this->quoterCount }}
+                        <!-- Indicador Online (Alpine-driven: instantáneo, sin esperar servidor) -->
+                        <div x-show="isOnline" class="contents">
+                            <span x-show="localCart.reduce((s,i) => s + i.quantity, 0) > 0"
+                                  x-text="localCart.reduce((s,i) => s + i.quantity, 0)"
+                                  class="absolute -top-2 -right-1.5 bg-red-600 text-white text-[11px] font-black rounded-full min-w-[22px] h-[22px] flex items-center justify-center border-2 border-white dark:border-gray-800 shadow-sm animate-pulse">
                             </span>
-                            @endif
                         </div>
 
                         <!-- Indicador Offline -->
@@ -1034,7 +1211,7 @@
                                         <div class="flex justify-center items-center bg-black/10 rounded-md py-0.5">
                                              <input type="tel" 
                                                    :value="getProductQuantity(product.id)"
-                                                   @change="isOnline ? $wire.updateQuantity(product.id, $event.target.value) : setLocalQuantity(product.id, $event.target.value)"
+                                                   @change="updateQuantityInstant(product.id, $event.target.value)"
                                                    @click.stop
                                                    class="w-full text-center font-black text-xl text-white bg-transparent border-none focus:ring-0 p-0 appearance-none placeholder-white/50"
                                                    inputmode="numeric">
@@ -1042,12 +1219,12 @@
 
                                         <!-- Botones abajo (Distribuidos) -->
                                         <div class="flex gap-1.5">
-                                            <button @click="isOnline ? $wire.decreaseQuantity(product.id) : updateLocalQuantity(product.id, -1)"
+                                            <button @click="updateQuantityInstant(product.id, getProductQuantity(product.id) - 1)"
                                                     class="flex-1 h-9 flex items-center justify-center bg-black/20 text-white hover:bg-black/30 rounded-md transition-colors active:scale-95 shadow-sm">
                                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M20 12H4"></path></svg>
                                             </button>
                                             
-                                            <button @click="isOnline ? $wire.increaseQuantity(product.id) : updateLocalQuantity(product.id, 1)"
+                                            <button @click="updateQuantityInstant(product.id, getProductQuantity(product.id) + 1)"
                                                     class="flex-1 h-9 flex items-center justify-center bg-white text-green-700 rounded-md shadow-md active:scale-95 transition-transform hover:bg-gray-100">
                                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                                             </button>
@@ -1059,7 +1236,7 @@
                             <!-- Precios para seleccionar -->
                             <div wire:key="product-prices-box-real" x-show="getProductQuantity(product.id) === 0" class="space-y-1.5">
                                     <template x-for="(price, label) in getVisiblePrices(product.all_prices || {})" :key="label">
-                                        <button @click="isOnline ? $wire.addToQuoter(product.id, price, label) : addToLocalCart(product, price, label)"
+                                        <button @click="addItemInstant(product, price, label)"
                                                 class="w-full py-2 px-2 text-center rounded-lg border-2 border-green-100 dark:border-green-800 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 hover:bg-green-100 active:scale-95 transition-all flex flex-col items-center justify-center">
                                             <span class="text-[9px] uppercase font-bold opacity-60" x-text="label == 'Precio Regular' ? 'Precio' : label"></span>
                                             <span class="text-sm font-black tracking-tight" x-text="'$' + Number(price).toLocaleString()"></span>
@@ -1130,10 +1307,10 @@
                         </template>
                         
                         <!-- Botón limpiar carrito (Online) -->
-                        <div x-show="isOnline && localCart.length > 0" class="flex flex-col items-center justify-center">
+                        <div x-show="isOnline && (localCart.length > 0 || quoterCount > 0)" class="flex flex-col items-center justify-center">
                             <span class="text-[10px] text-red-500 font-bold uppercase leading-none mb-0.5">Limpiar</span>
                             <button
-                                onclick="confirmClearCart()"
+                                @click="showConfirmClear = true"
                                 title="Limpiar carrito"
                                 class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1144,7 +1321,7 @@
 
                         <!-- Botón limpiar carrito (Offline) -->
                         <template x-if="!isOnline && localCart.length > 0">
-                            <button @click="if(confirm('¿Limpiar carrito local?')) localCart = []" class="text-red-500 text-[10px] font-bold uppercase underline">
+                            <button @click="showConfirmClear = true" class="text-red-500 text-[10px] font-bold uppercase underline">
                                 Limpiar
                             </button>
                         </template>
@@ -1391,7 +1568,7 @@
                                  :class="!isOnline ? 'border-orange-200 dark:border-orange-900/30 bg-white dark:bg-gray-700' : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'"
                                  @touchstart="if(!swipeStates[item.id]) swipeStates[item.id] = {startX: 0, currentX: 0}; swipeStates[item.id].startX = $event.touches[0].clientX"
                                  @touchmove="let diff = $event.touches[0].clientX - swipeStates[item.id].startX; swipeStates[item.id].currentX = diff > 0 ? Math.min(80, diff) : Math.max(-80, diff)"
-                                 @touchend="if (Math.abs(swipeStates[item.id].currentX) > 40) { if(isOnline) { $wire.removeFromQuoter(item.id); } else { localCart.splice(index, 1); } } swipeStates[item.id].currentX = 0"
+                                 @touchend="if (Math.abs(swipeStates[item.id].currentX) > 40) { removeItemInstant(item.id); } swipeStates[item.id].currentX = 0"
                                  @touchcancel="if(swipeStates[item.id]) swipeStates[item.id].currentX = 0">
 
                                 <!-- Fondo Rojo (Swipe Bidireccional) -->
@@ -1421,7 +1598,7 @@
                                             
                                             <!-- Botón Menos -->
                                             <button 
-                                                @click.stop="isOnline ? $wire.updateQuantity(item.id, item.quantity - 1) : (item.quantity > 1 ? item.quantity-- : localCart.splice(index, 1))" 
+                                                @click.stop="updateQuantityInstant(item.id, item.quantity - 1)" 
                                                 class="p-2 px-3 text-gray-500 hover:text-gray-700 active:bg-gray-200 rounded-l-lg transition-colors">
                                                 -
                                             </button>
@@ -1431,7 +1608,7 @@
                                             
                                             <!-- Botón Más -->
                                             <button 
-                                                @click.stop="isOnline ? $wire.updateQuantity(item.id, item.quantity + 1) : item.quantity++" 
+                                                @click.stop="updateQuantityInstant(item.id, item.quantity + 1)" 
                                                 class="p-2 px-3 text-gray-500 hover:text-gray-700 active:bg-gray-200 rounded-r-lg transition-colors">
                                                 +
                                             </button>
@@ -1439,7 +1616,7 @@
 
                                         <!-- Eliminar (Botón explícito también) -->
                                         <button 
-                                            @click.stop="isOnline ? $wire.removeFromQuoter(item.id) : localCart.splice(index, 1)" 
+                                            @click.stop="removeItemInstant(item.id)" 
                                             class="text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                         </button>
@@ -1453,6 +1630,56 @@
 
                 <!-- Footer del modal -->
                 <div wire:key="cart-modal-footer-box" x-show="localCart.length > 0" class="px-4 py-4 border-t border-gray-200 dark:border-gray-700 space-y-4 flex-shrink-0 bg-white dark:bg-gray-800">
+
+                    @if($showRemisionModal)
+                    {{-- ===== FORMULARIO CONFIRMAR PEDIDO (INLINE DENTRO DEL CARRITO) ===== --}}
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Confirmar Pedido</h3>
+                                <p class="text-xs text-gray-500 dark:text-slate-400">Seleccione entrega y método de pago</p>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider mb-2">Tipo de Entrega</label>
+                            <select wire:model="selectedDeliveryTypeId"
+                                class="w-full px-3 py-3 text-sm border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">— Seleccionar tipo de entrega —</option>
+                                @foreach($availableDeliveryTypes as $type)
+                                    <option value="{{ $type['id'] }}">{{ $type['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider mb-2">Método de Pago</label>
+                            <select wire:model="selectedMethodPaymentId"
+                                class="w-full px-3 py-3 text-sm border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">— Seleccionar método de pago —</option>
+                                @foreach($availableMethodPayments as $method)
+                                    <option value="{{ $method['id'] }}">{{ $method['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button wire:click="$set('showRemisionModal', false)"
+                                class="flex-1 py-3 text-sm font-medium text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+                                Cancelar
+                            </button>
+                            <button wire:click="confirmarPedido"
+                                wire:loading.attr="disabled"
+                                class="flex-1 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                                <svg wire:loading.remove wire:target="confirmarPedido" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <svg wire:loading wire:target="confirmarPedido" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                    @else
 
                     <!-- Observaciones -->
                     @if(auth()->user()->profile_id != 17)
@@ -1479,7 +1706,7 @@
 
                         <div wire:key="cart-observations-input-box" x-show="showObservations" x-transition class="mt-3">
                             <textarea
-                                wire:model="observaciones"
+                                x-model="observaciones"
                                 rows="4"
                                 placeholder="Escribe observaciones adicionales..."
                                 class="block w-full p-2 text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300
@@ -1521,7 +1748,7 @@
 
                                 <span wire:loading.remove wire:target="updateQuote">
                                     @if($editingRemissionId)
-                                        Editar Remisión
+                                        Editar Pedido
                                     @else
                                         Actualizar
                                     @endif
@@ -1556,28 +1783,23 @@
                                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
-                                    Remisión ya generada
+                                    Pedido ya generado
                                 </div>
                             @else
-                                <button wire:click="confirmarPedido"
+                                <button wire:click="abrirModalRemision"
                                     wire:loading.attr="disabled"
-                                    wire:target="confirmarPedido"
+                                    wire:target="abrirModalRemision"
                                     class="w-full font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center text-sm disabled:opacity-50 bg-blue-600 hover:bg-blue-700 text-white">
-                                    
-                                    <svg wire:loading.remove wire:target="confirmarPedido" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12l2 2 4-4" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                                    <svg wire:loading.remove wire:target="abrirModalRemision" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
                                     </svg>
-                                    
-                                    <svg wire:loading wire:target="confirmarPedido" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    <svg wire:loading wire:target="abrirModalRemision" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                        <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                                     </svg>
-                                    
-                                    <span wire:loading.remove wire:target="confirmarPedido">Confirmar pedido</span>
-                                    <span wire:loading wire:target="confirmarPedido">Confirmando...</span>
+                                    <span wire:loading.remove wire:target="abrirModalRemision">Confirmar pedido</span>
+                                    <span wire:loading wire:target="abrirModalRemision">Verificando...</span>
                                 </button>
                             @endif
                         @endif
@@ -1701,12 +1923,108 @@
                 </div>
                 @endif
             @endif
+                    @endif
+                    {{-- FIN @if($showRemisionModal) --}}
     </div>
 </div>
 </div>
+
+{{-- MODAL NATIVO DE CONFIRMACIÓN OFFLINE --}}
+<div x-show="showConfirmSave" 
+     style="display: none;"
+     class="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 scale-95"
+     x-transition:enter-end="opacity-100 scale-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100 scale-100"
+     x-transition:leave-end="opacity-0 scale-95">
+    
+    <div @click.away="showConfirmSave = false" 
+         class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all">
+        
+        <div class="p-6 text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                <svg class="h-8 w-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">¿Confirmar pedido?</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                ¿Deseas finalizar este pedido y guardarlo localmente en el dispositivo?
+            </p>
+        </div>
+        
+        <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex flex-col gap-3">
+            <button @click="doSaveLocalOrder()" 
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-black py-4 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 text-base transition-all active:scale-95 ring-2 ring-green-500 ring-offset-2 dark:ring-offset-gray-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>SÍ, FINALIZAR PEDIDO</span>
+            </button>
+            
+            <button @click="showConfirmSave = false" 
+                    class="w-full bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all active:scale-95">
+                Regresar
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL NATIVO DE ÉXITO OFFLINE --}}
+
+<div x-show="showSuccessSave" 
+     style="display: none;"
+     class="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100">
+    
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform text-center p-8">
+        <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-6">
+            <svg class="h-10 w-10 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Pedido Guardado!</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">El pedido quedó registrado en el celular con éxito.</p>
+    </div>
+</div>
+
+{{-- MODAL NATIVO DE LIMPIEZA DE CARRITO --}}
+<div x-show="showConfirmClear" 
+     style="display: none;"
+     class="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 scale-95"
+     x-transition:enter-end="opacity-100 scale-100">
+    
+    <div @click.away="showConfirmClear = false" class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform">
+        <div class="p-6 text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                <svg class="h-8 w-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">¿Limpiar carrito?</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Se eliminarán todos los productos. El cliente seleccionado se mantendrá.</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex flex-col gap-3">
+            <button @click="showConfirmClear = false; clearCartInstant()" 
+                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-95">
+                Sí, limpiar carrito
+            </button>
+            <button @click="showConfirmClear = false" 
+                class="w-full bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all active:scale-95">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
 </div>
     @include('livewire.tenant.quoter.components.customer-quick-form')
-</div>
 
 
 @script
@@ -1715,12 +2033,28 @@
         const data = event.detail;
         const payload = Array.isArray(data) ? data[0] : data;
         console.log('Mobile Toast triggered:', payload);
-        Swal.fire({
+        
+        // Usar un Mixin para evitar cerrar modales abiertos si es posible, 
+        // o simplemente no disparar el toast si hay un modal de confirmación crítico.
+        const Toast = Swal.mixin({
             toast: true,
             position: 'top-end',
             showConfirmButton: false,
-            timer: 2000,
+            timer: 1500,
             timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        // Verificamos si hay un modal abierto que no sea un toast
+        if (Swal.isVisible() && !Swal.isTimerRunning()) {
+            console.warn('⚠️ [Toast] Saltando toast para no cerrar modal abierto');
+            return;
+        }
+
+        Toast.fire({
             icon: payload.type || 'info',
             title: payload.message,
             background: '#ffffff',
@@ -1753,22 +2087,16 @@
 
     // Función global para confirmar limpiar carrito (llamada desde Alpine/HTML)
     window.confirmClearCart = function() {
-        Swal.fire({
-            title: '¿Limpiar carrito?',
-            text: 'Se eliminarán todos los productos del carrito. El cliente seleccionado se mantendrá.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, limpiar',
-            cancelButtonText: 'Cancelar',
-            background: '#ffffff',
-            color: '#111827'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $wire.call('clearCart');
+        // Obtenemos una referencia al alcance de Alpine para activar el modal nativo
+        const el = document.querySelector('[x-data="quoterOffline"]');
+        if (el && el.__x && el.__x.$data) {
+            el.__x.$data.showConfirmClear = true;
+        } else {
+            // Fallback si Alpine no está listo
+            if (confirm('¿Deseas limpiar el carrito?')) {
+                Livewire.dispatch('clearCart');
             }
-        });
+        }
     }
 
     // Función global para manejar Enter en búsqueda de productos
@@ -1852,3 +2180,5 @@
 @if($showRoutesModal)
     @livewire('tenant.vnt-company.company-routes-modal', ['showModal' => true], key('routes-modal-mobile'))
 @endif
+
+</div>

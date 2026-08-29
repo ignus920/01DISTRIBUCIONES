@@ -15,7 +15,7 @@ use App\Http\Controllers\Reports\PriceListController;
  */
 
 // Grupo de rutas para reportes con prefijo '/reports'
-Route::prefix('/reports')->group(function () {
+Route::middleware(['auth', 'verified', 'tenant'])->prefix('/reports')->group(function () {
 
     // Ruta para reporte de ventas por fecha
     Route::get('/sales', SalesReport::class)
@@ -42,6 +42,18 @@ Route::prefix('/reports')->group(function () {
     // Nueva ruta para reporte de remisión individual en PDF
     Route::get('/remission/{id}', [\App\Http\Controllers\Reports\RemissionReportController::class, 'downloadPDF'])
         ->name('tenant.reports.remission');
+
+    // Ruta para previsualización de pedidos por cargue
+    Route::get('/delivery-orders/{deliveryId}', [\App\Http\Controllers\Reports\DeliveryOrdersReportController::class, 'showPDF'])
+        ->name('tenant.reports.delivery-orders');
+
+    // Ruta para previsualización de lista de mercancía por cargue
+    Route::get('/delivery-detail/{deliveryId}', [\App\Http\Controllers\Reports\DeliveryOrdersReportController::class, 'showDetailPDF'])
+        ->name('tenant.reports.delivery-detail');
+
+    // Nueva ruta para impresión individual de pedido en formato Media Carta
+    Route::get('/order-print/{remissionId}', [\App\Http\Controllers\Reports\DeliveryOrdersReportController::class, 'showSingleOrderPDF'])
+        ->name('tenant.reports.order-print');
 
 
     // Ruta para descarga directa de lista de precios en PDF

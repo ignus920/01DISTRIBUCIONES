@@ -24,7 +24,7 @@
                     <span class="sm:hidden">←</span>
                 </span>
             @else
-                <a href="{{ $paginator->previousPageUrl() }}" rel="prev"
+                <a wire:click.prevent="gotoPage({{ $paginator->currentPage() - 1 }})" href="{{ $paginator->previousPageUrl() }}" rel="prev"
                     class="px-2 sm:px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                     <span class="hidden sm:inline">← Anterior</span>
                     <span class="sm:hidden">←</span>
@@ -39,7 +39,7 @@
                             {{ $page }}
                         </span>
                     @else
-                        <a href="{{ $url }}"
+                        <a wire:click.prevent="gotoPage({{ $page }})" href="{{ $url }}"
                             class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                             {{ $page }}
                         </a>
@@ -56,7 +56,7 @@
 
             {{-- Next Page Link --}}
             @if ($paginator->hasMorePages())
-                <a href="{{ $paginator->nextPageUrl() }}" rel="next"
+                <a wire:click.prevent="gotoPage({{ $paginator->currentPage() + 1 }})" href="{{ $paginator->nextPageUrl() }}" rel="next"
                     class="px-2 sm:px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
                     <span class="hidden sm:inline">Siguiente →</span>
                     <span class="sm:hidden">→</span>

@@ -175,14 +175,13 @@
     <table>
         <thead>
             <tr>
+                <th>ID Orden</th>
                 <th>ID Pedido</th>
-                <th>ID Remisión</th>
                 <th>Estado</th>
                 <th>Cliente</th>
                 <th>Fecha</th>
                 <th class="text-right">Subtotal</th>
                 <th class="text-center">Devolución</th>
-                <th class="text-center">Pago</th>
             </tr>
         </thead>
         <tbody>

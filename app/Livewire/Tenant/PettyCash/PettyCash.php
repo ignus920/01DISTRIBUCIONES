@@ -41,9 +41,20 @@ class PettyCash extends Component
     //Propiedades para la tabla
     public $showModal = false;
     public $search = '';
+    public $filterDate = '';
     public $sortField = 'consecutive';
     public $sortDirection = 'desc';
     public $perPage = 10;
+
+    public function updatedSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDate()
+    {
+        $this->resetPage();
+    }
 
     //Messages
     public $errorMessage = '';
@@ -57,6 +68,7 @@ class PettyCash extends Component
 
     protected $queryString = [
         'search' => ['except' => ''],
+        'filterDate' => ['except' => ''],
         'perPage' => ['except' => 10],
     ];
 
@@ -100,6 +112,11 @@ class PettyCash extends Component
                 $query->where($model->getTable() . '.consecutive', 'like', '%' . $this->search . '%')
                     ->orWhere('u.name', 'like', '%' . $this->search . '%');
             })
+            ->when($this->filterDate, function ($query) use ($model) {
+                $query->whereDate($model->getTable() . '.created_at', $this->filterDate);
+            })
+            // La caja abierta (status=1) siempre aparece primero
+            ->orderBy($model->getTable() . '.status', 'desc')
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
 
@@ -143,19 +160,17 @@ class PettyCash extends Component
 
             $exists = $this->PettyCashExits($this->getwarehouse());
 
-            $exists = $this->PettyCashExits($this->getwarehouse());
-
             if ($exists) {
                 $this->addError('base', 'No se puede registrar, hay cajas abiertas');
             } else {
                 $this->resetErrorBag('base');
                 $this->validate();
 
-                // Determine the next consecutive number using dynamic model
+                // Determinar el siguiente consecutivo usando el modelo dinámico
                 $model = $this->getPettyCashModel();
-                $lastConsecutive = $model->where('warehouseId', $this->getwarehouse())->where('userIdOpen')->max('consecutive');
+                $lastConsecutive = $model->where('warehouseId', $this->getwarehouse())->max('consecutive');
 
-                $newConsecutive = $lastConsecutive ? $lastConsecutive + 1 : 1;
+                $newConsecutive = ($lastConsecutive !== null) ? $lastConsecutive + 1 : 1;
 
                 $pettyCashData = [
                     'base' => $this->base,

@@ -5,6 +5,9 @@ namespace App\Models\Tenant\Remissions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Auth\User;
+use App\Models\Tenant\Sales\VenDeliveryType;
+use App\Models\Tenant\MethodPayments\VntMethodPayMents;
+use App\Models\Tenant\Sales\VntInvoicesXsale;
 
 
 class InvRemissions extends Model
@@ -31,6 +34,7 @@ class InvRemissions extends Model
         'expiration',
         'modify',
         'observations_return',
+        'systemOrder',
         'deliveryman_id',
         'closed_at',
         'sale_date',
@@ -75,5 +79,20 @@ class InvRemissions extends Model
     public function getObservationsAttribute()
     {
         return $this->observations_return;
+    }
+
+    public function deliveryType()
+    {
+        return $this->belongsTo(VenDeliveryType::class, 'deliveryTypeId');
+    }
+
+    public function methodPayment()
+    {
+        return $this->belongsTo(VntMethodPayMents::class, 'methodPaymentId');
+    }
+
+    public function invoiceXsale()
+    {
+        return $this->hasOne(VntInvoicesXsale::class, 'remissionId');
     }
 }

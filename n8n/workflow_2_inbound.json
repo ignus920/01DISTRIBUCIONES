@@ -1,0 +1,277 @@
+{
+  "name": "WhatsApp Prospectos - Inbound Handler (Respuestas)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-inbound",
+      "name": "Webhook Evolution API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "whatsapp-inbound",
+      "notes": "Configura este URL en Evolution API → Webhook Events: MESSAGES_UPSERT"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Responder 200 OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [460, 160],
+      "notes": "Responde inmediatamente a Evolution API para evitar retries"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer datos del evento de Evolution API\nconst body = $input.first().json.body || $input.first().json;\n\n// Estructura del evento Evolution API\nconst event = body.event || '';\nconst data = body.data || {};\n\n// Solo procesar mensajes recibidos (no los enviados por nosotros)\nif (event !== 'messages.upsert' && event !== 'MESSAGES_UPSERT') {\n  throw new Error(`Evento ignorado: ${event}`);\n}\n\nconst message = data.message || {};\nconst key = data.key || {};\n\n// Ignorar mensajes propios\nif (key.fromMe === true) {\n  throw new Error('Mensaje propio ignorado');\n}\n\n// Ignorar mensajes de grupo\nif (key.remoteJid && key.remoteJid.includes('@g.us')) {\n  throw new Error('Mensaje de grupo ignorado');\n}\n\n// Extraer numero de telefono (formato: 573001234567@s.whatsapp.net)\nconst jid = key.remoteJid || '';\nconst phone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');\n\n// Extraer texto del mensaje\nconst text = message.conversation || \n             message.extendedTextMessage?.text || \n             message.imageMessage?.caption || \n             '';\n\nif (!phone || !text) {\n  throw new Error('No se pudo extraer telefono o texto del mensaje');\n}\n\nconsole.log(`Mensaje recibido de ${phone}: \"${text}\"`);\n\nreturn [{\n  json: {\n    phone: phone,\n    phone_normalized: phone.replace(/[^0-9]/g, ''),\n    text: text,\n    text_lower: text.toLowerCase(),\n    received_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "extract-message",
+      "name": "Extraer Datos del Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 380]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prospectos",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone",
+              "lookupValue": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": false
+        }
+      },
+      "id": "lookup-prospect",
+      "name": "Buscar Prospecto en Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [680, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "SENT_M1"
+            }
+          ]
+        }
+      },
+      "id": "check-status-sent-m1",
+      "name": "¿Tiene status SENT_M1?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 380],
+      "notes": "Solo respondemos a quienes recibieron el Mensaje 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analizar la respuesta del prospecto\n// Detectar si indica proceso manual o interes\nconst text = $json.text_lower || '';\n\n// Keywords positivos - indican que hacen proceso MANUAL o tienen INTERES\nconst positiveKeywords = [\n  'manual', 'a mano', 'no tenemos', 'no lo hacemos', 'todavia', 'todavía',\n  'no', 'negativo', 'no automatico', 'no automatizado', 'por llamada',\n  'por telefono', 'llamamos', 'whatsapp manual', 'nosotros mismos',\n  'si', 'sí', 'claro', 'como', 'cómo', 'interesa', 'interesado',\n  'quiero', 'cuéntame', 'cuentame', 'hablame', 'háblame', 'que es',\n  'qué es', 'como funciona', 'cómo funciona', 'mas info', 'más info',\n  'que hace', 'qué hace', 'explicame', 'explícame'\n];\n\n// Keywords negativos - no interesados\nconst negativeKeywords = [\n  'no gracias', 'no me interesa', 'no interesa', 'ya tenemos', \n  'ya contamos', 'ya usamos', 'no necesitamos', 'no necesito',\n  'quitar', 'borrar', 'stop', 'baja', 'spam'\n];\n\nconst isNegative = negativeKeywords.some(kw => text.includes(kw));\nconst isPositive = positiveKeywords.some(kw => text.includes(kw));\n\n// Cualquier respuesta que no sea negativa = oportunidad\nconst shouldProceed = !isNegative && (isPositive || text.length > 0);\n\nreturn [{\n  json: {\n    ...$json,\n    is_positive: isPositive,\n    is_negative: isNegative,\n    should_proceed: shouldProceed,\n    keyword_matched: positiveKeywords.find(kw => text.includes(kw)) || null\n  }\n}];"
+      },
+      "id": "analyze-response",
+      "name": "Analizar Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.should_proceed }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "should-send-m2",
+      "name": "¿Enviar Mensaje 2?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prospectos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone": "={{ $json.phone }}",
+            "status": "DISQUALIFIED",
+            "notes": "=Rechazo: {{ $json.text }}"
+          },
+          "matchingColumns": ["phone"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "mark-disqualified",
+      "name": "Marcar DISQUALIFIED",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1560, 460]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Delay humanizado antes de responder: 2-5 minutos\n// Simula que una persona real leyó y respondió\nconst min = 2 * 60 * 1000;  // 2 min\nconst max = 5 * 60 * 1000;  // 5 min\nconst delay = Math.floor(Math.random() * (max - min + 1)) + min;\n\nconsole.log(`Esperando ${delay/60000} minutos antes de enviar Mensaje 2...`);\nawait new Promise(resolve => setTimeout(resolve, delay));\n\nreturn $input.all();"
+      },
+      "id": "humanized-delay-m2",
+      "name": "Delay Humano (2-5 min)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300],
+      "notes": "Simula tiempo de lectura y respuesta humana"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Construir Mensaje 2 - Propuesta de Valor\nconst item = $input.first().json;\nconst name = item.name || '';\n\n// Variaciones para evitar deteccion de template repetitivo\nconst intros = [\n  'Te pregunto porque',\n  'Te cuento que',\n  'Te comento que'\n];\nconst introIdx = Math.floor(Math.random() * intros.length);\n\nconst mensaje = `${intros[introIdx]} a varios colegas en el sector les pasaba que perdían clientes que se iban a la competencia por olvido. Nosotros ayudamos a más de 30 talleres en Colombia a automatizar eso con sus propios números de WhatsApp. ¿Te gustaría ver cómo se ve un mensaje de recordatorio automático?`;\n\nreturn [{\n  json: {\n    ...item,\n    mensaje_m2: mensaje\n  }\n}];"
+      },
+      "id": "build-message-2",
+      "name": "Construir Mensaje 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://TU_EVOLUTION_API_HOST/message/sendText/main",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_EVOLUTION_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone }}\",\n  \"text\": \"{{ $json.mensaje_m2 }}\",\n  \"delay\": 1500,\n  \"linkPreview\": false\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "send-whatsapp-m2",
+      "name": "Enviar Mensaje 2 (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prospectos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone": "={{ $json.phone }}",
+            "status": "RESPONDED",
+            "responded_at": "={{ new Date().toISOString() }}",
+            "notes": "=Respondio: {{ $json.text }}"
+          },
+          "matchingColumns": ["phone"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "update-sheet-responded",
+      "name": "Actualizar Sheet → RESPONDED",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2220, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Evolution API": {
+      "main": [
+        [
+          { "node": "Responder 200 OK", "type": "main", "index": 0 },
+          { "node": "Extraer Datos del Mensaje", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extraer Datos del Mensaje": {
+      "main": [[{ "node": "Buscar Prospecto en Sheet", "type": "main", "index": 0 }]]
+    },
+    "Buscar Prospecto en Sheet": {
+      "main": [[{ "node": "¿Tiene status SENT_M1?", "type": "main", "index": 0 }]]
+    },
+    "¿Tiene status SENT_M1?": {
+      "main": [
+        [{ "node": "Analizar Respuesta", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Analizar Respuesta": {
+      "main": [[{ "node": "¿Enviar Mensaje 2?", "type": "main", "index": 0 }]]
+    },
+    "¿Enviar Mensaje 2?": {
+      "main": [
+        [{ "node": "Delay Humano (2-5 min)", "type": "main", "index": 0 }],
+        [{ "node": "Marcar DISQUALIFIED", "type": "main", "index": 0 }]
+      ]
+    },
+    "Delay Humano (2-5 min)": {
+      "main": [[{ "node": "Construir Mensaje 2", "type": "main", "index": 0 }]]
+    },
+    "Construir Mensaje 2": {
+      "main": [[{ "node": "Enviar Mensaje 2 (Evolution API)", "type": "main", "index": 0 }]]
+    },
+    "Enviar Mensaje 2 (Evolution API)": {
+      "main": [[{ "node": "Actualizar Sheet → RESPONDED", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": ["whatsapp", "prospectos", "inbound", "anti-ban"],
+  "pinData": {}
+}

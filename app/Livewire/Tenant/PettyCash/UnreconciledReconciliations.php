@@ -26,6 +26,11 @@ class UnreconciledReconciliations extends Component
     public $sortDirection = 'desc';
     public $perPage = 4;
 
+    public function updatedSearch()
+    {
+        $this->resetPage(pageName: 'reconciliationPage');
+    }
+
     protected $listeners = ['refreshReconciliations' => '$refresh'];
 
     public function boot()
@@ -53,7 +58,7 @@ class UnreconciledReconciliations extends Component
                     ->orWhere('observations', 'like', '%' . $this->search . '%');
             })
             ->orderBy($this->sortField, $this->sortDirection)
-            ->paginate($this->perPage);
+            ->paginate($this->perPage, ['*'], 'reconciliationPage');
 
         return view('livewire.tenant.petty-cash.unreconciled-reconciliations', [
             'reconciliations' => $reconciliations
@@ -69,7 +74,7 @@ class UnreconciledReconciliations extends Component
         }
 
         $this->sortField = $field;
-        $this->resetPage();
+        $this->resetPage(pageName: 'reconciliationPage');
     }
 
     public function viewDetail($reconciliationId)

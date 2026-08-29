@@ -12,9 +12,12 @@ class CompanyRoutesModal extends Component
 
     public $showModal = false;
     public $filterRouteId = '';
+    public $filterDay = '';
+    public $days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
     protected $listeners = [
-        'filter-route-changed' => 'updateFilterRoute'
+        'filter-route-changed' => 'updateFilterRoute',
+        'filter-day-changed' => 'updateFilterDay'
     ];
 
 
@@ -60,6 +63,12 @@ class CompanyRoutesModal extends Component
     public function updateFilterRoute($routeId)
     {
         $this->filterRouteId = $routeId;
+    }
+
+    public function updateFilterDay($value)
+    {
+        $this->filterDay = $value;
+        $this->filterRouteId = ''; // Reset route when day changes
     }
 
     public function clearMessages()

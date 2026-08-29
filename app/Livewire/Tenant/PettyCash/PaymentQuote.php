@@ -28,12 +28,17 @@ class PaymentQuote extends Component
     public $quoteTotal;
 
     protected $queryString = [
-        'fromPage' => ['as' => 'from']
+        'fromPage' => ['as' => 'from'],
+        'deliveryId' => ['as' => 'deliveryId', 'except' => ''],
     ];
 
     // Parámetro para saber desde dónde se abrió el componente
     #[Url(as: 'from')]
     public $fromPage = null;
+
+    // ID del cargue de origen (para preservarlo al regresar a Entregas)
+    #[Url(as: 'deliveryId')]
+    public $deliveryId = null;
 
     // Datos de anticipos
     public $advances = [];
@@ -125,7 +130,7 @@ class PaymentQuote extends Component
         return new \App\Models\Tenant\PettyCash\VntDetailPettyCash();
     }
 
-    public function mount($quoteId = null, $from = null)
+    public function mount($quoteId = null, $from = null, $deliveryId = null)
     {
         // Asegurar conexión tenant
         $this->ensureTenantConnection();
@@ -134,7 +139,13 @@ class PaymentQuote extends Component
 
         // Capturar desde dónde se abrió (URL parameter)
         $this->fromPage = $from ?: request('from');
-        
+
+        // Capturar el cargue de origen para preservarlo al regresar
+        $this->deliveryId = $deliveryId ?: request('deliveryId');
+        if ($this->deliveryId) {
+            session(['last_delivery_id' => $this->deliveryId]);
+        }
+
         // Log para depuración
         Log::info("PaymentQuote MOUNT - fromPage: " . ($this->fromPage ?? 'NULL') . " | request('from'): " . (request('from') ?? 'NULL'));
 
@@ -726,8 +737,7 @@ class PaymentQuote extends Component
 
             if ($target === 'deliveries') {
                 session()->forget('last_from_page');
-                session()->flash('success', 'Pedido entregado y pagado correctamente.');
-                return redirect()->route('tenant.deliveries');
+                return $this->redirectToDeliveries(['success' => 'Pedido entregado y pagado correctamente.']);
             } elseif ($target === 'sales-list') {
                 session()->forget('last_from_page');
                 session()->flash('success', 'Pago registrado correctamente.');
@@ -788,7 +798,7 @@ class PaymentQuote extends Component
                 }
 
                 if ($target === 'deliveries') {
-                    return redirect()->route('tenant.deliveries');
+                    return $this->redirectToDeliveries();
                 } elseif ($target === 'sales-list') {
                     return redirect()->route('tenant.tat.sales.list');
                 } else {
@@ -855,8 +865,7 @@ class PaymentQuote extends Component
 
             if ($target === 'deliveries') {
                 session()->forget('last_from_page');
-                return redirect()->route('tenant.deliveries')
-                                ->with('info', 'Pago cancelado. Regresando a Entregas.');
+                return $this->redirectToDeliveries(['info' => 'Pago cancelado. Regresando a Entregas.']);
             } elseif ($target === 'sales-list') {
                 session()->forget('last_from_page');
                 return redirect()->route('tenant.tat.sales.list')
@@ -884,13 +893,24 @@ class PaymentQuote extends Component
             }
 
             if ($target === 'deliveries') {
-                return redirect()->route('tenant.deliveries');
+                return $this->redirectToDeliveries();
             } elseif ($target === 'sales-list') {
                 return redirect()->route('tenant.tat.sales.list');
             } else {
                 return redirect()->route('tenant.tat.quoter.index');
             }
         }
+    }
+
+    /**
+     * Redirect de regreso a Entregas preservando el cargue seleccionado.
+     */
+    private function redirectToDeliveries(array $with = [])
+    {
+        $deliveryId = session('last_delivery_id', $this->deliveryId);
+        session()->forget('last_delivery_id');
+        $params = $deliveryId ? ['selectedDeliveryId' => $deliveryId] : [];
+        return redirect()->route('tenant.deliveries', $params)->with($with);
     }
 
     /**

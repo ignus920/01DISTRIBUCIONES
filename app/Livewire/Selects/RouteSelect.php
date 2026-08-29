@@ -19,8 +19,9 @@ class RouteSelect extends Component
     public $search = '';
     public $name = 'routeId';
     public $salesmanId = null;
+    public $saleDay = null;
 
-    public function mount($selectedValue = '', $eventName = 'route-changed', $placeholder = 'Seleccionar ruta', $label = 'Ruta', $required = true, $showLabel = true, $district = null, $class = null, $name = 'routeId', $salesmanId = null)
+    public function mount($selectedValue = '', $eventName = 'route-changed', $placeholder = 'Seleccionar ruta', $label = 'Ruta', $required = true, $showLabel = true, $district = null, $class = null, $name = 'routeId', $salesmanId = null, $saleDay = null)
     {
         $this->selectedValue = $selectedValue;
         $this->eventName = $eventName;
@@ -31,6 +32,7 @@ class RouteSelect extends Component
         $this->district = $district;
         $this->name = $name;
         $this->salesmanId = $salesmanId;
+        $this->saleDay = $saleDay;
         
         if ($class) {
             $this->class = $class;
@@ -98,6 +100,11 @@ class RouteSelect extends Component
         // Si se proporciona un vendedor, filtrar por sus rutas específicamente
         if (!empty($this->salesmanId)) {
             $query->where('salesman_id', $this->salesmanId);
+        }
+
+        // Si se proporciona un día, filtrar por ese día específicamente
+        if (!empty($this->saleDay)) {
+            $query->where('sale_day', $this->saleDay);
         }
 
         return $query->orderBy('name')

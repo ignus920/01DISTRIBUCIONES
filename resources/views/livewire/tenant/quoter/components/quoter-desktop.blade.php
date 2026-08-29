@@ -378,6 +378,26 @@
                                             </svg>
                                             Ver Detalle
                                         </button>
+                                        @if(!in_array($quote->status, ['FACTURADO', 'REGISTRADO']) && $quote->detalles->isNotEmpty())
+                                        <button wire:click="facturarCotizacion({{ $quote->id }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="facturarCotizacion"
+                                            class="w-full text-left px-4 py-2 text-sm text-blue-800 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center">
+                                            <div wire:loading.remove wire:target="facturarCotizacion({{ $quote->id }})" class="flex items-center">
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                </svg>
+                                                Facturar
+                                            </div>
+                                            <div wire:loading wire:target="facturarCotizacion({{ $quote->id }})" class="flex items-center">
+                                                <svg class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Facturando...
+                                            </div>
+                                        </button>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -609,5 +629,33 @@
     </div>
     @endif
 </div>
+
+@script
+<script>
+    document.addEventListener('livewire:initialized', () => {
+        window.addEventListener('show-toast', (event) => {
+            const data = event.detail;
+            const payload = Array.isArray(data) ? data[0] : data;
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 6000,
+                timerProgressBar: true,
+                icon: payload.type,
+                title: payload.message,
+            });
+        });
+
+        window.addEventListener('open-invoice-pdf', (event) => {
+            const data = event.detail;
+            const payload = Array.isArray(data) ? data[0] : data;
+            if (payload.url) {
+                window.open(payload.url, '_blank');
+            }
+        });
+    });
+</script>
+@endscript
 
 

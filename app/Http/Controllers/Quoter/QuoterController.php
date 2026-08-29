@@ -14,11 +14,11 @@ class QuoterController extends Controller
 
         // FORZAR TABLET A MOBILE: Para que tenga soporte Offline PWA
         if ($agent->isMobile() || $agent->isTablet()) {
-            return redirect()->route('tenant.quoter.mobile');
+            return redirect()->route('tenant.quoter.mobile', $request->all());
         }
 
         // Desktop - redirigir a la ruta desktop
-        return redirect()->route('tenant.quoter.desktop');
+        return redirect()->route('tenant.quoter.desktop', $request->all());
     }
 
     public function mobile(Request $request)

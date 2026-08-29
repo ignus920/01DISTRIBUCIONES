@@ -103,7 +103,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-xs text-gray-500 dark:text-slate-400">
-                                             Rem: # {{ $item->remise_number ?: 'Sin Remisión' }}
+                                             Ped: # {{ $item->remise_number ?: 'Sin Pedido' }}
                                         </div>
                                         <div class="text-xs text-gray-500 dark:text-slate-400">
                                             Ord: #{{ $item->order_number }}

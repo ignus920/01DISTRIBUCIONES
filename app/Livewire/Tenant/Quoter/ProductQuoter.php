@@ -69,6 +69,13 @@ class ProductQuoter extends Component
     public $availableReasons = [];
     public $confirmationLoading = false;
 
+    // Propiedades para el modal de remisión (método de pago y tipo de entrega)
+    public $showRemisionModal       = false;
+    public $selectedDeliveryTypeId  = null;
+    public $selectedMethodPaymentId = null;
+    public $availableDeliveryTypes  = [];
+    public $availableMethodPayments = [];
+
     public $quoteHasRemission = false;
     public $cartHasChanges = false; // Nueva propiedad para rastrear cambios en el carrito
     public $mappedProducts = []; // Lista de productos mapeada para la vista
@@ -142,10 +149,9 @@ class ProductQuoter extends Component
         }
         // Si se pasa un remissionId, estamos editando una remisión
         elseif ($remissionId || request()->route('remissionId')) {
-             $id = $remissionId ?: request()->route('remissionId');
-             $this->loadRemissionForEditing($id);
-        }
-        elseif ($restockOrder || request()->query('restockOrder')) {
+            $id = $remissionId ?: request()->route('remissionId');
+            $this->loadRemissionForEditing($id);
+        } elseif ($restockOrder || request()->query('restockOrder')) {
             $orderToLoad = $restockOrder ?: request()->query('restockOrder');
             $this->loadRestockForEditing($orderToLoad);
         } elseif (request()->query('editPreliminary') === 'true') {
@@ -167,10 +173,10 @@ class ProductQuoter extends Component
                     ->where('salesman_id', auth()->id())
                     ->whereNull('deleted_at')
                     ->first();
-                
+
                 $this->newCustomerRouteId = $sellerRoute ? $sellerRoute->id : null;
                 Log::info('Ruta automática para vendedor cargada', [
-                    'seller_id' => auth()->id(), 
+                    'seller_id' => auth()->id(),
                     'route_id' => $this->newCustomerRouteId,
                     'route_name' => $sellerRoute ? $sellerRoute->name : 'N/A'
                 ]);
@@ -189,22 +195,37 @@ class ProductQuoter extends Component
         Log::info('🔄 Cargando remisión para edición', ['remissionId' => $remissionId]);
 
         $this->ensureTenantConnection();
-        
+
         try {
-            $remission = InvRemissions::with(['quote.customer', 'details.item'])->findOrFail($remissionId);
-            
-            // 1. Cargar Cliente
-            if ($remission->quote && $remission->quote->customer) {
-                $customer = $remission->quote->customer;
-                $this->selectedCustomer = [
-                    'id' => $customer->id,
-                    'businessName' => $customer->businessName,
-                    'firstName' => $customer->firstName,
-                    'lastName' => $customer->lastName,
-                    'identification' => $customer->identification,
-                    'billingEmail' => $customer->billingEmail,
-                ];
-                $this->customerSearch = $customer->identification;
+            $remission = InvRemissions::with(['quote', 'details.item'])->findOrFail($remissionId);
+
+            // 1. Cargar Cliente (igual que loadQuoteForEditing: via VntWarehouse → VntCompany)
+            if ($remission->quote && $remission->quote->customerId) {
+                $warehouse = VntWarehouse::with('company')->find($remission->quote->customerId);
+                if ($warehouse) {
+                    $company    = $warehouse->company;
+                    $firstName  = $company->firstName ?? '';
+                    $lastName   = $company->lastName ?? '';
+
+                    // Fallback para clientes antiguos que solo tienen businessName
+                    if (empty($firstName) && ($company->typeIdentificationId ?? 1) == 1) {
+                        $parts     = explode(' ', trim($company->businessName ?? ''), 2);
+                        $firstName = $parts[0] ?? ($company->businessName ?? '');
+                        $lastName  = $parts[1] ?? '';
+                    }
+
+                    $this->selectedCustomer = [
+                        'id'             => $warehouse->id,
+                        'company_id'     => $company->id ?? null,
+                        'businessName'   => $company->businessName ?? '',
+                        'firstName'      => $firstName,
+                        'lastName'       => $lastName,
+                        'identification' => $company->identification ?? '',
+                        'billingEmail'   => $company->billingEmail ?? '',
+                    ];
+                    $this->customerSearch = $company->identification ?? '';
+                    Log::info('👤 Cliente cargado desde remisión', ['warehouse_id' => $warehouse->id]);
+                }
             }
 
             // 2. Cargar Items
@@ -219,22 +240,27 @@ class ProductQuoter extends Component
                         'price_label' => 'Precio Registrado',
                         'quantity' => $detail->quantity,
                         'description' => $detail->description,
+                        'tax' => $detail->tax ?? 0,
                     ];
                 }
             }
 
-            // 3. Configurar estado de edición
+            // 3. Cargar Observaciones
+            $this->observaciones = $remission->quote->observations ?? $remission->observations;
+            $this->showObservations = !empty($this->observaciones);
+
+            // 4. Configurar estado de edición
             $this->editingRemissionId = $remissionId;
             $this->isEditing = true;
+            $this->quoteHasRemission = true; // Asegurar estado para ocultar botón confirmar
 
             session(['quoter_items' => $this->quoterItems]);
             $this->cartHasChanges = false;
-            
+
             $this->dispatch('show-toast', [
                 'type' => 'success',
                 'message' => 'Remisión #' . $remission->consecutive . ' cargada para edición'
             ]);
-
         } catch (\Exception $e) {
             Log::error('❌ Error cargando remisión: ' . $e->getMessage());
             $this->dispatch('show-toast', [
@@ -288,19 +314,24 @@ class ProductQuoter extends Component
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
 
-        $this->mappedProducts = collect($products->items())->map(function($p) {
+        $this->mappedProducts = collect($products->items())->map(function ($p) {
             $allPrices = $p->all_prices;
-            
+
             // FILTRADO DE PRECIOS POR PERFIL
             if (auth()->user()->profile_id == 17) {
                 // Perfil Tienda (TAT): Solo Precio Regular
                 $allPrices = collect($allPrices)->filter(fn($val, $label) => $label === 'Precio Regular')->toArray();
             } elseif (auth()->user()->profile_id == 4) {
                 // Perfil Vendedor: Solo Precio Base (P1)
-                $allPrices = collect($allPrices)->filter(fn($val, $label) => 
+                $allPrices = collect($allPrices)->filter(
+                    fn($val, $label) =>
                     strtolower($label) === 'p1' || strtolower($label) === 'precio base'
                 )->toArray();
             }
+
+            // Aplicar IVA a los precios (inv_values almacena precios sin IVA)
+            $taxRate  = $p->tax->percentage ?? 0;
+            $allPrices = collect($allPrices)->map(fn($price) => round($price * (1 + $taxRate / 100)))->toArray();
 
             // Buscar si el producto ya está en el carrito para inyectar su estado
             $index = $this->findProductInQuoter($p->id);
@@ -334,16 +365,6 @@ class ProductQuoter extends Component
             ? 'livewire.tenant.quoter.components.mobile-product-quoter'
             : 'livewire.tenant.quoter.components.desktop-product-quoter';
 
-        // Despachar evento para actualizaciones reactivas
-        $this->dispatch('products-updated', [
-            'products' => $this->mappedProducts
-        ]);
-
-        // Asegurar que el carrito esté sincronizado con Alpine.js en cada renderizado
-        $this->dispatch('cart-updated', [
-            'items' => $this->quoterItems
-        ]);
-
         return view($viewName, [
             'products' => $products,
             'mappedProducts' => $this->mappedProducts
@@ -351,10 +372,40 @@ class ProductQuoter extends Component
     }
 
     /**
+     * Verifica si el catálogo cambió desde la última sincronización del cliente.
+     * Si la versión del cliente es igual a la del servidor, despacha 'sync-not-needed'.
+     * Si difieren (o no hay versión local), ejecuta la sincronización completa.
+     */
+    public function syncIfNeeded(string $clientVersion = null)
+    {
+        $this->ensureTenantConnection();
+
+        $cacheKey = 'catalog_v:' . tenant()->id . ':' . auth()->user()->profile_id;
+
+        // Versión = max updated_at de productos activos, cacheada 10 min para no golpear DB en cada acceso
+        $serverVersion = \Cache::remember($cacheKey, now()->addMinutes(10), function () {
+            return (string) (Items::active()->max('updated_at') ?? now()->toDateTimeString());
+        });
+
+        if ($clientVersion && $clientVersion === $serverVersion) {
+            Log::info('✅ [Sync] Catálogo sin cambios, sincronización omitida', ['version' => $serverVersion]);
+            $this->dispatch('sync-not-needed', ['version' => $serverVersion]);
+            return;
+        }
+
+        Log::info('🔄 [Sync] Versión cambió, sincronizando', [
+            'client' => $clientVersion,
+            'server' => $serverVersion,
+        ]);
+
+        $this->syncFullCatalog($serverVersion);
+    }
+
+    /**
      * Sincroniza TODO el catálogo de productos y clientes para uso Offline.
      * Envía los datos en paquetes (chunks) para asegurar la descarga completa de los 1000+ items.
      */
-    public function syncFullCatalog()
+    public function syncFullCatalog(string $serverVersion = null)
     {
         $this->ensureTenantConnection();
         Log::info('📦 Iniciando sincronización segmentada de catálogo');
@@ -369,17 +420,22 @@ class ProductQuoter extends Component
                     'invValues:id,itemId,values,type,label,date'
                 ])
                 ->get()
-                ->map(function($p) {
+                ->map(function ($p) {
                     $allPrices = $p->all_prices;
-                    
+
                     // FILTRADO DE PRECIOS POR PERFIL (Para Offline)
                     if (auth()->user()->profile_id == 17) {
                         $allPrices = collect($allPrices)->filter(fn($val, $label) => $label === 'Precio Regular')->toArray();
                     } elseif (auth()->user()->profile_id == 4) {
-                        $allPrices = collect($allPrices)->filter(fn($val, $label) => 
+                        $allPrices = collect($allPrices)->filter(
+                            fn($val, $label) =>
                             strtolower($label) === 'p1' || strtolower($label) === 'precio base'
                         )->toArray();
                     }
+
+                    // Aplicar IVA a los precios (inv_values almacena precios sin IVA)
+                    $taxRate   = $p->tax->percentage ?? 0;
+                    $allPrices = collect($allPrices)->map(fn($price) => round($price * (1 + $taxRate / 100)))->toArray();
 
                     return [
                         'id' => $p->id,
@@ -421,15 +477,15 @@ class ProductQuoter extends Component
                     'identification' => $c->identification,
                     'billingEmail' => $c->billingEmail,
                     'typeIdentificationId' => $c->typeIdentificationId,
-                    'phone' => $c->activeContacts->first()?->business_phone 
-                             ?? $c->activeContacts->first()?->personal_phone ?? '',
+                    'phone' => $c->activeContacts->first()?->business_phone
+                        ?? $c->activeContacts->first()?->personal_phone ?? '',
                     'address' => $c->mainWarehouse->address ?? '',
                     'district' => $c->mainWarehouse->district ?? '',
                     'cityId' => $c->mainWarehouse->cityId ?? null,
                 ]);
 
             $totalProducts = $allProducts->count();
-            
+
             // 3. SECUENCIA DE SINCRONIZACIÓN POR PAQUETES
             // A. Inicio: Avisar al celular que limpie su base de datos local
             $this->dispatch('sync-started', [
@@ -457,9 +513,9 @@ class ProductQuoter extends Component
 
             // D. Fin: Avisar que todo terminó correctamente
             $this->dispatch('sync-finished', [
-                'total' => $totalProducts
+                'total' => $totalProducts,
+                'version' => $serverVersion,
             ]);
-
         } catch (\Exception $e) {
             Log::error('❌ Error en sincronización segmentada: ' . $e->getMessage());
             $this->dispatch('show-toast', [
@@ -536,17 +592,29 @@ class ProductQuoter extends Component
     {
         Log::info('🛒 performAddToQuoter iniciado', [
             'productId' => $productId,
-            'isEditing' => $this->isEditing,
-            'editingQuoteId' => $this->editingQuoteId,
-            'quoteHasRemission_antes' => $this->quoteHasRemission
+            'quantity' => $quantity,
+            'isEditing' => $this->isEditing
         ]);
 
-        // Verificar si el producto ya está en el cotizador (sin consulta DB)
+        // Verificar si el producto ya está en el cotizador
         $existingIndex = $this->findProductInQuoter($productId);
 
         if ($existingIndex !== false) {
-            // Si ya existe, sumar la cantidad nueva
-            $this->quoterItems[$existingIndex]['quantity'] += $quantity;
+            // Si ya existe y estamos haciendo un "Add" inicial (quantity=1), 
+            // no sumamos ciegamente para evitar el error de "doble unidad" con el front-end.
+            // Solo actualizamos si el precio ha cambiado o si realmente queremos sumar.
+            
+            // Si la cantidad que viene es 1 y el servidor ya tiene >= 1, 
+            // probablemente es una sincronización redundante del front.
+            if ($quantity == 1 && $this->quoterItems[$existingIndex]['quantity'] >= 1) {
+                Log::info('🛒 Ignorando incremento redundante para producto ya existente', ['id' => $productId]);
+            } else {
+                $this->quoterItems[$existingIndex]['quantity'] += $quantity;
+            }
+            
+            // Actualizar precio y etiqueta por si cambiaron
+            $this->quoterItems[$existingIndex]['price'] = $selectedPrice;
+            $this->quoterItems[$existingIndex]['price_label'] = $priceLabel;
         } else {
             // Obtener el producto solo cuando es necesario
             $this->ensureTenantConnection();
@@ -560,7 +628,7 @@ class ProductQuoter extends Component
                 return;
             }
 
-            // Si no existe, agregarlo con el precio seleccionado
+            // Si no existe, agregarlo
             $this->quoterItems[] = [
                 'id' => $product->id,
                 'name' => $product->display_name,
@@ -569,6 +637,7 @@ class ProductQuoter extends Component
                 'price_label' => $priceLabel,
                 'quantity' => $quantity,
                 'description' => $product->description,
+                'tax' => $product->tax->percentage ?? 0,
             ];
         }
 
@@ -595,12 +664,6 @@ class ProductQuoter extends Component
         // Emitir evento para mirroring offline
         $this->dispatch('cart-updated', [
             'items' => $this->quoterItems
-        ]);
-
-        // Toast más rápido sin información innecesaria
-        $this->dispatch('show-toast', [
-            'type' => 'success',
-            'message' => 'Agregado al carrito'
         ]);
     }
 
@@ -654,9 +717,8 @@ class ProductQuoter extends Component
                 'items' => $this->quoterItems
             ]);
 
-            $this->dispatch('show-toast', [
-                'type' => 'info',
-                'message' => 'Producto removido del cotizador'
+            $this->dispatch('cart-updated', [
+                'items' => $this->quoterItems
             ]);
         }
     }
@@ -675,15 +737,18 @@ class ProductQuoter extends Component
         $this->quoterItems = [];
         $this->quoteHasRemission = false; // Resetear el estado de remisión
         $this->editingQuoteId = null; // Limpiar ID de cotización en edición
+        $this->editingRemissionId = null;
+        $this->editingRestockOrder = null;
         $this->isEditing = false; // Limpiar estado de edición
+        $this->totalAmount = 0;
+        $this->observaciones = null;
         session()->forget('quoter_items');
         $this->calculateTotal();
         $this->showCartModal = false;
 
-        $this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Cotizador limpiado'
-        ]);
+        Log::info('🧹 Carrito limpiado (Unificado)');
+
+        Log::info('🧹 Carrito limpiado (Unificado)');
 
         // Sincronizar con Alpine.js/IndexedDB
         $this->dispatch('cart-updated', ['items' => []]);
@@ -697,10 +762,7 @@ class ProductQuoter extends Component
         session()->forget('quoter_items');
         $this->calculateTotal();
 
-        $this->dispatch('show-toast', [
-            'type' => 'info',
-            'message' => 'Carrito limpiado. Cliente mantenido.'
-        ]);
+        $this->calculateTotal();
 
         // Sincronizar con Alpine.js/IndexedDB para limpiar localmente
         $this->dispatch('cart-updated', ['items' => []]);
@@ -717,7 +779,7 @@ class ProductQuoter extends Component
 
         $this->ensureTenantConnection();
 
-        
+
         // Validar estructura mínima y filtrar items inválidos
         $validItems = [];
         foreach ($items as $item) {
@@ -767,14 +829,7 @@ class ProductQuoter extends Component
 
 
     /**
-     * Guardar una cotización sin crear remisiones
-     * 
-     * IMPORTANTE: Esta función SOLO crea la cotización y sus detalles.
-     * NO crea remisiones de inventario. Las remisiones se crean SOLO cuando
-     * el usuario hace clic en "Confirmar Pedido" (confirmarPedido()).
-     * 
-     * Esto permite que los vendedores creen múltiples cotizaciones sin
-     * afectar el inventario disponible.
+     * Guardar una cotización y crear automáticamente su remisión
      */
     public function saveQuote()
     {
@@ -799,27 +854,27 @@ class ProductQuoter extends Component
         try {
             DB::beginTransaction();
 
-            // 1. Obtener consecutivo
+            // 1. Obtener consecutivo de cotización
             $lastQuote = VntQuote::orderBy('consecutive', 'desc')->first();
             $nextConsecutive = $lastQuote ? $lastQuote->consecutive + 1 : 1;
 
             // 2. Crear la cotización
             $quote = VntQuote::create([
                 'consecutive' => $nextConsecutive,
-                'status' => 'REGISTRADO',
-                'typeQuote' => 'POS', // Valor por defecto para este flujo
+                'status' => 'REMISIÓN', // Cambiamos a REMISIÓN ya que se crea automáticamente
+                'typeQuote' => 'POS',
                 'customerId' => $this->selectedCustomer['id'],
-                'warehouseId' => session('warehouse_id', 1),
+                'warehouseId' => 1,
                 'userId' => auth()->id(),
                 'observations' => $this->observaciones,
                 'branchId' => session('branch_id', 1)
             ]);
 
-            // 3. Crear detalles
+            // 3. Crear detalles de cotización
             foreach ($this->quoterItems as $item) {
                 VntDetailQuote::create([
                     'quantity' => $item['quantity'],
-                    'tax_percentage' => 0,
+                    'tax_percentage' => $item['tax'] ?? 0,
                     'price' => $item['price'],
                     'quoteId' => $quote->id,
                     'itemId' => $item['id'],
@@ -828,32 +883,60 @@ class ProductQuoter extends Component
                 ]);
             }
 
+            // 4. Crear la Remisión automáticamente
+            $reason = InvReason::where('status', 1)->first();
+            $remission = InvRemissions::create([
+                'consecutive' => $this->generateRemissionConsecutive(),
+                'reasonId' => $reason ? $reason->id : 1,
+                'userId' => auth()->id(),
+                'quoteId' => $quote->id,
+                'status' => 'REGISTRADO',
+                'total_value' => $this->totalAmount,
+                'observations' => $this->observaciones,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 5. Crear detalles de la remisión
+            foreach ($this->quoterItems as $item) {
+                InvDetailRemissions::create([
+                    'remissionId' => $remission->id,
+                    'itemId' => $item['id'],
+                    'quantity' => $item['quantity'],
+                    'value' => $item['price'],
+                    'discount' => 0,
+                    'tax' => $item['tax'] ?? 0,
+                ]);
+            }
+
             DB::commit();
 
             // Limpiar
             $this->clearQuoter();
 
-            $this->dispatch('show-toast', [
+            $this->dispatch('swal-redirect', [
                 'type' => 'success',
-                'message' => 'Cotización #' . $quote->consecutive . ' creada exitosamente'
+                'title' => '¡Registrado!',
+                'message' => 'Pedido #' . $remission->consecutive . ' registrado exitosamente',
+                'url' => route('tenant.remissions')
             ]);
-
-            // Redirigir de forma segura para offline en móvil
-            if ($this->viewType === 'mobile') {
-                $this->dispatch('quote-saved-redirect', ['url' => '/tenant/quoter/mobile']);
-                return;
-            }
-
-            return redirect()->to(route('tenant.quoter.desktop'));
-
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error creando cotización: ' . $e->getMessage());
+            Log::error('Error creando cotización y remisión: ' . $e->getMessage());
             $this->dispatch('show-toast', [
                 'type' => 'error',
-                'message' => 'Error al crear la cotización: ' . $e->getMessage()
+                'message' => 'Error al procesar el registro: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Generar consecutivo para remisión
+     */
+    private function generateRemissionConsecutive()
+    {
+        $lastRemission = InvRemissions::orderBy('consecutive', 'desc')->first();
+        return $lastRemission ? $lastRemission->consecutive + 1 : 1;
     }
 
     /**
@@ -873,7 +956,17 @@ class ProductQuoter extends Component
 
             if ($this->editingRemissionId) {
                 // Lógica de actualización de Remisión
-                $remission = InvRemissions::findOrFail($this->editingRemissionId);
+                $remission = InvRemissions::with('quote')->findOrFail($this->editingRemissionId);
+                
+                // 1. Actualizar observaciones en la cotización base
+                if ($remission->quote) {
+                    $remission->quote->update([
+                        'observations' => $this->observaciones
+                    ]);
+                    Log::info('🔄 Observaciones de cotización actualizadas desde remisión', ['quote_id' => $remission->quoteId]);
+                }
+
+                // 2. Reemplazar detalles de la remisión
                 InvDetailRemissions::where('remissionId', $remission->id)->delete();
 
                 foreach ($this->quoterItems as $item) {
@@ -882,14 +975,13 @@ class ProductQuoter extends Component
                         'value' => $item['price'],
                         'remissionId' => $remission->id,
                         'itemId' => $item['id'],
-                        'tax' => 0,
+                        'tax' => $item['tax'] ?? 0,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
                 }
-                
+
                 Log::info('🔄 Remisión guardada internamente (Autoguardado)', ['remission_id' => $remission->id]);
-                
             } elseif ($this->editingQuoteId) {
                 // Lógica de actualización de Cotización
                 $quote = VntQuote::findOrFail($this->editingQuoteId);
@@ -903,7 +995,7 @@ class ProductQuoter extends Component
                 foreach ($this->quoterItems as $item) {
                     VntDetailQuote::create([
                         'quantity' => $item['quantity'],
-                        'tax_percentage' => 0,
+                        'tax_percentage' => $item['tax'] ?? 0,
                         'price' => $item['price'],
                         'quoteId' => $quote->id,
                         'itemId' => $item['id'],
@@ -935,19 +1027,12 @@ class ProductQuoter extends Component
             // Limpiar
             $this->clearQuoter();
 
-            $this->dispatch('show-toast', [
+            $this->dispatch('swal-redirect', [
                 'type' => 'success',
-                'message' => 'Cambios guardados exitosamente'
+                'title' => '¡Registrado!',
+                'message' => 'Cambios guardados exitosamente',
+                'url' => route('tenant.remissions')
             ]);
-
-            // Redirigir de forma segura para offline en móvil
-            if ($this->viewType === 'mobile') {
-                $this->dispatch('quote-saved-redirect', ['url' => '/tenant/quoter/mobile']);
-                return;
-            }
-
-            return redirect()->route('tenant.quoter.desktop');
-
         } catch (\Exception $e) {
             $this->dispatch('show-toast', [
                 'type' => 'error',
@@ -1091,7 +1176,7 @@ class ProductQuoter extends Component
         $this->showCreateCustomerForm = false;
         $this->showCreateCustomerButton = false;
         $this->editingCustomerId = null;
-        
+
         // Notificar a Alpine.js para limpiar estado local
         $this->dispatch('customer-selected', ['customer' => null]);
     }
@@ -1140,7 +1225,7 @@ class ProductQuoter extends Component
     public function saveSimplifiedCustomer($data)
     {
         Log::info('📦 saveSimplifiedCustomer recibido', ['data' => $data]);
-        
+
         $this->ensureTenantConnection();
 
         try {
@@ -1200,7 +1285,7 @@ class ProductQuoter extends Component
             // ASOCIACIÓN CRÍTICA: Vincular el cliente a la ruta del vendedor
             // Sin esto, el vendedor (perfil 4) no podrá "ver" ni seleccionar al cliente por las reglas de seguridad
             $routeIdToAssoc = $data['route_id'] ?? $data['routeId'] ?? $this->newCustomerRouteId;
-            
+
             // Refuerzo para vendedores (Perfil 4): Si no hay ruta, intentar obtenerla de nuevo
             if (!$routeIdToAssoc && auth()->user()->profile_id == 4) {
                 $sellerRoute = DB::connection('central')->table('tat_routes')
@@ -1212,7 +1297,7 @@ class ProductQuoter extends Component
 
             if ($routeIdToAssoc) {
                 Log::info('🔗 Asociando cliente a ruta', ['company_id' => $company->id, 'route_id' => $routeIdToAssoc]);
-                
+
                 // Usar DB::table para asegurar inserción rápida en la tabla pivot
                 DB::table('tat_companies_routes')->updateOrInsert(
                     ['company_id' => $company->id, 'route_id' => $routeIdToAssoc],
@@ -1242,7 +1327,6 @@ class ProductQuoter extends Component
             ]);
 
             return $result;
-
         } catch (\Exception $e) {
             Log::error('❌ Error en saveSimplifiedCustomer: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             $this->dispatch('show-toast', [
@@ -1580,8 +1664,18 @@ class ProductQuoter extends Component
 
             // Cargar información del cliente
             if ($quote->customerId) {
-                // Ahora customerId es un ID de sucursal (VntWarehouse)
+                // customerId debe ser siempre un vnt_warehouses.id
                 $warehouse = VntWarehouse::with('company')->find($quote->customerId);
+
+                // Fallback: si no se encontró warehouse o no tiene compañía,
+                // el customerId podría ser un company_id de datos antiguos
+                if (!$warehouse || !$warehouse->company) {
+                    $warehouse = VntWarehouse::with('company')
+                        ->where('companyId', $quote->customerId)
+                        ->orderByDesc('main')
+                        ->first();
+                }
+
                 if ($warehouse) {
                     $company = $warehouse->company;
                     $firstName = $company->firstName ?? '';
@@ -1619,6 +1713,7 @@ class ProductQuoter extends Component
                     'price_label' => 'Precio Registrado',
                     'quantity' => $detalle->quantity,
                     'description' => $detalle->description ?: ($item ? $item->description : ''),
+                    'tax' => $detalle->tax_percentage ?? 0,
                 ];
                 Log::info('📦 Item agregado', ['id' => $detalle->itemId, 'qty' => $detalle->quantity]);
             }
@@ -1915,6 +2010,7 @@ class ProductQuoter extends Component
                     'price_label' => 'Precio Lista',
                     'quantity' => $restockItem->quantity_request,
                     'description' => $product->description ?? '',
+                    'tax' => $product->tax->percentage ?? 0,
                 ];
             } else {
                 Log::warning("Item no encontrado para restock ID: " . $restockItem->id);
@@ -2026,8 +2122,8 @@ class ProductQuoter extends Component
                 'consecutive' => $nextConsecutive,
                 'status' => auth()->user()->profile_id == 17 ? 'REMISIÓN' : 'REGISTRADO',
                 'typeQuote' => 'POS', // Para TAT es institucional/POS
-                'customerId' => $companyId, // La tienda TAT como cliente
-                'warehouseId' => $warehouseId,
+                'customerId' => $warehouseId, // La sucursal TAT como cliente (vnt_warehouses.id)
+                'warehouseId' => 1,
                 'userId' => $userId,
                 'observations' => $observations,
                 'branchId' => session('branch_id', 1)
@@ -2183,6 +2279,7 @@ class ProductQuoter extends Component
                 'quoteId'        => $quote->id,
                 'userId'         => auth()->id(),
                 'warehouseId'    => $quote->warehouseId ?? session('warehouse_id', 1),
+                'systemOrder'    => 1,
             ]);
 
             // 3. Crear detalles (inv_detail_remissions)
@@ -2196,7 +2293,7 @@ class ProductQuoter extends Component
                     'itemId'      => $item->itemId,
                     'quantity'    => $item->quantity_request,
                     'value'       => $productData['price'] ?? 0,
-                    'tax'         => 0, // Ajustar si se manejan impuestos en remisiones
+                    'tax'         => $productData['tax'] ?? 0,
                     'created_at'  => now(),
                     'updated_at'  => now(),
                 ]);
@@ -2431,6 +2528,7 @@ class ProductQuoter extends Component
                     'price_label' => 'Precio Lista',
                     'quantity' => $restockItem->quantity_request,
                     'description' => $product->description ?? '',
+                    'tax' => $product->tax->percentage ?? 0,
                 ];
             } else {
                 Log::warning("Item no encontrado para restock preliminar ID: " . $restockItem->id);
@@ -2512,61 +2610,45 @@ class ProductQuoter extends Component
 
         $search = '%' . $this->customerSearch . '%';
 
-        // Si es vendedor (perfil 4), buscar solo en sus rutas asignadas
+        // Query unificada para traer toda la info necesaria
+        $query = DB::connection('tenant')->table('vnt_companies as vc')
+            ->leftJoin('vnt_warehouses as vw', function($join) {
+                $join->on('vw.companyId', '=', 'vc.id')->where('vw.main', 1);
+            })
+            ->leftJoin('tat_companies_routes as tcr', 'tcr.company_id', '=', 'vc.id')
+            ->leftJoin('tat_routes as tr', 'tr.id', '=', 'tcr.route_id')
+            ->select(
+                'vc.id', 'vc.identification', 'vc.businessName', 'vc.firstName', 'vc.lastName',
+                'vw.address', 'vw.district', 'tr.name as route_name', 'tr.sale_day'
+            )
+            ->where('vc.status', 1)
+            ->whereNull('vc.deleted_at')
+            ->where('vc.type', '!=', 'PROVEEDOR')
+            ->where(function($q) use ($search) {
+                $q->where('vc.identification', 'like', $search)
+                  ->orWhere('vc.businessName', 'like', $search)
+                  ->orWhere('vc.firstName', 'like', $search)
+                  ->orWhere('vc.lastName', 'like', $search);
+            });
+
         if (auth()->user()->profile_id == 4) {
-            $params = [auth()->id(), $search, $search, $search, $search, $search];
-
-            $customers = DB::select("
-            SELECT DISTINCT tr.salesman_id, tr.sale_day, tcr.company_id, vc.businessName, vc.billingEmail, vc.firstName, vc.lastName, vc.identification, vc.id
-            FROM tat_routes tr
-            INNER JOIN tat_companies_routes tcr ON tcr.route_id = tr.id
-            INNER JOIN vnt_companies vc ON vc.id = tcr.company_id
-            WHERE tr.salesman_id = ? AND (
-                vc.identification LIKE ? OR
-                vc.businessName LIKE ? OR
-                vc.firstName LIKE ? OR
-                vc.lastName LIKE ? OR
-                tr.sale_day LIKE ?
-            )
-            AND vc.type != 'PROVEEDOR'
-        ", $params);
-        } else {
-            // Para administradores u otros perfiles, buscar en todos los clientes
-            $params = [$search, $search, $search, $search];
-
-            $customers = DB::select("
-            SELECT DISTINCT
-                NULL as salesman_id,
-                NULL as sale_day,
-                vc.id as company_id,
-                vc.businessName,
-                vc.billingEmail,
-                vc.firstName,
-                vc.lastName,
-                vc.identification,
-                vc.id
-            FROM vnt_companies vc
-            WHERE (
-                TRIM(vc.identification) LIKE ?
-                OR vc.businessName LIKE ?
-                OR vc.firstName LIKE ?
-                OR vc.lastName LIKE ?
-            )
-            AND vc.status = 1
-            AND vc.deleted_at IS NULL
-            AND vc.type != 'PROVEEDOR'
-            LIMIT 15
-        ", $params);
+            $query->where('tr.salesman_id', auth()->id());
         }
 
-        $this->customerSearchResults = array_map(function ($customer) {
+        $customers = $query->distinct()->limit(15)->get();
+
+        $this->customerSearchResults = $customers->map(function ($customer) {
             return [
                 'id' => $customer->id,
                 'identification' => $customer->identification,
                 'display_name' => $customer->businessName ?: ($customer->firstName . ' ' . $customer->lastName),
-                'sale_day' => $customer->sale_day
+                'address' => $customer->address ?: 'Sin dirección',
+                'district' => $customer->district ?: 'Sin barrio',
+                'route_name' => $customer->route_name ?: 'Sin ruta',
+                'sale_day' => $customer->sale_day ?: 'N/A'
             ];
-        }, $customers);
+        })->toArray();
+
 
         $this->dispatch('customers-found', [
             'customers' => $this->customerSearchResults
@@ -2625,8 +2707,19 @@ class ProductQuoter extends Component
 
         if (!empty($customer)) {
             $customer = (array) $customer[0];
+
+            // Si no hay bodega principal, buscar la primera bodega disponible del cliente
+            $warehouseId = $customer['warehouse_id'];
+            if (!$warehouseId && $customer['company_id']) {
+                $fallback = DB::selectOne(
+                    "SELECT id FROM vnt_warehouses WHERE companyId = ? AND deleted_at IS NULL ORDER BY id ASC LIMIT 1",
+                    [$customer['company_id']]
+                );
+                $warehouseId = $fallback->id ?? null;
+            }
+
             $this->selectedCustomer = [
-                'id' => $customer['warehouse_id'] ?? $customer['company_id'], // Usamos el ID de sucursal como ID principal
+                'id' => $warehouseId, // Siempre debe ser vnt_warehouses.id
                 'company_id' => $customer['company_id'], // Mantenemos el ID de empresa para otros procesos
                 'businessName' => $customer['businessName'],
                 'firstName' => $customer['firstName'],
@@ -2672,6 +2765,56 @@ class ProductQuoter extends Component
      * 
      * @param int|null $quoteId ID de la cotización a confirmar (opcional)
      */
+
+    /**
+     * Abre el modal para seleccionar tipo de entrega y método de pago
+     * antes de confirmar el pedido. Ejecuta las validaciones previas.
+     */
+    public function abrirModalRemision()
+    {
+        $this->ensureTenantConnection();
+
+        // Autoguardado silencioso si hay cambios pendientes
+        if ($this->cartHasChanges && ($this->editingQuoteId || $this->editingRemissionId)) {
+            $this->saveChangesInternal();
+        }
+
+        $quoteId = $this->editingQuoteId;
+
+        // Validar: ya tiene remisión
+        if ($quoteId && InvRemissions::where('quoteId', $quoteId)->exists()) {
+            $this->quoteHasRemission = true;
+            $this->dispatch('show-toast', ['type' => 'error', 'message' => 'Esta cotización YA tiene una remisión generada.']);
+            return;
+        }
+
+        // Validar: carrito vacío
+        if (empty($this->quoterItems)) {
+            $this->dispatch('show-toast', ['type' => 'error', 'message' => 'No hay productos para confirmar.']);
+            return;
+        }
+
+        // Validar: inventario
+        $inventoryErrors = $this->validateInventoryAvailability();
+        if (!empty($inventoryErrors)) {
+            $this->dispatch('show-toast', ['type' => 'error', 'message' => 'Inventario insuficiente: ' . implode(', ', $inventoryErrors)]);
+            return;
+        }
+
+        // Cargar opciones de los selectores
+        $this->availableDeliveryTypes  = \App\Models\Tenant\Sales\VenDeliveryType::where('status', 1)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->toArray();
+
+        $this->availableMethodPayments = \App\Models\Tenant\MethodPayments\VntMethodPayMents::orderBy('name')
+            ->get(['id', 'name'])
+            ->toArray();
+
+        $this->selectedDeliveryTypeId  = null;
+        $this->selectedMethodPaymentId = null;
+        $this->showRemisionModal       = true;
+    }
 
     public function confirmarPedido($quoteId = null)
     {
@@ -2762,11 +2905,13 @@ class ProductQuoter extends Component
             // 3. Crear cabecera de Remisión
             // Nota: Se asume que 'reasonId' y otros campos fueron agregados al fillable como se planeó.
             $remission = InvRemissions::create([
-                'consecutive'    => $consecutive,
-                'status'         => 'REGISTRADO',
-                'userId'         => auth()->id(),
-                'warehouseId'    => session('warehouse_id', 1), // Asumiendo warehouse en sesión o default 1
-                'quoteId'        => $quoteId, // Vincular con la cotización original si existe
+                'consecutive'     => $consecutive,
+                'status'          => 'REGISTRADO',
+                'userId'          => auth()->id(),
+                'warehouseId'     => 1,
+                'quoteId'         => $quoteId,
+                'deliveryTypeId'  => $this->selectedDeliveryTypeId  ?: null,
+                'methodPaymentId' => $this->selectedMethodPaymentId ?: null,
             ]);
 
             // 4. Crear detalles
@@ -2777,7 +2922,7 @@ class ProductQuoter extends Component
                     'itemId'      => $item['id'],
                     'quantity'    => $item['quantity'],
                     'value'       => $item['price'],
-                    'tax'         => 0, // Por defecto 0 o implementar lógica de impuestos si existe en el item
+                    'tax'         => $item['tax'] ?? 0,
                 ]);
                 $detailsCreated++;
             }
@@ -2810,17 +2955,16 @@ class ProductQuoter extends Component
             session()->forget('quoter_items');
             $this->confirmationLoading = false;
 
-            $this->dispatch('show-toast', [
-                'type' => 'success',
-                'message' => 'Pedido confirmado. Remisión #' . $consecutive . ' creada.'
-            ]);
-
             // Sincronizar con Alpine.js/IndexedDB para limpiar memoria local
             $this->dispatch('cart-updated', items: []);
             $this->dispatch('customer-selected', customer: null);
 
-            // Redirigir a la lista de cotizaciones (o remisiones si se prefiere)
-            return redirect()->route('tenant.quoter');
+            $this->dispatch('swal-redirect', [
+                'type' => 'success',
+                'title' => '¡Confirmado!',
+                'message' => 'Remisión #' . $consecutive . ' creada exitosamente.',
+                'url' => route('tenant.quoter')
+            ]);
         } catch (\Exception $e) {
             Log::error('Error en confirmarPedido (Automático): ' . $e->getMessage());
             $this->confirmationLoading = false;
@@ -2865,14 +3009,6 @@ class ProductQuoter extends Component
 
 
     /**
-     * Generar consecutivo para remisión
-     */
-    private function generateRemissionConsecutive()
-    {
-        $lastRemission = InvRemissions::orderBy('consecutive', 'desc')->first();
-        return $lastRemission ? $lastRemission->consecutive + 1 : 1;
-    }
-    /**
      * Procesa un pedido realizado en modo offline cuando se recupera la conexión.
      * Maneja la creación de clientes temporales si es necesario.
      */
@@ -2889,7 +3025,7 @@ class ProductQuoter extends Component
 
 
 
-        
+
         try {
             $job = new \App\Jobs\Tenant\Quoter\ProcessOfflineOrderJob(
                 [
@@ -2943,7 +3079,7 @@ class ProductQuoter extends Component
 
 
             Log::info('🚀 [SYNC] Despachando Job...', ['job_class' => get_class($job)]);
-            
+
             dispatch($job);
 
             Log::info('✅ [SYNC] Job despachado exitosamente');
@@ -3014,12 +3150,12 @@ class ProductQuoter extends Component
                 $newCompany = VntCompany::find($customerId);
                 if ($newCompany) {
                     $newCompany->update($companyData);
-                    
+
                     // Actualizar sucursal principal
                     $mainWarehouse = $newCompany->mainWarehouse;
                     if ($mainWarehouse) {
                         $mainWarehouse->update($warehouses[0]);
-                        
+
                         // Actualizar teléfono en contactos del almacén
                         $contact = $mainWarehouse->activeContacts->first();
                         if ($contact) {
@@ -3041,7 +3177,7 @@ class ProductQuoter extends Component
             // 2. Crear usuario si se solicitó
             if (!empty($customerData['createUser']) && !empty($customerData['billingEmail'])) {
                 $existingUser = User::where('email', $customerData['billingEmail'])->first();
-                
+
                 if (!$existingUser) {
                     $newUser = User::create([
                         'name' => $customerData['businessName'],
@@ -3099,7 +3235,7 @@ class ProductQuoter extends Component
                     ]
                 );
                 Log::info('Cliente asociado a ruta con orden secuencial', [
-                    'company_id' => $newCompany->id, 
+                    'company_id' => $newCompany->id,
                     'route_id' => $routeId,
                     'sales_order' => $nextSalesOrder,
                     'delivery_order' => $nextDeliveryOrder
@@ -3127,7 +3263,6 @@ class ProductQuoter extends Component
             $this->dispatch('customer-selected', customer: $this->selectedCustomer);
 
             return ['success' => true, 'customerId' => $newCompany->id];
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error en saveQuickCustomer: ' . $e->getMessage());
@@ -3153,7 +3288,7 @@ class ProductQuoter extends Component
         try {
             $companyId = $this->selectedCustomer['company_id'] ?? $this->selectedCustomer['id'];
             $company = VntCompany::with(['mainWarehouse.activeContacts'])->find($companyId);
-            
+
             if (!$company) {
                 $this->dispatch('show-toast', ['type' => 'error', 'message' => 'No se encontró el cliente']);
                 return;
@@ -3161,7 +3296,7 @@ class ProductQuoter extends Component
 
             $mainWarehouse = $company->mainWarehouse;
             $phone = $mainWarehouse?->activeContacts->first()?->business_phone;
-            
+
             // Obtener ruta asignada si existe
             $routeInfo = TatCompanyRoute::where('company_id', $company->id)->first();
 
@@ -3192,14 +3327,14 @@ class ProductQuoter extends Component
 
             // Despachar evento para que Alpine cargue los datos
             $this->dispatch('load-customer-data', customer: $customerData);
-            
-            Log::info("💼 [EDICIÓN] Datos cargados para edición", ['id' => $company->id]);
 
+            Log::info("💼 [EDICIÓN] Datos cargados para edición", ['id' => $company->id]);
         } catch (\Exception $e) {
             Log::error('Error en editCustomer: ' . $e->getMessage());
             $this->dispatch('show-toast', ['type' => 'error', 'message' => 'Error al cargar datos']);
         }
     }
+
 
 
 

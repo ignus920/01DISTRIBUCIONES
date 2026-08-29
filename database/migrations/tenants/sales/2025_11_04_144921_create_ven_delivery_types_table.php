@@ -8,8 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('ven_delivery_types')) {
-            Schema::create('ven_delivery_types', function (Blueprint $table) {
+        if (!Schema::hasTable('vnt_delivery_types')) {
+            Schema::create('vnt_delivery_types', function (Blueprint $table) {
                 $table->id('id');
                 $table->string('name', 255);
                 $table->integer('status')->default(1);
@@ -21,6 +21,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('ven_delivery_types');
+        Schema::dropIfExists('vnt_delivery_types');
     }
 };

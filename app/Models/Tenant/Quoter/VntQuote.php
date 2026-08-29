@@ -98,4 +98,9 @@ class VntQuote extends Model
     {
         return $this->hasOne(\App\Models\Tenant\Remissions\InvRemissions::class, 'quoteId');
     }
-}
+
+    public function remissions(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenant\Remissions\InvRemissions::class, 'quoteId');
+    }
+}

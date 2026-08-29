@@ -23,11 +23,18 @@ class MoveDistrictModal extends Component
     public $selectedCompanies = [];
     public $selectAll = false;
     public $availableDistricts = [];
+    
+    // Day filtering
+    public $sourceDay = '';
+    public $targetDay = '';
+    public $days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
     protected $listeners = [
         'source-route-changed' => 'updateSourceRoute',
         'target-route-changed' => 'updateTargetRoute',
-        'district-changed' => 'updateDistrict'
+        'district-changed' => 'updateDistrict',
+        'source-day-changed' => 'updateSourceDay',
+        'target-day-changed' => 'updateTargetDay'
     ];
 
     protected function rules()
@@ -305,6 +312,18 @@ class MoveDistrictModal extends Component
     {
         $this->district = $value;
         // El método updatedDistrict() se ejecutará automáticamente
+    }
+
+    public function updateSourceDay($value)
+    {
+        $this->sourceDay = $value;
+        $this->sourceRouteId = ''; // Reset route when day changes
+    }
+
+    public function updateTargetDay($value)
+    {
+        $this->targetDay = $value;
+        $this->targetRouteId = ''; // Reset route when day changes
     }
 
     private function resetForm()

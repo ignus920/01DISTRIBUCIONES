@@ -171,6 +171,7 @@
                 <td>
                     @if($company)
                         <strong>{{ $company->businessName ?: ($company->firstName . ' ' . $company->lastName) }}</strong>
+                        <br><small>Doc: {{ $company->identification }}{{ $company->checkDigit ? '-' . $company->checkDigit : '' }}</small>
                         <br><small>{{ $company->billingEmail ?: 'Sin email' }}</small>
                     @else
                         <span class="text-red-600">Cliente no encontrado</span>

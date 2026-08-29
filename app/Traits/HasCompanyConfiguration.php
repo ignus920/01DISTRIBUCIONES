@@ -35,77 +35,48 @@ trait HasCompanyConfiguration
     private bool $isConfigurationInitialized = false;
 
     /**
+     * Cache estático para evitar múltiples consultas en el mismo ciclo de vida de la petición
+     */
+    protected static ?object $staticCompanyCache = null;
+
+    /**
      * Inicializa la configuración de la empresa
      */
     protected function initializeCompanyConfiguration(): void
     {
         if ($this->isConfigurationInitialized) {
-            Log::info('🔧 initializeCompanyConfiguration() - YA INICIALIZADO, saltando...');
             return;
         }
 
-        Log::info('🔧 initializeCompanyConfiguration() - INICIO');
-
         $this->configService = app(CompanyConfigurationService::class);
-        Log::info('🔧 ConfigService creado', ['service_exists' => $this->configService ? 'YES' : 'NO']);
 
-        // Obtener datos de la empresa actual usando el mismo validador que UpdateCompany
+        // Obtener datos de la empresa actual
         $user = Auth::user();
-        Log::info('🔧 Usuario obtenido', [
-            'user_exists' => $user ? 'YES' : 'NO',
-            'user_id' => $user->id ?? 'NULL',
-            'user_email' => $user->email ?? 'NULL'
-        ]);
 
         if ($user) {
-            $validator = app(CompanyDataValidator::class);
-            Log::info('🔧 Validator creado');
-
-            $company = $validator->getUserCompany($user);
-            Log::info('🔧 Empresa obtenida', [
-                'company_exists' => $company ? 'YES' : 'NO',
-                'company_id' => $company->id ?? 'NULL',
-                'company_name' => $company->businessName ?? 'NULL'
-            ]);
+            // Usar caché estático para evitar 3+ consultas DB idénticas en cada hydrate()
+            if (static::$staticCompanyCache === null) {
+                $validator = app(CompanyDataValidator::class);
+                static::$staticCompanyCache = $validator->getUserCompany($user);
+            }
+            
+            $company = static::$staticCompanyCache;
 
             if ($company) {
                 $this->currentCompanyId = $company->id;
-                $this->currentPlainId = $this->getUserPlainId($user); // Por defecto plan 2 (Avanzado)
-
-                Log::info('🔧 IDs asignados', [
-                    'currentCompanyId' => $this->currentCompanyId,
-                    'currentPlainId' => $this->currentPlainId
-                ]);
-            } else {
-                Log::warning('🔧 No se encontró empresa para el usuario');
+                $this->currentPlainId = $this->getUserPlainId($user);
             }
-
-        } else {
-            Log::warning('🔧 No hay usuario autenticado');
         }
 
         // Precargar configuraciones comunes
         if ($this->currentCompanyId && $this->currentPlainId) {
-            Log::info('🔧 Precargando configuraciones');
             $this->configService->preloadCommonConfigurations(
                 $this->currentCompanyId,
                 $this->currentPlainId
             );
-            Log::info('🔧 Configuraciones precargadas exitosamente');
-        } else {
-            Log::warning('🔧 No se pueden precargar configuraciones - faltan IDs', [
-                'currentCompanyId' => $this->currentCompanyId,
-                'currentPlainId' => $this->currentPlainId
-            ]);
         }
 
         $this->isConfigurationInitialized = true;
-
-        Log::info('🔧 initializeCompanyConfiguration() - FIN', [
-            'final_companyId' => $this->currentCompanyId,
-            'final_plainId' => $this->currentPlainId,
-            'final_configService' => $this->configService ? 'YES' : 'NO'
-        ]);
     }
 
     /**

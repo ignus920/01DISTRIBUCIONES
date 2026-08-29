@@ -99,39 +99,86 @@
                     </h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Ruta Origen -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Ruta de Origen
-                            </label>
-                            @livewire('selects.route-select', [
-                            'selectedValue' => $sourceRouteId,
-                            'eventName' => 'source-route-changed',
-                            'placeholder' => 'Seleccionar ruta de origen',
-                            'district' => $district
-                            ], key('source-route-select-' . $district))
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                Seleccione la ruta de origen para intercambiar
-                            </p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Día
+                                </label>
+                                @php
+                                $dayItems = collect($days)->map(function($day) {
+                                    return ['id' => $day, 'name' => ucfirst($day)];
+                                })->toArray();
+                                @endphp
+                                @livewire('selects.generic-select', [
+                                    'selectedValue' => $sourceDay,
+                                    'items' => $dayItems,
+                                    'name' => 'sourceDay',
+                                    'label' => 'Día',
+                                    'placeholder' => 'Todos los días',
+                                    'displayField' => 'name',
+                                    'valueField' => 'id',
+                                    'searchFields' => ['name'],
+                                    'eventName' => 'source-day-changed',
+                                    'showLabel' => false
+                                ], key('source-day-select'))
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Ruta de Origen
+                                </label>
+                                @livewire('selects.route-select', [
+                                    'selectedValue' => $sourceRouteId,
+                                    'eventName' => 'source-route-changed',
+                                    'placeholder' => 'Seleccionar ruta de origen',
+                                    'district' => $district,
+                                    'saleDay' => $sourceDay
+                                ], key('source-route-select-' . $district . '-' . $sourceDay))
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Seleccione la ruta de origen para intercambiar
+                                </p>
+                            </div>
                         </div>
 
                         <!-- Ruta Destino -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Ruta de Destino @if(count($selectedCompanies) > 0)<span class="text-red-500">*</span>@endif
-                            </label>
-                            @livewire('selects.route-select', [
-                            'selectedValue' => $targetRouteId,
-                            'eventName' => 'target-route-changed',
-                            'placeholder' => 'Todas las rutas'
-                            ])
-                            @error('targetRouteId')
-                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                            @if(count($selectedCompanies) > 0)
-                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                Seleccione la ruta a donde mover los clientes
-                            </p>
-                            @endif
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Día
+                                </label>
+                                @livewire('selects.generic-select', [
+                                    'selectedValue' => $targetDay,
+                                    'items' => $dayItems,
+                                    'name' => 'targetDay',
+                                    'label' => 'Día',
+                                    'placeholder' => 'Todos los días',
+                                    'displayField' => 'name',
+                                    'valueField' => 'id',
+                                    'searchFields' => ['name'],
+                                    'eventName' => 'target-day-changed',
+                                    'showLabel' => false
+                                ], key('target-day-select'))
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Ruta de Destino @if(count($selectedCompanies) > 0)<span class="text-red-500">*</span>@endif
+                                </label>
+                                @livewire('selects.route-select', [
+                                    'selectedValue' => $targetRouteId,
+                                    'eventName' => 'target-route-changed',
+                                    'placeholder' => 'Todas las rutas',
+                                    'saleDay' => $targetDay
+                                ], key('target-route-select-' . $targetDay))
+                                @error('targetRouteId')
+                                <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
+                                @if(count($selectedCompanies) > 0)
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Seleccione la ruta a donde mover los clientes
+                                </p>
+                                @endif
+                            </div>
                         </div>
                     </div>
 

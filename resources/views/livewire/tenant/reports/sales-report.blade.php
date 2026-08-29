@@ -76,11 +76,11 @@
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-900">
                         <tr>
-                            <th wire:click="sortBy('uv.id')"
+                            <th wire:click="sortBy('vendedor_id')"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
                                 <div class="flex items-center gap-1">
                                     ID Vendedor
-                                    @if($sortField === 'uv.id')
+                                    @if($sortField === 'vendedor_id')
                                         @if($sortDirection === 'asc')
                                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>
@@ -93,11 +93,11 @@
                                     @endif
                                 </div>
                             </th>
-                            <th wire:click="sortBy('uv.name')"
+                            <th wire:click="sortBy('vendedor')"
                                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none">
                                 <div class="flex items-center gap-1">
                                     Nombre Vendedor
-                                    @if($sortField === 'uv.name')
+                                    @if($sortField === 'vendedor')
                                         @if($sortDirection === 'asc')
                                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path>

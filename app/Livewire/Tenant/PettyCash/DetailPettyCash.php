@@ -40,6 +40,11 @@ class DetailPettyCash extends Component
     public $sortDirection = 'desc';
     public $perPage = 5;
 
+    public function updatedSearch()
+    {
+        $this->resetPage(pageName: 'detailPage');
+    }
+
     public function boot()
     {
         $this->ensureTenantConnection();
@@ -89,7 +94,7 @@ class DetailPettyCash extends Component
                 $query->where('invoiceId', 'like', '%' . $this->search . '%')
                     ->orWhere('id', 'like', '%' . $this->search . '%');
             })->orderBy('created_at', $this->sortDirection)
-            ->paginate($this->perPage);
+            ->paginate($this->perPage, ['*'], 'detailPage');
     }
 
     public function mount($pettyCash_id)
@@ -120,7 +125,7 @@ class DetailPettyCash extends Component
         }
 
         $this->sortField = $field;
-        $this->resetPage();
+        $this->resetPage(pageName: 'detailPage');
     }
 
     public function canDoMovement(): bool

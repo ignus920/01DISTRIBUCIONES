@@ -59,6 +59,7 @@
                     <a href="#productos" class="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3 py-2 rounded-md">Productos</a>
                     <a href="#servicios" class="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3 py-2 rounded-md">Servicios</a>
                     <a href="#contacto" class="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3 py-2 rounded-md">Contacto</a>
+                    <a href="/politica-privacidad" target="_blank" class="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3 py-2 rounded-md">Política</a>
                 </div>
 
                 <!-- Auth navigation -->
@@ -109,9 +110,13 @@
                             <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                             <span>Servicios</span>
                         </a>
-                        <a href="#contacto" class="flex items-center gap-3 px-4 py-3 rounded text-gray-300 hover:bg-white/10 hover:text-white transition-all pb-4 border-b border-gray-700">
+                        <a href="#contacto" class="flex items-center gap-3 px-4 py-3 rounded text-gray-300 hover:bg-white/10 hover:text-white transition-all">
                             <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                             <span>Contacto</span>
+                        </a>
+                        <a href="/politica-privacidad" target="_blank" class="flex items-center gap-3 px-4 py-3 rounded text-gray-300 hover:bg-white/10 hover:text-white transition-all pb-4 border-b border-gray-700">
+                            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <span>Política</span>
                         </a>
                         
                         <!-- Acceso al Programa (Integrado) -->
@@ -224,7 +229,10 @@
                     </section>
 
                     <footer class="py-16 text-center text-sm text-gray-600 dark:text-gray-400">
-                        © {{ date('Y') }} Tienda Multitenancy. Todos los derechos reservados.
+                        <p>© {{ date('Y') }} Tienda Multitenancy. Todos los derechos reservados.</p>
+                        <p class="mt-2">
+                            <a href="/politica-privacidad" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">Política de Tratamiento de Datos Personales</a>
+                        </p>
                     </footer>
                 </div>
             </div>

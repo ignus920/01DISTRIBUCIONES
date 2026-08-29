@@ -83,30 +83,34 @@
                     <div class="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
                         <!-- Ajustado padding -->
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full">
-                            <!-- Selector de días de la semana -->
+                            <!-- Selector múltiple de días de la semana -->
                             <div class="flex-1">
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                         </svg>
-                                    </div>
-                                    <select wire:model.live="selectedSaleDay"
-                                        class="block w-full pl-10 pr-8 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 shadow-xs">
-                                        <option value="">-- Filtrar por día de venta --</option>
-                                        @foreach ($daysOfWeek as $day => $dayName)
-                                        <option value="{{ $day }}">{{ $dayName }}</option>
-                                        @endforeach
-                                    </select>
+                                        Días:
+                                    </span>
+                                    @foreach ($daysOfWeek as $day => $dayName)
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox" wire:model.live="selectedSaleDay" value="{{ $day }}" class="sr-only peer">
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
+                                            peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600
+                                            bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600
+                                            hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                                            {{ $dayName }}
+                                        </span>
+                                    </label>
+                                    @endforeach
 
-                                    {{-- Botón para limpiar filtro de día --}}
-                                    @if($selectedSaleDay)
-                                    <button type="button" wire:click="$set('selectedSaleDay', '')"
-                                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M6 18L18 6M6 6l12 12" />
+                                    @if(!empty($selectedSaleDay))
+                                    <button type="button" wire:click="$set('selectedSaleDay', [])"
+                                        class="inline-flex items-center px-2 py-1 text-xs text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                         </svg>
+                                        Limpiar
                                     </button>
                                     @endif
                                 </div>
@@ -120,7 +124,12 @@
                                     class="w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="">-- Seleccione --</option>
                                     @foreach ($users as $rt)
-                                    <option value="{{ $rt->id }}">{{ $rt->name }}</option>
+                                        @php $busy = in_array($rt->id, $busyDeliverymen); @endphp
+                                        <option value="{{ $rt->id }}"
+                                            {{ $busy ? 'disabled' : '' }}
+                                            style="{{ $busy ? 'color:#9ca3af;' : '' }}">
+                                            {{ $rt->name }}{{ $busy ? ' (Cargue activo)' : '' }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -168,11 +177,12 @@
                                         </button>
                                     @endif
 
-                                    <button wire:click="printPreCharge"
+                                    <a href="{{ route('tenant.uploads.print-pre-charge', ['deliverymanId' => $selectedDeliveryMan]) }}"
+                                        target="_blank"
                                         class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                                         <x-heroicon-o-printer class="w-6 h-5 pr-2" />
                                         Imprimir PDF
-                                    </button>
+                                    </a>
                                 @endif
                             </div>
                         </div>
@@ -183,98 +193,91 @@
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-900">
                                 <tr>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Vendedor</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Ruta</th>
-                                    <th
-                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Vendedores</th>
-                                    <th
-                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Total Pedidos</th>
-                                    <th
-                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Total Ventas</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Pedidos</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Estado</th>
-                                    <th
-                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                        Cargar/Eliminar
-                                    </th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Acciones</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                @php $lastDay = null; $lastRoute = null; $multiDay = count($selectedSaleDay) > 1; @endphp
                                 @forelse($remissions as $remission)
+                                    {{-- Fila separadora por día (solo cuando hay múltiples días seleccionados) --}}
+                                    @if($multiDay && $remission->dia_venta !== $lastDay)
+                                        @php $lastDay = $remission->dia_venta; $lastRoute = null; @endphp
+                                        <tr class="bg-indigo-50 dark:bg-indigo-900/20">
+                                            <td colspan="6" class="px-6 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
+                                                {{ $remission->dia_venta }}
+                                            </td>
+                                        </tr>
+                                    @endif
+                                    {{-- Fila separadora por ruta --}}
+                                    @if($remission->route_id !== $lastRoute)
+                                        @php $lastRoute = $remission->route_id; @endphp
+                                        <tr class="bg-gray-100 dark:bg-gray-700/50">
+                                            <td colspan="6" class="px-6 py-2 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                                                {{ $remission->ruta }}
+                                                <button wire:click="eliminarRuta({{ $remission->route_id }})"
+                                                    class="ml-1 inline-flex items-center px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-medium rounded hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors">
+                                                    <x-heroicon-o-trash class="w-3 h-3 mr-1" />
+                                                    Limpiar ruta
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endif
                                 <tr wire:key="remission-{{ $loop->index }}"
-                                    class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                    <td
-                                        class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                    class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors {{ $remission->existe === 'SI' ? 'bg-green-50/40 dark:bg-green-900/10' : '' }}">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                        {{ $remission->vendedor }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                         {{ $remission->ruta }}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $remission->cantidad_vendedores }} vendedor{{ $remission->cantidad_vendedores != 1 ? 'es' : '' }}
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900 dark:text-white">
+                                        ${{ number_format($remission->total_ventas, 0, ',', '.') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
-                                        {{ $remission->cantidad_pedidos }} pedido{{ $remission->cantidad_pedidos != 1 ? 's' : '' }}
+                                        {{ $remission->cantidad_pedidos }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
-                                        @if($remission->existe == "NO")
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                                Sin cargar
-                                            </span>
-                                        @elseif($remission->existe == "PARCIAL")
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                                                Parcialmente cargado
+                                        @if($remission->existe === 'SI')
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                                Marcado
                                             </span>
                                         @else
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                                Completamente cargado
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+                                                Sin marcar
                                             </span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                        <div class="flex items-center justify-center gap-2">
-                                            @if($remission->existe == "NO")
-                                            <button wire:click="cargarRuta({{ $remission->route_id }})"
+                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                                        @if($remission->existe === 'SI')
+                                            <button wire:click="eliminar({{ $remission->user_id }}, {{ $remission->route_id }})"
                                                 wire:loading.attr="disabled"
-                                                wire:target="cargarRuta({{ $remission->route_id }})"
-                                                class="inline-flex items-center px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs font-medium rounded-full hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50">
-                                                <x-heroicon-o-arrow-up-tray class="w-5 h-4" />
-                                                <span wire:loading.remove
-                                                    wire:target="cargarRuta({{ $remission->route_id }})">Cargar Ruta</span>
-                                                <span wire:loading wire:target="cargarRuta({{ $remission->route_id }})"
-                                                    class="flex items-center">
-                                                    <svg class="animate-spin h-3 w-3 mr-1"
-                                                        xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                        viewBox="0 0 24 24">
-                                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                                            stroke="currentColor" stroke-width="4"></circle>
-                                                        <path class="opacity-75" fill="currentColor"
-                                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                                        </path>
-                                                    </svg>
-                                                    Cargando...
-                                                </span>
+                                                wire:target="eliminar({{ $remission->user_id }}, {{ $remission->route_id }})"
+                                                class="inline-flex items-center px-2 py-1 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-medium rounded hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors disabled:opacity-50">
+                                                <x-heroicon-o-trash class="w-3 h-3 mr-1" />
+                                                <span wire:loading.remove wire:target="eliminar({{ $remission->user_id }}, {{ $remission->route_id }})">Quitar</span>
+                                                <span wire:loading wire:target="eliminar({{ $remission->user_id }}, {{ $remission->route_id }})">...</span>
                                             </button>
-                                            @elseif($remission->existe == "PARCIAL")
-                                            <button wire:click="cargarRuta({{ $remission->route_id }})"
+                                        @else
+                                            <button wire:click="cargar({{ $remission->user_id }}, {{ $remission->route_id }})"
                                                 wire:loading.attr="disabled"
-                                                wire:target="cargarRuta({{ $remission->route_id }})"
-                                                class="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs font-medium rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50">
-                                                <x-heroicon-o-arrow-up-tray class="w-5 h-4" />
-                                                Completar Cargue
+                                                wire:target="cargar({{ $remission->user_id }}, {{ $remission->route_id }})"
+                                                class="inline-flex items-center px-2 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-medium rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors disabled:opacity-50">
+                                                <x-heroicon-o-arrow-up-tray class="w-3 h-3 mr-1" />
+                                                <span wire:loading.remove wire:target="cargar({{ $remission->user_id }}, {{ $remission->route_id }})">Marcar</span>
+                                                <span wire:loading wire:target="cargar({{ $remission->user_id }}, {{ $remission->route_id }})">...</span>
                                             </button>
-                                            <button wire:click="eliminarRuta({{ $remission->route_id }})"
-                                                class="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs font-medium rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
-                                                <x-heroicon-o-trash class="w-5 h-4" />
-                                                Limpiar
-                                            </button>
-                                            @else
-                                            <button wire:click="eliminarRuta({{ $remission->route_id }})"
-                                                class="inline-flex items-center px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-xs font-medium rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors">
-                                                <x-heroicon-o-trash class="w-5 h-4" />
-                                                Eliminar Ruta
-                                            </button>
-                                            @endif
-                                        </div>
+                                        @endif
                                     </td>
                                 </tr>
                                 @empty
@@ -288,7 +291,7 @@
                                                 </path>
                                             </svg>
                                             <p class="text-lg font-medium">No hay registros</p>
-                                            <p class="text-sm">Selecciona una fecha para ver los datos</p>
+                                            <p class="text-sm">Selecciona uno o varios días de venta para ver los datos</p>
                                         </div>
                                     </td>
                                 </tr>

@@ -51,14 +51,14 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                               <div class="flex gap-2">
-                                    <button wire:click="printDetail({{ $delivery->id }})"
+                                    <button onclick="window.open('{{ route('tenant.reports.delivery-detail', ['deliveryId' => $delivery->id ]) }}', '_blank')"
                                        class="inline-flex items-center px-3 py-1 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white text-xs font-medium rounded transition">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                                         </svg>
                                         Lista de mercancia
                                     </button>
-                                    <button wire:click="printOrders({{ $delivery->id }})"
+                                    <button onclick="window.open('{{ route('tenant.reports.delivery-orders', ['deliveryId' => $delivery->id ]) }}', '_blank')"
                                        class="inline-flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-xs font-medium rounded transition">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
@@ -96,14 +96,14 @@
                     <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                         <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wider font-medium mb-3">Opciones</p>
                         <div class="flex flex-col gap-2">
-                            <button wire:click="printDetail({{ $delivery->id }})"
+                            <button onclick="window.open('{{ route('tenant.reports.delivery-detail', ['deliveryId' => $delivery->id]) }}', '_blank')"
                                class="w-full inline-flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white text-sm font-medium rounded transition">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                                 </svg>
                                 Lista de mercancia
                             </button>
-                            <button wire:click="printOrders({{ $delivery->id }})"
+                            <button onclick="window.open('{{ route('tenant.reports.delivery-orders', ['deliveryId' => $delivery->id]) }}', '_blank')"
                                class="w-full inline-flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white text-sm font-medium rounded transition">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>

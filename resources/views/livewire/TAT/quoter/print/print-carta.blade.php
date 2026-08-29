@@ -284,7 +284,6 @@
                 <th>Código</th>
                 <th>Unidad</th>
                 <th>Descripción</th>
-                <th>Imágenes</th>
                 <th>Cantidad</th>
                 <th>Valor Unitario</th>
                 <th>IVA %</th>
@@ -298,13 +297,6 @@
                     <td class="code">{{ $detalle->item ? ($detalle->item->sku ?? 'N/A') : 'N/A' }}</td>
                     <td class="unit">Unidad</td>
                     <td class="description">{{ $detalle->item ? ($detalle->item->name ?? $detalle->item->display_name) : 'Producto no encontrado' }}</td>
-                    <td>
-                        @if($detalle->item && $detalle->item->principalImage)
-                            Sin imagen
-                        @else
-                            Sin imagen
-                        @endif
-                    </td>
                     <td class="quantity">{{ $detalle->quantity }}</td>
                     <td class="price">${{ number_format($detalle->price, 0) }}</td>
                     <td class="iva">{{ $detalle->tax_percentage ?? 19 }}%</td>

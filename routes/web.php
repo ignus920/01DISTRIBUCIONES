@@ -17,6 +17,8 @@ use App\Livewire\Tenant\Customers\CustomerManager;
 
 
 Route::view('/', 'welcome');
+Route::view('/politica-privacidad', 'politica')->name('politica.privacidad');
+
 
 // Rutas de autenticación 2FA
 Route::get('/verify-2fa', Verify2FA::class)
@@ -177,6 +179,12 @@ require __DIR__.'/tenants/reports.php';
 // Rutas de entregas
 require __DIR__.'/tenants/deliveries.php';
 
-// Incluir rutas del módulo de remisiones 
+// Incluir rutas del módulo de remisiones
 require __DIR__.'/tenants/remissions.php';
+
+// Incluir rutas del módulo de facturas
+require __DIR__.'/tenants/invoices.php';
+
+// Incluir rutas del módulo de Factus
+require __DIR__.'/factus.php';
 

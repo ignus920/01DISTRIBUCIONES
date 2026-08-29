@@ -1,0 +1,108 @@
+{
+  "name": "WhatsApp Prospectos - Cleanup Sin Respuesta (48h)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "trigger-daily",
+      "name": "Schedule Diario",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prospectos",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "SENT_M1"
+            }
+          ]
+        },
+        "options": {
+          "returnAllMatches": true
+        }
+      },
+      "id": "read-sent-m1",
+      "name": "Leer con Status SENT_M1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filtrar los que llevan más de 48h sin respuesta\nconst HOURS_LIMIT = 48;\nconst now = new Date();\n\nconst expired = $input.all().filter(item => {\n  const sentAt = item.json.sent_m1_at;\n  if (!sentAt) return false;\n  \n  const sentDate = new Date(sentAt);\n  const diffHours = (now - sentDate) / (1000 * 60 * 60);\n  \n  return diffHours >= HOURS_LIMIT;\n});\n\nconsole.log(`${expired.length} prospectos sin respuesta después de ${HOURS_LIMIT}h`);\n\nif (expired.length === 0) {\n  throw new Error('Ningún prospecto expirado aún. Nada que hacer.');\n}\n\nreturn expired;"
+      },
+      "id": "filter-expired",
+      "name": "Filtrar Sin Respuesta +48h",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prospectos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone": "={{ $json.phone }}",
+            "status": "NO_RESPONSE",
+            "notes": "Sin respuesta después de 48h - No insistir (Anti-ban)"
+          },
+          "matchingColumns": ["phone"],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "mark-no-response",
+      "name": "Marcar NO_RESPONSE",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 300],
+      "notes": "PROTOCOLO ANTI-BAN: No volvemos a contactar a quienes no respondieron"
+    }
+  ],
+  "connections": {
+    "Schedule Diario": {
+      "main": [[{ "node": "Leer con Status SENT_M1", "type": "main", "index": 0 }]]
+    },
+    "Leer con Status SENT_M1": {
+      "main": [[{ "node": "Filtrar Sin Respuesta +48h", "type": "main", "index": 0 }]]
+    },
+    "Filtrar Sin Respuesta +48h": {
+      "main": [[{ "node": "Marcar NO_RESPONSE", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["whatsapp", "cleanup", "anti-ban"]
+}

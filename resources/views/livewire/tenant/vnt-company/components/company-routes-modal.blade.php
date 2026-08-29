@@ -83,13 +83,35 @@ x-init="
                             </h5>
                         </div>
                         <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-                            <div class="flex-1 min-w-0">
-                                @livewire('selects.route-select', [
-                                    'selectedValue' => $filterRouteId,
-                                    'eventName' => 'filter-route-changed',
-                                    'placeholder' => 'Seleccione una ruta',
-                                    'salesmanId' => auth()->user()->profile_id == 4 ? auth()->id() : null
-                                ], key('filter-route-select'))
+                            <div class="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    @php
+                                    $dayItems = collect($days)->map(function($day) {
+                                        return ['id' => $day, 'name' => ucfirst($day)];
+                                    })->toArray();
+                                    @endphp
+                                    @livewire('selects.generic-select', [
+                                        'selectedValue' => $filterDay,
+                                        'items' => $dayItems,
+                                        'name' => 'filterDay',
+                                        'label' => 'Día',
+                                        'placeholder' => 'Todos los días',
+                                        'displayField' => 'name',
+                                        'valueField' => 'id',
+                                        'searchFields' => ['name'],
+                                        'eventName' => 'filter-day-changed',
+                                        'showLabel' => true
+                                    ], key('filter-day-select'))
+                                </div>
+                                <div>
+                                    @livewire('selects.route-select', [
+                                        'selectedValue' => $filterRouteId,
+                                        'eventName' => 'filter-route-changed',
+                                        'placeholder' => 'Seleccione una ruta',
+                                        'salesmanId' => auth()->user()->profile_id == 4 ? auth()->id() : null,
+                                        'saleDay' => $filterDay
+                                    ], key('filter-route-select-' . $filterDay))
+                                </div>
                             </div>
 
                             @if($filterRouteId)

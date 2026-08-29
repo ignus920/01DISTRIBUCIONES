@@ -143,7 +143,7 @@
         <div class="flex items-center">
             <input wire:model="accept_terms" id="accept_terms" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" required>
             <label for="accept_terms" class="ml-2 block text-sm text-gray-900">
-                Acepto la <a href="#" class="text-indigo-600 hover:text-indigo-500">política de tratamiento de datos</a>
+                Acepto la <a href="/politica-privacidad" target="_blank" class="text-indigo-600 hover:text-indigo-500 underline">política de tratamiento de datos</a>
             </label>
         </div>
         <x-input-error :messages="$errors->get('accept_terms')" class="mt-2" />

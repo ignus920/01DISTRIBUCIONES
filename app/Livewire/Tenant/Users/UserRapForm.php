@@ -204,11 +204,6 @@ class UserRapForm extends Component
      */
     public function create(): void
     {
-        if ($this->canCreateOrUpdateUsers()) {
-            $this->errorMessage = 'No tienes permisos para crear usuarios';
-            return;
-        }
-
         // Limpiar completamente el estado antes de abrir
         $this->resetForm();
         $this->resetErrorBag();
@@ -672,12 +667,6 @@ class UserRapForm extends Component
             // 6. Calcular nuevo estado (toggle)
             $newStatus = !$user->contact->status;
 
-            if ($this->canCreateOrUpdateUsers(true, $newStatus)) {
-                DB::rollBack();
-                $this->errorMessage = 'No tienes permisos para crear usuarios';
-                return;
-            }
-
             // 7. Verificar si el usuario es de perfil "Tienda" (profile_id = 17)
             if ($user->profile_id == 17) {
                 // Usuario de tienda: buscar empresa asociada y actualizar todo
@@ -945,51 +934,6 @@ class UserRapForm extends Component
         return $tenantId;
     }
 
-    private function canCreateOrUpdateUsers(bool $update = false, $toggle = false): bool
-    {
-
-        $this->ensureTenantConnection();        
-        $this->initializeCompanyConfiguration();
-
-        // DEBUG: Limpiar caché para testing
-        $this->clearConfigurationCache();
-        $result = $this->isOptionEnabled(1);
-        $value = $this->getOptionValue(1);
-        
-
-        $filteredUsers = $this->users->filter(function($user) {
-            return $user->contact && $user->contact->status == 1;
-         });
-         $count = $filteredUsers->count();
-
-        // DEBUG: Log detallado de verificación
-        Log::info('🔍 canCreateOrUpdateUsers() verificación', [
-            'companyId' => $this->currentCompanyId,
-            'option_id' => 1,
-            'result' => $result ? 'TRUE' : 'FALSE',
-            'option_value' => $value,
-            'configService_exists' => $this->configService ? 'YES' : 'NO',
-            'method_called' => 'isOptionEnabled(10) y getOptionValue(10)',
-            'update' => $update,
-            'count' => $count,
-            'toggle' => $toggle
-        ]);
-        // validation create
-        if(!$update){
-           return (int)$value <= (int)$count;
-        }
-        // validation update positive
-        if(!$toggle){
-            return (int)$value < (int)$count;
-        }
-        // validation update negative
-        if($toggle){
-            return (int)$value == (int)$count;
-        }
-         return false;
-    }
-
-    
     private function ensureTenantConnection(): void
     {
         $tenantId = session('tenant_id');

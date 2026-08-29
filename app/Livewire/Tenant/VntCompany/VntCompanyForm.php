@@ -190,9 +190,15 @@ class VntCompanyForm extends Component
     protected $queryString = [
         'search' => ['except' => ''],
         'perPage' => ['except' => 10],
+        'searchType' => ['except' => 'TODOS'],
     ];
 
     public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearchType()
     {
         $this->resetPage();
     }

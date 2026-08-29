@@ -110,7 +110,7 @@
                                 <div class="flex flex-col gap-1">
                                     <span class="font-bold">#{{ $order->order_number }}</span>
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 w-fit">
-                                        Remisión: {{ $order->remise_number ?: 'N/A' }}
+                                        Pedido: {{ $order->remise_number ?: 'N/A' }}
                                     </span>
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 w-fit">
                                         Cotización: {{ $order->quote_consecutive ?: 'N/A' }}
